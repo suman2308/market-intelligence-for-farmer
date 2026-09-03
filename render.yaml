@@ -40,8 +40,8 @@ services:
       - key: NEXT_PUBLIC_API_URL
         value: https://shetbhav-backend.onrender.com
 
+databases:
   # PostgreSQL Database
-  - type: pgsql
-    name: shetbhav-db
+  - name: shetbhav-db
     plan: free
     databaseName: shetbhav
