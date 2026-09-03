@@ -1,69 +1,72 @@
-# Dependencies
-node_modules/
-shetbhav/frontend/node_modules/
+# === Environment and Secrets ===
+.env
+.env.*
+!.env.example
+!.env.sample
 
-# Build output
-shetbhav/frontend/.next/
-shetbhav/frontend/next-env.d.ts
-shetbhav/frontend/tsconfig.tsbuildinfo
-out/
-dist/
-build/
-
-# Python
+# === Python ===
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.egg-info/
 .eggs/
+*.egg
 venv/
 .venv/
+env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Database files
+# === Databases ===
 *.db
 *.db-shm
 *.db-wal
 *.db-journal
 *.sqlite
 *.sqlite3
-test_*.db
+shetbhav/backend/data/*.db*
+shetbhav/backend/test_shared.db
 
-# ML models (regenerated on first run)
+# === ML Models (regenerated on first run) ===
 *.joblib
 *.pkl
 *.model
+*.onnx
 shetbhav/backend/data/models/
-shetbhav/backend/data/*.db*
-shetbhav/backend/data/*.db-shm
-shetbhav/backend/data/*.db-wal
 
-# Logs
+# === Build output ===
+shetbhav/frontend/.next/
+shetbhav/frontend/next-env.d.ts
+shetbhav/frontend/tsconfig.tsbuildinfo
+out/
+dist/
+build/
+coverage/
+
+# === Node ===
+node_modules/
+.nyc_output/
+
+# === Logs ===
 *.log
 *.log.err
 
-# IDE
+# === OS and IDE ===
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Test artifacts
+# === Test artifacts ===
 htmlcov/
 .coverage
-coverage/
 
-# Uploads (user-generated)
+# === User uploads ===
 shetbhav/backend/uploads/
 
-# Freebuff worktree artifacts
+# === Freebuff worktree artifacts ===
 .freebuff/

@@ -1,65 +1,91 @@
-# ShetBhav Data Sources
+# ShetBhav — Data Sources
 
-## Data Classification
-
-### 1. REAL
-| Data | Source | Status |
-|------|--------|--------|
-| Market price schema | AGMARKNET format | Schema-compatible |
-| Crop taxonomy | India crops | Real crops |
-
-**Note**: The application is designed to consume real AGMARKNET data via the adapter pattern (`MarketDataProvider` interface), but currently uses synthetic fallback data because the external API is not reliably available in the demo environment.
-
-### 2. SYNTHETIC DEMO
-| Data | Description |
-|------|-------------|
-| Market prices | Generated price series for Nashik, Pune, Mumbai, Kolhapur, Nagpur |
-| Market arrivals | Synthetic daily arrival volumes |
-| Buyer demand | 5 demo demand requests |
-| Buyer profiles | 5 buyer companies with trust scores |
-| Farmer profiles | 7 demo farmers across Maharashtra |
-| Buyer payment history | Synthetic transaction records for trust scoring |
-| Storage facilities | 2 demo facilities in Nashik |
-| Transport costs | Haversine + INR 20/km estimation model |
-| Grievances | 4 demo disputes |
-
-**Every synthetic data point is clearly labeled in the UI** with:
-- "Synthetic demo data" badge
-- Data source labels on prices, forecasts, and recommendations
-
-### 3. DERIVED
-| Data | Calculation |
-|------|------------|
-| Net realization | gross - transport - storage - loss |
-| Smart Sell score | Weighted multi-factor scoring |
-| Buyer trust score | Transaction history + payment reliability |
-| Transport cost | Distance × rate per km |
-| Storage decision | Future price - current price - storage cost - spoilage |
-
-### 4. MODEL PREDICTION
-| Data | Model |
-|------|-------|
-| 7-day price forecast | XGBoost regressor |
-| Confidence bands | Model error metrics |
-| Trend direction | Forecast slope |
+**Last Updated:** September 3, 2026
 
 ---
 
-## Geographic Scope
-- **Primary**: Maharashtra (Nashik, Pune, Mumbai, Kolhapur, Nagpur)
-- **Crops**: Tomato, Onion, Soybean
-- **Scalable**: Architecture supports adding states and crops
+## Primary Data Source
 
-## Synthetic Data Generation
-- Market prices: Random walk with mean reversion around ₹2000-2800/quintal range
-- Seasonal patterns: Simulated monsoon/winter/harvest variations
-- Cross-market correlation: Prices correlated within ±10% across markets
-- Generated at database seed time, stored in SQLite/PostgreSQL
+### data.gov.in AGMARKNET API
 
-## External API Integration
-The system is designed with adapter pattern for:
-- **AGMARKNET** (Government market prices)
-- **OpenStreetMap/OSRM** (routing)
-- **Leaflet** (maps)
+| Field | Value |
+|-------|-------|
+| Provider | data.gov.in / Directorate of Marketing & Inspection |
+| Resource ID | 9ef84268-d588-465a-a308-a864a43d0070 |
+| Dataset | Current Daily Price of Various Commodities from Various Markets (Mandi) |
+| Coverage | Maharashtra, selected mandis |
+| Crops | Onion, Tomato, Soybean |
+| Fields | State, District, Market, Commodity, Variety, Grade, Arrival_Date, Min_Price, Max_Price, Modal_Price |
+| Access | Backend API client via backend/.env (DATA_GOV_API_KEY) |
+| Rate | Daily updates (not real-time) |
 
-Currently, all external calls fall back to synthetic data.
+**Important:** This is daily mandi price data, not second-by-second real-time prices. Display as "Official daily mandi data."
+
+### Historical AGMARKNET Dataset
+
+| Field | Value |
+|-------|-------|
+| File | shetbhav/backend/data/maharashtra_market_prices.csv |
+| Records | 219 |
+| Crops | Onion, Tomato, Soybean |
+| Markets | 6 Maharashtra mandis |
+| Import command | `python -m app.scripts.import_market_data --file data/maharashtra_market_prices.csv` |
+
+### Seeded Demo Data
+
+| Field | Value |
+|-------|-------|
+| Purpose | Fallback when live and cached data unavailable |
+| Markets | 7 seeded Maharashtra markets |
+| Transporters | 2 seeded transport providers |
+| Storage | 2 seeded storage facilities |
+| Labeling | Clearly marked as "Demo data" |
+
+---
+
+## Data Modes
+
+| Mode | Behavior |
+|------|----------|
+| live | Fetch from data.gov.in API |
+| cached | Use most recent database records |
+| dataset | Use imported AGMARKNET historical records |
+| demo | Use synthetic fallback data |
+
+**Fallback chain:** live → cached → dataset → demo
+
+---
+
+## Source Labels
+
+Every market-price record displays:
+- **Source name** (e.g., "data.gov.in / AGMARKNET")
+- **Source type** (live, cached, dataset, synthetic)
+- **Observed date** (arrival_date)
+- **Retrieved time** (retrieved_at)
+- **Freshness** (fresh, stale)
+- **Demo warning** when applicable
+
+---
+
+## API Configuration
+
+Environment variables in backend/.env:
+
+```
+DATA_GOV_API_KEY=your_api_key_here
+DATA_GOV_RESOURCE_ID=9ef84268-d588-465a-a308-a864a43d0070
+MARKET_DATA_MODE=live
+MARKET_DATA_CACHE_HOURS=24
+REQUEST_TIMEOUT_SECONDS=30
+```
+
+---
+
+## API Limitations
+
+- Daily data only (not real-time)
+- Limited to Maharashtra mandis initially
+- Soybean may have seasonal gaps
+- API may have rate limits
+- Offline fallback to cached/synthetic data

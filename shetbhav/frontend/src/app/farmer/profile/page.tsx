@@ -157,6 +157,7 @@ export default function FarmerProfile() {
           { label: "🔍 Find Buyers", path: "/farmer/buyers" },
           { label: "📋 My Orders", path: "/farmer/orders" },
           { label: "💰 My Earnings", path: "/farmer/earnings" },
+          { label: "🚨 Help & Grievance", path: "/farmer/grievance" },
         ].map(link => (
           <button key={link.path} onClick={() => router.push(link.path)}
             style={{

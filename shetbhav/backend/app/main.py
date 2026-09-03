@@ -25,7 +25,7 @@ from models.database import (
     Offer, OfferHistory, Order, Logistics, Payment,
     Grievance, Forecast, Recommendation, Notification,
     StorageFacility, TransportProvider, FPOMembership,
-    DataSource, Farm, LotItem,
+    DataSource, Farm, LotItem, OrderEvent,
     UserRole, QualityGrade, OrderStatus, OfferStatus, GrievanceStatus,
     PaymentStatus, VerificationStatus, UrgencyLevel,
     DataSourceType
@@ -50,7 +50,7 @@ from services.auth import (
     get_current_user, require_role
 )
 from services.market_data import MarketDataService
-from ml.forecasting import predict_price, evaluate_all_models
+from ml.forecasting import predict_price, get_all_forecast_statuses, train_and_evaluate
 
 app = FastAPI(
     title="ShetBhav API",
@@ -122,6 +122,12 @@ async def rate_limit_middleware(request: Request, call_next):
 def startup():
     init_db()
     _seed_demo_data()
+
+
+# ── Health Check ─────────────────────────────────────────────────────
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "shetbhav", "version": "1.0"}
 
 
 # ── Auth Routes ──────────────────────────────────────────────────────
@@ -395,11 +401,76 @@ def forecast_price(
     return predict_price(crop_name, current_price, arrivals)
 
 
+@app.get("/forecasts/status")
+def forecast_status():
+    """Get forecasting model status for all crops."""
+    return get_all_forecast_statuses()
+
+
 @app.post("/forecasts/train")
 def train_forecast_models(
+    crop: str = "tomato",
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Train forecast model for a crop using imported market data."""
+    records = (
+        db.query(MarketPrice)
+        .filter(MarketPrice.crop_id.in_([1, 2, 3]))
+        .order_by(MarketPrice.date.asc())
+        .all()
+    )
+    # Filter to requested crop
+    crop_obj = db.query(Crop).filter(Crop.name.ilike(crop)).first()
+    if not crop_obj:
+        return {"error": f"Crop '{crop}' not found"}
+    crop_records = [
+        {"date": r.date.strftime("%Y-%m-%d") if r.date else "", "modal_price": r.modal_price,
+         "min_price": r.min_price, "max_price": r.max_price,
+         "arrivals_qty": r.arrivals_qty or 200}
+        for r in records if r.crop_id == crop_obj.id and r.modal_price
+    ]
+    if not crop_records:
+        return {"status": "no_data", "crop": crop}
+    return train_and_evaluate(crop, crop_records)
+
+
+# ── data.gov.in Sync Routes ──────────────────────────────────────────
+@app.get("/sync/status")
+def sync_status(
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Get data sync status for all crops."""
+    from services.data_gov import get_sync_status
+    return get_sync_status(db)
+
+
+@app.post("/sync/mandi")
+def sync_mandi_data(
+    crop: str = "all",
+    force: bool = False,
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Sync mandi price data from data.gov.in. Admin only."""
+    from services.data_gov import sync_mandi_data as do_sync
+    return do_sync(db, crop_name=crop, force=force)
+
+
+@app.get("/sync/test")
+def test_api_connection(
     user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    return evaluate_all_models()
+    """Test data.gov.in API connection. Does not store data."""
+    from services.data_gov import _check_api_key
+    from config.settings import DATA_GOV_API_KEY, DATA_GOV_RESOURCE_ID
+    has_key = _check_api_key()
+    return {
+        "api_key_configured": has_key,
+        "resource_id": DATA_GOV_RESOURCE_ID[:8] + "..." if DATA_GOV_RESOURCE_ID else "not_set",
+        "market_data_mode": os.getenv("MARKET_DATA_MODE", "cached"),
+    }
 
 
 # ── Smart Sell Route ─────────────────────────────────────────────────
@@ -464,11 +535,22 @@ def create_offer(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Resolve to_user_id from lot's farmer if not provided
+    to_user_id = data.to_user_id
+    if not to_user_id:
+        lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first()
+        if lot:
+            farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+            if farmer_profile:
+                to_user_id = farmer_profile.user_id
+    if not to_user_id:
+        raise HTTPException(status_code=400, detail="Cannot determine recipient. Provide to_user_id or a valid lot_id.")
+
     offer = Offer(
         lot_id=data.lot_id,
         demand_id=data.demand_id,
         from_user_id=user.id,
-        to_user_id=data.to_user_id,
+        to_user_id=to_user_id,
         price_per_q=data.price_per_q,
         quantity_kg=data.quantity_kg,
         delivery_date=data.delivery_date,
@@ -521,6 +603,36 @@ def accept_offer(
         action="accepted", created_by=user.id,
     )
     db.add(history)
+
+    # Auto-create order from accepted offer
+    lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+    if lot:
+        farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+        farmer_user_id = farmer_profile.user_id if farmer_profile else 0
+        buyer_user_id = offer.from_user_id if offer.from_user_id != farmer_user_id else offer.to_user_id
+        buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.user_id == buyer_user_id).first()
+        order = Order(
+            offer_id=offer.id,
+            farmer_id=lot.farmer_id,
+            buyer_id=buyer_profile.id if buyer_profile else 0,
+            crop_id=lot.crop_id,
+            quantity_kg=offer.quantity_kg,
+            price_per_q=offer.price_per_q,
+            total_value=offer.price_per_q * offer.quantity_kg / 100,
+            delivery_date=offer.delivery_date,
+            status=OrderStatus.ACCEPTED,
+        )
+        db.add(order)
+        db.flush()
+        # Create initial timeline events
+        events = [
+            OrderEvent(order_id=order.id, event_type="offer_accepted", title="Offer accepted", description=f"Offer at ₹{offer.price_per_q}/q accepted", created_by=user.id),
+            OrderEvent(order_id=order.id, event_type="order_created", title="Order created", description=f"Order #{order.id} for {offer.quantity_kg}kg created"),
+        ]
+        db.add_all(events)
+        # Update lot status
+        lot.status = "sold"
+
     db.commit()
     db.refresh(offer)
     return offer
@@ -683,9 +795,104 @@ def update_order_status(
         payment = Payment(order_id=order.id, amount=order.total_value)
         db.add(payment)
 
+    # Auto-create timeline event
+    evt = OrderEvent(
+        order_id=order.id,
+        event_type="status_update",
+        title=f"Order status updated to {data.status.value}",
+        description=f"Order #{order.id} is now {data.status.value.replace('_', ' ')}",
+        created_by=user.id,
+    )
+    db.add(evt)
+
     db.commit()
     db.refresh(order)
     return order
+
+
+@app.get("/orders/{order_id}")
+def get_order_detail(order_id: int, db: Session = Depends(get_db)):
+    """§34: Get order with full timeline."""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    events = db.query(OrderEvent).filter(
+        OrderEvent.order_id == order_id
+    ).order_by(OrderEvent.created_at.asc()).all()
+    crop = db.query(Crop).filter(Crop.id == order.crop_id).first()
+    payment = db.query(Payment).filter(Payment.order_id == order_id).first()
+    logistics = db.query(Logistics).filter(Logistics.order_id == order_id).first()
+    return {
+        "order": OrderResponse.model_validate(order),
+        "crop_name": crop.name if crop else "Unknown",
+        "timeline": [
+            {
+                "id": e.id,
+                "event_type": e.event_type,
+                "title": e.title,
+                "description": e.description,
+                "metadata": e.metadata_json,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+        "payment": {
+            "id": payment.id,
+            "amount": payment.amount,
+            "status": payment.status.value,
+            "transaction_ref": payment.transaction_ref,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+        } if payment else None,
+        "logistics": {
+            "distance_km": logistics.route_distance_km,
+            "cost": logistics.estimated_cost,
+            "status": logistics.status,
+        } if logistics else None,
+    }
+
+
+@app.post("/orders/{order_id}/events")
+def add_order_event(
+    order_id: int,
+    event_type: str,
+    title: str,
+    description: str = "",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a timeline event to an order."""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    evt = OrderEvent(
+        order_id=order_id,
+        event_type=event_type,
+        title=title,
+        description=description,
+        created_by=user.id,
+    )
+    db.add(evt)
+    db.commit()
+    db.refresh(evt)
+    return {"id": evt.id, "event_type": evt.event_type, "title": evt.title}
+
+
+@app.get("/orders/{order_id}/events")
+def list_order_events(order_id: int, db: Session = Depends(get_db)):
+    """List timeline events for an order."""
+    events = db.query(OrderEvent).filter(
+        OrderEvent.order_id == order_id
+    ).order_by(OrderEvent.created_at.asc()).all()
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "title": e.title,
+            "description": e.description,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in events
+    ]
 
 
 # ── Payment Routes ───────────────────────────────────────────────────
@@ -708,7 +915,11 @@ def simulate_payment(
     payment.paid_at = datetime.utcnow()
     order.status = OrderStatus.PAID
 
-    # Notify farmer (resolve from order relationship)
+    # Timeline events
+    db.add(OrderEvent(order_id=order.id, event_type="payment_initiated", title="Payment initiated", description=f"Payment of ₹{order.total_value:,.0f} initiated", created_by=user.id))
+    db.add(OrderEvent(order_id=order.id, event_type="payment_completed", title="Payment completed", description=f"Payment of ₹{order.total_value:,.0f} completed. Ref: {payment.transaction_ref}"))
+
+    # Notify farmer
     farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == order.farmer_id).first()
     if farmer_profile:
         notification = Notification(
@@ -746,6 +957,15 @@ def create_grievance(
         evidence_url=data.evidence_url,
     )
     db.add(grievance)
+    db.flush()
+    # Add timeline event if linked to an order
+    if data.order_id:
+        evt = OrderEvent(
+            order_id=data.order_id, event_type="grievance_opened",
+            title=f"Grievance opened: {data.category.value}",
+            description=data.description[:200], created_by=user.id,
+        )
+        db.add(evt)
     db.commit()
     db.refresh(grievance)
     return grievance
@@ -774,6 +994,15 @@ def resolve_grievance(
     grievance.status = data.status
     grievance.admin_response = data.admin_response
     grievance.resolution = data.resolution
+    # Timeline event if linked to order
+    if grievance.order_id:
+        evt = OrderEvent(
+            order_id=grievance.order_id, event_type="grievance_resolved",
+            title=f"Grievance resolved: {data.status.value}",
+            description=data.admin_response[:200] if data.admin_response else "",
+            created_by=user.id,
+        )
+        db.add(evt)
     db.commit()
     db.refresh(grievance)
     return grievance
@@ -1011,36 +1240,46 @@ def _seed_demo_data():
     """§47, §48: Seed realistic demo data for Maharashtra farmers."""
     db = SessionLocal()
     try:
-        # Check if already seeded
-        if db.query(Crop).count() > 0:
+        # Check if already seeded (check users, not crops — crops may exist from import)
+        if db.query(User).count() > 0:
             return
 
-        # Crops
-        crops = [
-            Crop(name="Tomato", name_hi="टमाटर", name_mr="टोमॅटो",
-                 category="vegetable", unit="kg", shelf_life_days=5, supports_ai_grading=True),
-            Crop(name="Onion", name_hi="प्याज़", name_mr="कांदा",
-                 category="vegetable", unit="kg", shelf_life_days=14, supports_ai_grading=False),
-            Crop(name="Soybean", name_hi="सोयाबीन", name_mr="सोयाबीन",
-                 category="grain", unit="kg", shelf_life_days=90, supports_ai_grading=False),
+        # Crops (skip if already exist from market data import)
+        existing_crops = {c.name: c for c in db.query(Crop).all()}
+        crop_data = [
+            ("Tomato", "टमाटर", "टोमॅटो", "vegetable", 5, True),
+            ("Onion", "प्याज़", "कांदा", "vegetable", 14, False),
+            ("Soybean", "सोयाबीन", "सोयाबीन", "grain", 90, False),
         ]
-        db.add_all(crops)
+        crops = []
+        for name, hi, mr, cat, shelf, ai in crop_data:
+            if name in existing_crops:
+                crops.append(existing_crops[name])
+            else:
+                c = Crop(name=name, name_hi=hi, name_mr=mr, category=cat, unit="kg",
+                         shelf_life_days=shelf, supports_ai_grading=ai)
+                db.add(c)
+                crops.append(c)
         db.flush()
 
-        # Markets
-        markets = [
-            Market(name="Nashik APMC", code="MH_NSK_001", district="Nashik", state="Maharashtra",
-                   location_lat=19.9975, location_lng=73.7898, market_type="APMC"),
-            Market(name="Pune APMC", code="MH_PUN_001", district="Pune", state="Maharashtra",
-                   location_lat=18.5204, location_lng=73.8567, market_type="APMC"),
-            Market(name="Mumbai APMC", code="MH_MUM_001", district="Mumbai", state="Maharashtra",
-                   location_lat=19.0760, location_lng=72.8777, market_type="APMC"),
-            Market(name="Nagpur APMC", code="MH_NGP_001", district="Nagpur", state="Maharashtra",
-                   location_lat=21.1458, location_lng=79.0882, market_type="APMC"),
-            Market(name="Nashik Lasalgaon", code="MH_NSK_002", district="Nashik", state="Maharashtra",
-                   location_lat=20.1487, location_lng=73.8936, market_type="APMC"),
+        # Markets (skip if already exist)
+        existing_markets = {m.name: m for m in db.query(Market).all()}
+        market_data = [
+            ("Nashik APMC", "MH_NSK_001", "Nashik", 19.9975, 73.7898),
+            ("Pune APMC", "MH_PUN_001", "Pune", 18.5204, 73.8567),
+            ("Mumbai APMC", "MH_MUM_001", "Mumbai", 19.0760, 72.8777),
+            ("Nagpur APMC", "MH_NGP_001", "Nagpur", 21.1458, 79.0882),
+            ("Nashik Lasalgaon", "MH_NSK_002", "Nashik", 20.1487, 73.8936),
         ]
-        db.add_all(markets)
+        markets = []
+        for name, code, dist, lat, lng in market_data:
+            if name in existing_markets:
+                markets.append(existing_markets[name])
+            else:
+                m = Market(name=name, code=code, district=dist, state="Maharashtra",
+                           location_lat=lat, location_lng=lng, market_type="APMC")
+                db.add(m)
+                markets.append(m)
         db.flush()
 
         # Storage facilities
@@ -1201,18 +1440,22 @@ def _seed_demo_data():
         )
         db.add(demand)
 
-        # Seed some historical prices
+        # Seed synthetic price history for each crop/market
+        from services.market_data import SyntheticProvider
+        synth = SyntheticProvider()
         for market in markets[:3]:
             for crop in crops:
-                svc = MarketDataService()
-                hist = svc.synthetic_provider.fetch_historical(market.name, crop.name, 90)
+                hist = synth.get_historical(crop.name, days=30)
                 for h in hist:
+                    dt = datetime.strptime(h["date"], "%Y-%m-%d")
                     mp = MarketPrice(
                         market_id=market.id, crop_id=crop.id,
-                        date=datetime.strptime(h["date"], "%Y-%m-%d"),
+                        date=dt, arrival_date=dt,
                         min_price=h["min_price"], max_price=h["max_price"],
                         modal_price=h["modal_price"], arrivals_qty=h["arrivals_qty"],
-                        source="synthetic", data_source_type=DataSourceType.SYNTHETIC_DEMO,
+                        source="synthetic", source_type="synthetic",
+                        data_source_type=DataSourceType.SYNTHETIC_DEMO,
+                        market_name=market.name, commodity=crop.name,
                     )
                     db.add(mp)
 
@@ -1338,17 +1581,98 @@ def assess_quality(
     lot_id: int,
     image_url: Optional[str] = None,
     filepath: Optional[str] = None,
+    filepaths: Optional[str] = None,
     override_grade: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """AI-assisted quality grading with full output schema."""
     from services.quality_grading import assess_quality as do_assess
-    # Use filepath if provided (from upload), else fall back to image_url
-    effective_path = filepath or image_url
-    result = do_assess(db, lot_id, effective_path, override_grade)
+    # Build image paths list (multi-image support)
+    image_paths = []
+    if filepath:
+        image_paths.append(filepath)
+    elif filepaths:
+        image_paths = [p.strip() for p in filepaths.split(",") if p.strip()]
+    elif image_url:
+        image_paths = [image_url]
+
+    result = do_assess(db, lot_id, image_paths or None, override_grade, user_id=user.id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+@app.post("/quality/confirm/{assessment_id}")
+def confirm_quality(
+    assessment_id: int,
+    edited_grade: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Farmer confirms or edits the AI quality estimate."""
+    from services.quality_grading import confirm_quality as do_confirm
+    result = do_confirm(db, assessment_id, user.id, edited_grade)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/quality/request-verification/{assessment_id}")
+def request_verification(
+    assessment_id: int,
+    notes: str = "",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Farmer requests manual/admin verification."""
+    from services.quality_grading import request_verification as do_request
+    result = do_request(db, assessment_id, user.id, notes)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/quality/verify/{assessment_id}")
+def verify_quality(
+    assessment_id: int,
+    verified_grade: str,
+    verification_type: str = "manually_verified",
+    notes: str = "",
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Admin/FPO/assayer manually verifies or corrects the grade."""
+    from services.quality_grading import verify_quality as do_verify
+    result = do_verify(db, assessment_id, user.id, verified_grade, verification_type, notes)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.get("/quality/report/{lot_id}")
+def get_quality_report(
+    lot_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the latest quality report for a lot."""
+    from services.quality_grading import get_quality_report as do_get
+    report = do_get(db, lot_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="No quality report found")
+    return report
+
+
+@app.get("/quality/history/{lot_id}")
+def get_quality_history(
+    lot_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get all quality assessments and revisions for a lot."""
+    from services.quality_grading import get_quality_history as do_history
+    return do_history(db, lot_id)
 
 
 @app.post("/quality/upload/{lot_id}")

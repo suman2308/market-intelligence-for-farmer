@@ -97,7 +97,6 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
-  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
   useEffect(() => { loadUser().finally(() => setLoading(false)); }, []);
   useEffect(() => {
@@ -144,10 +143,9 @@ export default function OrdersPage() {
         <div className="flex-col gap-3">
           {displayOrders.map(order => {
             const info = getStatusInfo(order.status);
-            const isExpanded = expandedOrder === order.id;
             return (
               <div key={order.id} className="card" style={{ cursor: "pointer" }}
-                onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
+                onClick={() => router.push(`/farmer/orders/${order.id}`)}>
                 {/* Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ flex: 1 }}>
@@ -171,15 +169,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {/* Expanded Timeline */}
-                {isExpanded && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
-                    <OrderTimeline status={order.status} />
-                    <p className="text-xs" style={{ color: "var(--color-text-secondary)", marginTop: 8, textAlign: "right" }}>
-                      Created: {new Date(order.created_at).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                )}
+
               </div>
             );
           })}

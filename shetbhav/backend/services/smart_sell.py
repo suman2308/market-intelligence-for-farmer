@@ -14,6 +14,7 @@ from models.database import (
 from models.schemas import SellOption, SmartSellRequest, SmartSellResponse
 from services.market_data import MarketDataService
 from ml.forecasting import predict_price
+from ml.model_registry import get_model_status
 
 
 # ── Configuration ────────────────────────────────────────────────────
@@ -211,8 +212,45 @@ def get_smart_sell_recommendation(
     market_data = market_svc.get_current_prices(db, request.crop_id)
     current_modal = market_data.get("prices", {}).get("modal_price", 2400)
 
-    # Get forecast
-    forecast = predict_price(crop_name, current_modal)
+    # Get forecast — uses trained XGBoost if available, otherwise naive/MA baseline
+    hist_prices = []
+    try:
+        hist_records = (
+            db.query(MarketPrice)
+            .filter(MarketPrice.crop_id == request.crop_id)
+            .order_by(MarketPrice.date.asc())
+            .all()[-90:]
+        )
+        hist_prices = [r.modal_price for r in hist_records if r.modal_price]
+    except Exception:
+        pass
+
+    forecast = predict_price(
+        crop_name, current_modal, mandi="Nashik APMC",
+        historical_prices=hist_prices if hist_prices else None,
+    )
+
+    # ── Quality-based confidence adjustment ─────────────────────
+    # Check lot quality status — reduce confidence when quality is uncertain
+    quality_confidence_factor = 1.0
+    quality_notes = []
+    try:
+        from models.database import QualityAssessment
+        from services.quality_grading import get_quality_report
+        quality_report = get_quality_report(db, lot.id) if hasattr(lot, 'id') else None
+        if quality_report:
+            vtype = quality_report.get("verification_type", "")
+            conf = quality_report.get("confidence", 0)
+            if vtype == "self_declared":
+                quality_confidence_factor *= 0.85
+                quality_notes.append("Quality is self-declared — not AI or lab verified")
+            elif conf < 60:
+                quality_confidence_factor *= 0.90
+                quality_notes.append(f"Low quality confidence ({conf:.0f}%)")
+            if quality_report.get("status") == "pending_verification":
+                quality_notes.append("Quality verification pending")
+    except Exception:
+        pass
 
     options: List[SellOption] = []
 
@@ -283,34 +321,53 @@ def get_smart_sell_recommendation(
         options.append(buyer_option)
 
     # ── Option 3: Store and sell later ────────────────────────────────
+    # §18: Forecast only influences gross value estimate; storage, transport,
+    # handling, and spoilage are ALWAYS deducted. Forecast does NOT alone
+    # determine the recommendation.
     if request.storage_available:
         future_price = forecast.get("predicted_price", current_modal * 1.03)
-        storage_cost_total = estimate_storage_cost(request.quantity_kg, 7)
+        forecast_low = forecast.get("expected_low", future_price * 0.92)
+        forecast_high = forecast.get("expected_high", future_price * 1.08)
+        forecast_confidence = forecast.get("confidence", 0.5)
+
+        # §18: Full cost breakdown for storage option
+        storage_days = 7
+        storage_cost_total = estimate_storage_cost(request.quantity_kg, storage_days)
         storage_cost_per_q = storage_cost_total / quantity_q if quantity_q > 0 else 0
-        future_loss = estimate_spoilage(crop_name, request.quantity_kg, 7)
+        future_loss = estimate_spoilage(crop_name, request.quantity_kg, storage_days)
+        future_loss_per_q = future_loss / quantity_q if quantity_q > 0 else 0
         future_transport = estimate_transport_cost(
             request.location_lat, request.location_lng,
             19.9975, 73.7898
         )
+        handling = HANDLING_COST_PER_Q
+
+        # §18: Net = gross - transport - storage - handling - spoilage
+        storage_net = calculate_net_realization(
+            future_price, future_transport, storage_cost_per_q, future_loss_per_q, handling
+        )
 
         storage_option = score_sell_option(
             option_type="storage_sell_later",
-            target_name="Sell at mandi after storage (7 days)",
+            target_name=f"Sell at mandi after {storage_days}-day storage",
             gross_price=round(future_price, 0),
             transport_cost=future_transport,
             storage_cost=storage_cost_per_q,
-            expected_loss=future_loss,
+            expected_loss=future_loss_per_q,
             quality_match=True,
             demand_level="medium",
             payment_reliability=70,
             quantity_available=999999,
             quantity_needed=request.quantity_kg,
             distance_km=future_transport / TRANSPORT_COST_PER_KM,
-            forecast_confidence=forecast.get("confidence", 0.5) * 0.8,
-            sale_window_days=7,
+            forecast_confidence=forecast_confidence * 0.8,
+            sale_window_days=storage_days,
         )
-        storage_option.reasons.append("Expected price improvement")
+        storage_option.reasons.append(f"Forecast: ₹{future_price:,.0f}/q in {storage_days} days")
+        storage_option.reasons.append(f"Net after all costs: ₹{storage_net:,.0f}/q")
         storage_option.risks.append("Spoilage risk during storage")
+        storage_option.risks.append(f"Forecast confidence: {forecast_confidence*100:.0f}%")
+        storage_option.data_labels["gross_price"] = forecast.get("data_source", "model_prediction") + " forecast"
         options.append(storage_option)
 
     # Sort by score

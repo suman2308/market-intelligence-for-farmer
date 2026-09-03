@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import { Sidebar } from "@/components/ui";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
@@ -85,18 +86,25 @@ export default function AdminDashboard() {
     { day: "Sun", lots: stats?.active_lots || 7, demand: stats?.active_demand || 5, offers: 6 },
   ];
 
+  const sidebarItems = [
+    { icon: "📊", label: "Overview", href: "/admin#overview" },
+    { icon: "📈", label: "Analytics", href: "/admin#analytics" },
+    { icon: "👥", label: "Users", href: "/admin#users" },
+    { icon: "⚠️", label: "Grievances", href: "/admin#grievances" },
+    { icon: "🤖", label: "ML Models", href: "/admin#models" },
+  ];
+
   return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>⚙️ Admin</h1>
-          <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "4px 0 0 0" }}>Platform Management</p>
+    <div className="has-sidebar">
+      <Sidebar active="/admin" items={sidebarItems} title="ShetBhav Admin" subtitle="Platform Management" />
+      <div style={{ padding: "0 16px" }}>
+        <div style={{ padding: "16px 0 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h1 className="heading-lg" style={{ margin: 0 }}>⚙️ Platform Dashboard</h1>
+            <p className="text-xs" style={{ margin: "2px 0 0" }}>Platform Management</p>
+          </div>
+          <button onClick={() => { logout(); router.push("/login"); }} className="btn-secondary btn-sm">Logout</button>
         </div>
-        <button onClick={() => { logout(); router.push("/login"); }}
-          style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card)", fontSize: 13, color: "var(--color-text)" }}>
-          {t("logout")}
-        </button>
-      </div>
 
       {/* Tabs */}
       <div className="scroll-x section-gap">
@@ -351,6 +359,7 @@ export default function AdminDashboard() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

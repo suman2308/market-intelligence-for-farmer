@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import LangHydrator from "@/components/LangHydrator";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -16,8 +17,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" dir="ltr">
-      <body>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body suppressHydrationWarning>
+        <LangHydrator />
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         <div className="app-container" id="main-content" role="main">
           {children}

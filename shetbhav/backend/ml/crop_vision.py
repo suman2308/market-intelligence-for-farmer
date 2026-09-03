@@ -34,25 +34,35 @@ except ImportError:
 CROP_PROFILES = {
     "tomato": {
         "name": "Tomato",
-        "ideal_hue_range": (0, 30),        # Red-orange hue range
-        "ideal_saturation_min": 120,        # Vibrant red color
-        "ideal_brightness_min": 100,        # Not too dark
-        "ideal_brightness_max": 220,        # Not overripe/bleached
-        "blemish_threshold": 0.15,          # Max 15% dark spots
-        "uniformity_threshold": 0.6,        # Color consistency
+        "ideal_hue_range": (0, 30),
+        "ideal_saturation_min": 120,
+        "ideal_brightness_min": 100,
+        "ideal_brightness_max": 220,
+        "blemish_threshold": 0.15,
+        "uniformity_threshold": 0.6,
         "grade_a_min_score": 78,
         "grade_b_min_score": 55,
         "factors": {
-            "color_quality": 0.30,          # Red color vibrancy
-            "uniformity": 0.20,             # Even color distribution
-            "freshness": 0.20,              # Brightness/contrast
-            "blemish_free": 0.20,           # Dark spot detection
-            "size_consistency": 0.10,       # Overall appearance
+            "color_quality": 0.30,
+            "uniformity": 0.20,
+            "freshness": 0.20,
+            "blemish_free": 0.20,
+            "size_consistency": 0.10,
         },
+        "visible_indicators": [
+            "ripeness_color", "size_uniformity", "bruising",
+            "cracking", "visible_rot", "shape",
+        ],
+        "limitations": [
+            "Internal damage cannot be detected from photos",
+            "Moisture content requires manual measurement",
+            "Pesticide residue requires laboratory testing",
+            "Hidden rot is not visible externally",
+        ],
     },
     "onion": {
         "name": "Onion",
-        "ideal_hue_range": (15, 50),       # Golden-brown range
+        "ideal_hue_range": (15, 50),
         "ideal_saturation_min": 80,
         "ideal_brightness_min": 80,
         "ideal_brightness_max": 200,
@@ -67,10 +77,19 @@ CROP_PROFILES = {
             "blemish_free": 0.20,
             "size_consistency": 0.10,
         },
+        "visible_indicators": [
+            "size_uniformity", "skin_color", "visible_rot",
+            "sprouting", "bruising", "surface_damage", "foreign_matter",
+        ],
+        "limitations": [
+            "Internal rot is not visible from outside",
+            "Moisture and pungency require laboratory measurement",
+            "Sprouting inside the bulb cannot be detected from photos",
+        ],
     },
     "soybean": {
         "name": "Soybean",
-        "ideal_hue_range": (35, 85),        # Yellow-green range
+        "ideal_hue_range": (35, 85),
         "ideal_saturation_min": 60,
         "ideal_brightness_min": 90,
         "ideal_brightness_max": 210,
@@ -85,8 +104,69 @@ CROP_PROFILES = {
             "blemish_free": 0.20,
             "size_consistency": 0.10,
         },
+        "visible_indicators": [
+            "visible_foreign_matter", "color_consistency",
+            "damaged_beans", "visible_surface_defects",
+        ],
+        "limitations": [
+            "Moisture content requires manual measurement",
+            "Protein and oil content require laboratory analysis",
+            "Internal insect damage is not visible from photos",
+        ],
     },
 }
+
+
+def check_image_quality(image_path: str) -> Dict:
+    """
+    Pre-analysis image quality check.
+    Validates file type, size, resolution, blur, and darkness.
+    Returns quality check results.
+    """
+    if not HAS_PIL:
+        return {"valid": True, "warnings": ["Image library unavailable — cannot validate image quality"]}
+    
+    if not os.path.exists(image_path):
+        return {"valid": False, "error": "Image file not found"}
+    
+    try:
+        img = Image.open(image_path)
+        warnings = []
+        
+        # Resolution check
+        w, h = img.size
+        if w < 200 or h < 200:
+            warnings.append(f"Low resolution ({w}x{h}). Minimum 200x200 recommended.")
+        
+        # Check if image is too dark
+        img_array = np.array(img.convert("RGB"), dtype=np.float32)
+        avg_brightness = float(np.mean(np.mean(img_array, axis=2)))
+        if avg_brightness < 40:
+            warnings.append("Image is very dark. Try better lighting.")
+        elif avg_brightness < 80:
+            warnings.append("Image appears somewhat dark. Better lighting may improve accuracy.")
+        
+        # Check if image is too bright (washed out)
+        if avg_brightness > 230:
+            warnings.append("Image appears overexposed. Reduce brightness.")
+        
+        # Blur detection using Laplacian variance
+        gray = np.array(img.convert("L"), dtype=np.float32)
+        laplacian_var = float(np.var(np.diff(np.diff(gray, axis=0), axis=1)))
+        if laplacian_var < 100:
+            warnings.append("Image appears blurry. Try holding the camera steady.")
+        elif laplacian_var < 300:
+            warnings.append("Image may be slightly blurry. Clearer photos give better results.")
+        
+        return {
+            "valid": len(warnings) == 0 or avg_brightness >= 40,
+            "warnings": warnings,
+            "resolution": f"{w}x{h}",
+            "avg_brightness": round(avg_brightness, 1),
+            "blur_score": round(laplacian_var, 1),
+        }
+    except Exception as e:
+        return {"valid": True, "warnings": [f"Could not validate image: {str(e)[:80]}"]}
 
 
 def analyze_image(image_path: str, crop_name: str) -> Dict:
@@ -102,6 +182,9 @@ def analyze_image(image_path: str, crop_name: str) -> Dict:
             "overall_notes": str,
             "color_analysis": { ... },
             "defect_analysis": { ... },
+            "visible_observations": [...],
+            "detected_issues": [...],
+            "image_quality": { ... },
         }
     """
     if not HAS_PIL:
@@ -182,13 +265,71 @@ def analyze_image(image_path: str, crop_name: str) -> Dict:
         
         # ── Generate Notes ──────────────────────────────────────
         notes = _generate_notes(grade, factors, profile)
-        
+
+        # ── Visible Observations ────────────────────────────────
+        visible_observations = []
+        detected_issues = []
+        indicators = profile.get("visible_indicators", [])
+
+        # Map analysis to crop-specific indicators
+        if "color_quality" in indicators or "ripeness_color" in indicators or "skin_color" in indicators or "color_consistency" in indicators:
+            if color_analysis["score"] >= 80:
+                visible_observations.append("Color appears consistent and well-matched to ideal appearance")
+            elif color_analysis["score"] >= 60:
+                visible_observations.append("Color is acceptable with some variation")
+            else:
+                detected_issues.append("Color appears inconsistent or below expected standard")
+
+        if "bruising" in indicators or "visible_rot" in indicators:
+            if defect_analysis.get("dark_spot_ratio", 0) > profile["blemish_threshold"]:
+                detected_issues.append("Visible blemishes or dark spots detected")
+            else:
+                visible_observations.append("No significant blemishes or rot visible")
+
+        if "size_uniformity" in indicators:
+            if uniformity.get("size_score", 70) >= 75:
+                visible_observations.append("Size appears uniform across visible area")
+            else:
+                detected_issues.append("Size uniformity appears inconsistent")
+
+        if "sprouting" in indicators and freshness.get("score", 70) < 60:
+            detected_issues.append("Freshness indicators suggest possible sprouting or age")
+
+        if "surface_damage" in indicators or "visible_surface_defects" in indicators:
+            if defect_analysis.get("very_dark_ratio", 0) > 0.03:
+                detected_issues.append("Surface damage or defects detected")
+
+        if "cracking" in indicators and uniformity.get("score", 70) < 55:
+            detected_issues.append("Possible cracking or surface irregularities detected")
+
+        if "shape" in indicators and uniformity.get("score", 70) >= 80:
+            visible_observations.append("Shape appears regular and consistent")
+
+        if "damaged_beans" in indicators and defect_analysis.get("dark_spot_ratio", 0) > profile["blemish_threshold"]:
+            detected_issues.append("Damaged beans or surface defects visible")
+
+        # ── Missing Information ─────────────────────────────────
+        limitations = profile.get("limitations", [])
+        missing_info = [
+            "Moisture content (requires manual measurement)",
+            "Internal damage (not visible from photos)",
+            "Certified grade (requires laboratory verification)",
+        ]
+
+        # ── Low Confidence Path ─────────────────────────────────
+        if confidence < 0.50:
+            notes = f"Unable to estimate grade confidently for {profile['name']}. Confidence is {confidence*100:.0f}%. Please upload a clearer photo or request manual verification."
+
         return {
             "grade": grade,
             "confidence": round(confidence, 2),
             "score": total_score,
             "factors": factors,
             "overall_notes": notes,
+            "visible_observations": visible_observations,
+            "detected_issues": detected_issues,
+            "missing_information": missing_info,
+            "limitations": limitations,
             "color_analysis": {
                 "dominant_hue": color_analysis.get("dominant_hue", 0),
                 "saturation_avg": color_analysis.get("saturation_avg", 0),
@@ -198,11 +339,11 @@ def analyze_image(image_path: str, crop_name: str) -> Dict:
                 "dark_spot_ratio": defect_analysis.get("dark_spot_ratio", 0),
                 "has_visible_defects": defect_analysis.get("dark_spot_ratio", 0) > profile["blemish_threshold"],
             },
-            "source_label": "AI image analysis (crop vision model)",
+            "source_label": "AI-assisted image analysis (not certified grade)",
             "supported": True,
             "crop": crop_name,
         }
-        
+
     except Exception as e:
         return {"error": f"Image analysis failed: {str(e)}"}
 

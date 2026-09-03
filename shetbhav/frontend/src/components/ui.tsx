@@ -1,220 +1,519 @@
 "use client";
 
-/**
- * ShetBhav Design System — Shared Components
- * Centralized, consistent UI elements for all pages.
- */
-
 import React from "react";
 
+/* ══════════════════════════════════════════════════════════════════════
+   SHETBHAV UI COMPONENT LIBRARY
+   Reusable components for the agricultural market intelligence platform.
+   ══════════════════════════════════════════════════════════════════════ */
+
 // ── Page Layout ──────────────────────────────────────────────────────
-export function PageHeader({ title, subtitle, onBack, actions }: {
+
+export function PageHeader({
+  title,
+  subtitle,
+  back,
+  actions,
+}: {
   title: string;
   subtitle?: string;
-  onBack?: () => void;
+  back?: () => void;
   actions?: React.ReactNode;
 }) {
   return (
     <div className="page-header">
-      {onBack && (
-        <button onClick={onBack} aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {back && (
+        <button
+          onClick={back}
+          aria-label="Go back"
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: 22,
+            cursor: "pointer",
+            padding: 8,
+            minWidth: 44,
+            minHeight: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           ←
         </button>
       )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h1 className="heading-md" style={{ margin: 0 }}>{title}</h1>
-        {subtitle && <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>{subtitle}</p>}
+      <div style={{ flex: 1 }}>
+        <h1 className="heading-md" style={{ margin: 0 }}>
+          {title}
+        </h1>
+        {subtitle && (
+          <p
+            className="text-xs"
+            style={{ color: "var(--text-secondary)", margin: "2px 0 0 0" }}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
-      {actions && <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{actions}</div>}
+      {actions}
     </div>
   );
 }
 
 // ── Progress Bar ─────────────────────────────────────────────────────
-export function ProgressBar({ current, total }: { current: number; total: number }) {
+
+export function ProgressBar({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
   return (
-    <div style={{ display: "flex", gap: 4, marginBottom: 20 }} role="progressbar" aria-valuenow={current} aria-valuemax={total}>
+    <div className="progress-bar">
       {Array.from({ length: total }, (_, i) => (
-        <div key={i} style={{
-          flex: 1, height: 4, borderRadius: 2,
-          background: i < current ? "var(--color-primary)" : "var(--color-border)",
-          transition: "background 0.3s",
-        }} />
+        <div
+          key={i}
+          className={`progress-dot ${
+            i < current ? "completed" : i === current ? "active" : ""
+          }`}
+        />
       ))}
     </div>
   );
 }
 
-// ── Stat Card ────────────────────────────────────────────────────────
-export function StatCard({ value, label, color, icon }: {
-  value: string | number;
-  label: string;
-  color?: string;
-  icon?: string;
+// ── Bottom Navigation ────────────────────────────────────────────────
+
+export function BottomNav({
+  items,
+  active,
+}: {
+  items: { href: string; icon: string; label: string }[];
+  active: string;
 }) {
   return (
-    <div className="card stat-card">
-      {icon && <div style={{ fontSize: 18, marginBottom: 2 }}>{icon}</div>}
-      <div className="stat-value" style={{ color: color || "var(--color-text)", fontSize: "clamp(20px, 5vw, 28px)" }}>{value}</div>
-      <div className="stat-label">{label}</div>
-    </div>
+    <nav className="bottom-nav hide-desktop" role="navigation">
+      {items.map((item, idx) => (
+        <a
+          key={`${item.href}-${idx}`}
+          href={item.href}
+          className={`nav-item ${active === item.href ? "active" : ""}`}
+          aria-current={active === item.href ? "page" : undefined}
+        >
+          <span style={{ fontSize: 20 }}>{item.icon}</span>
+          <span>{item.label}</span>
+        </a>
+      ))}
+    </nav>
   );
 }
 
-// ── Price Display ────────────────────────────────────────────────────
-export function PriceDisplay({ price, unit, label, trend, trendPct }: {
-  price: number | string;
-  unit?: string;
-  label?: string;
-  trend?: "up" | "down" | "stable";
-  trendPct?: number;
+// ── Sidebar (Desktop) ────────────────────────────────────────────────
+
+export function Sidebar({
+  items,
+  active,
+  brand,
+  title,
+  subtitle,
+}: {
+  items: { href: string; icon: string; label: string }[];
+  active: string;
+  brand?: string;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      {label && <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: 0 }}>{label}</p>}
-      <div className="price-big" style={{ margin: "4px 0" }}>
-        ₹{typeof price === "number" ? price.toLocaleString("en-IN") : price}
-        {unit && <span className="price-unit"> {unit}</span>}
-      </div>
-      {trend && trendPct !== undefined && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 4 }}>
-          <span style={{ color: trend === "up" ? "var(--color-success)" : trend === "down" ? "var(--color-danger)" : "var(--color-text-secondary)", fontSize: 14, fontWeight: 600 }}>
-            {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} {Math.abs(trendPct)}%
-          </span>
-          <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            {trend === "up" ? "rising" : trend === "down" ? "falling" : "stable"}
-          </span>
+    <nav className="sidebar hide-mobile" aria-label="Main navigation">
+      <div style={{ marginBottom: 24, paddingLeft: 16 }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "white" }}>
+          🌾 {title || brand || "ShetBhav"}
         </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.5)",
+            marginTop: 4,
+          }}
+        >
+          {subtitle || "Market Intelligence"}
+        </div>
+      </div>
+      {items.map((item, idx) => (
+        <a
+          key={`${item.href}-${idx}`}
+          href={item.href}
+          className={`sidebar-item ${active === item.href ? "active" : ""}`}
+          aria-current={active === item.href ? "page" : undefined}
+        >
+          <span style={{ fontSize: 18 }}>{item.icon}</span>
+          <span>{item.label}</span>
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+// ── Source Badge ─────────────────────────────────────────────────────
+
+export function DataSourceBadge({
+  source,
+  date,
+}: {
+  source: string;
+  date?: string;
+}) {
+  const s = source.toLowerCase();
+  let cls = "source-synthetic";
+  let label = "Demo data";
+  let icon = "🧪";
+
+  if (s.includes("live") || s.includes("official")) {
+    cls = "source-live";
+    label = "Official daily data";
+    icon = "✓";
+  } else if (s.includes("cached")) {
+    cls = "source-cached";
+    label = "Cached data";
+    icon = "📦";
+  } else if (s.includes("model") || s.includes("forecast")) {
+    cls = "source-model";
+    label = "Model estimate";
+    icon = "🤖";
+  } else if (s.includes("synthetic") || s.includes("demo")) {
+    cls = "source-synthetic";
+    label = "Demo data";
+    icon = "🧪";
+  } else if (s.includes("historical")) {
+    cls = "source-cached";
+    label = "Imported data";
+    icon = "📊";
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <span className={`source-badge ${cls}`}>
+        {icon} {label}
+      </span>
+      {date && (
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          {date}
+        </span>
       )}
     </div>
   );
 }
 
-// ── Source Label ──────────────────────────────────────────────────────
-export function SourceLabel({ source, updated }: { source: string; updated?: string }) {
-  const isSynthetic = source.includes("synthetic") || source.includes("demo") || source.includes("Demo");
+// ── Confidence Badge ─────────────────────────────────────────────────
+
+export function ConfidenceBadge({ confidence }: { confidence: number }) {
+  let cls = "confidence-low";
+  let label = "Low";
+  if (confidence >= 75) {
+    cls = "confidence-high";
+    label = "High";
+  } else if (confidence >= 50) {
+    cls = "confidence-medium";
+    label = "Medium";
+  }
   return (
-    <div className="data-source" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-        {isSynthetic ? "🧪" : "🏛️"} {source}
-      </span>
-      {updated && <span>· {updated}</span>}
+    <span className={`confidence-badge ${cls}`}>
+      {label} ({confidence.toFixed(0)}%)
+    </span>
+  );
+}
+
+// ── Score Badge ──────────────────────────────────────────────────────
+
+export function ScoreBadge({ score }: { score: number }) {
+  let cls = "score-low";
+  if (score >= 80) cls = "score-high";
+  else if (score >= 60) cls = "score-medium";
+  return <span className={`score-badge ${cls}`}>{score}/100</span>;
+}
+
+// ── Verification Badge ───────────────────────────────────────────────
+
+export function VerificationBadge({
+  status,
+}: {
+  status: string;
+}) {
+  const s = status.toLowerCase();
+  if (s === "verified") return <span className="badge badge-green">✓ Verified</span>;
+  if (s === "pending") return <span className="badge badge-amber">⏳ Pending</span>;
+  if (s === "rejected") return <span className="badge badge-red">✗ Rejected</span>;
+  return <span className="badge badge-gray">{status}</span>;
+}
+
+// ── Stat Card ────────────────────────────────────────────────────────
+
+export function StatCard({
+  icon,
+  value,
+  label,
+  color,
+  onClick,
+}: {
+  icon: string;
+  value: string | number;
+  label: string;
+  color?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      className="stat-card"
+      onClick={onClick}
+      style={{ cursor: onClick ? "pointer" : "default" }}
+    >
+      <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+      <div
+        className="stat-value"
+        style={{
+          color: color || "var(--navy)",
+          fontSize: "clamp(20px, 5vw, 26px)",
+        }}
+      >
+        {value}
+      </div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 }
 
-// ── Empty State ──────────────────────────────────────────────────────
-export function EmptyState({ icon, title, description, action }: {
-  icon: string;
-  title: string;
-  description?: string;
-  action?: { label: string; onClick: () => void };
+// ── Crop Card ────────────────────────────────────────────────────────
+
+export function CropCard({
+  name,
+  nameHi,
+  emoji,
+  selected,
+  onClick,
+}: {
+  name: string;
+  nameHi?: string;
+  emoji: string;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className="card" style={{ textAlign: "center", padding: "40px 24px" }}>
-      <div style={{ fontSize: 40, marginBottom: 8 }}>{icon}</div>
-      <h3 className="heading-sm" style={{ margin: 0 }}>{title}</h3>
-      {description && <p className="text-sm" style={{ color: "var(--color-text-secondary)", margin: "8px 0 0 0" }}>{description}</p>}
-      {action && (
-        <button className="btn-primary" style={{ marginTop: 16, maxWidth: 280, margin: "16px auto 0" }} onClick={action.onClick}>
-          {action.label}
+    <button
+      className={`toggle-btn ${selected ? "selected" : ""}`}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "16px 18px",
+        textAlign: "left",
+        borderRadius: 14,
+        fontSize: 16,
+        minHeight: 60,
+        width: "100%",
+        border: selected
+          ? "2px solid var(--green-600)"
+          : "2px solid var(--border)",
+      }}
+    >
+      <span style={{ fontSize: 32 }}>{emoji}</span>
+      <div>
+        <div style={{ fontWeight: 600 }}>{name}</div>
+        {nameHi && (
+          <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            {nameHi}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ── Recommendation Card ──────────────────────────────────────────────
+
+export function RecommendationCard({
+  title,
+  price,
+  unit,
+  score,
+  reasons,
+  risks,
+  confidence,
+  onAction,
+  actionLabel,
+  dataLabel,
+}: {
+  title: string;
+  price: number;
+  unit?: string;
+  score: number;
+  reasons: string[];
+  risks?: string[];
+  confidence: number;
+  onAction?: () => void;
+  actionLabel?: string;
+  dataLabel?: string;
+}) {
+  return (
+    <div className="card-green" style={{ padding: 20, borderRadius: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)", margin: 0, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" as const }}>
+            {title}
+          </p>
+          <div className="price-hero" style={{ color: "white", marginTop: 8 }}>
+            ₹{price.toLocaleString("en-IN")}
+            <span className="price-unit" style={{ color: "rgba(255,255,255,0.7)" }}>{unit || "/q"}</span>
+          </div>
+        </div>
+        <ScoreBadge score={score} />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        {reasons.slice(0, 3).map((r, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>✓</span>
+            <span className="text-sm" style={{ color: "rgba(255,255,255,0.9)" }}>{r}</span>
+          </div>
+        ))}
+      </div>
+
+      {risks && risks.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {risks.slice(0, 2).map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ color: "var(--saffron-300)", fontSize: 14 }}>⚠</span>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>{r}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <ConfidenceBadge confidence={confidence} />
+        {dataLabel && (
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>{dataLabel}</span>
+        )}
+      </div>
+
+      {onAction && (
+        <button
+          className="btn-secondary"
+          onClick={onAction}
+          style={{ marginTop: 12, background: "white", borderColor: "white", color: "var(--green-700)" }}
+        >
+          {actionLabel || "View Details →"}
         </button>
       )}
     </div>
   );
 }
 
-// ── Status Timeline ──────────────────────────────────────────────────
-export function StatusTimeline({ steps }: { steps: { label: string; status: "done" | "current" | "pending" }[] }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 0" }}>
-      {steps.map((step, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, position: "relative" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 24, flexShrink: 0 }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700,
-              background: step.status === "done" ? "var(--color-success)" : step.status === "current" ? "var(--color-primary)" : "var(--color-border)",
-              color: step.status === "pending" ? "var(--color-text-secondary)" : "white",
-              border: step.status === "current" ? "3px solid var(--color-primary-light)" : "none",
-            }}>
-              {step.status === "done" ? "✓" : i + 1}
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{ width: 2, height: 28, background: step.status === "done" ? "var(--color-success)" : "var(--color-border)" }} />
-            )}
-          </div>
-          <div style={{ paddingBottom: 12, flex: 1 }}>
-            <p style={{
-              fontSize: 14, fontWeight: step.status === "current" ? 600 : 400, margin: 0,
-              color: step.status === "pending" ? "var(--color-text-secondary)" : "var(--color-text)",
-            }}>
-              {step.label}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ── Lot Card ─────────────────────────────────────────────────────────
 
-// ── Toast Notification ───────────────────────────────────────────────
-let toastTimeout: NodeJS.Timeout;
-export function showToast(message: string, type: "success" | "error" | "info" = "info") {
-  const existing = document.querySelector(".toast-notification");
-  if (existing) existing.remove();
-
-  const colors: Record<string, string> = {
-    success: "var(--color-success)",
-    error: "var(--color-danger)",
-    info: "var(--color-info)",
-  };
-  const icons: Record<string, string> = { success: "✓", error: "✕", info: "ℹ" };
-
-  const el = document.createElement("div");
-  el.className = "toast-notification";
-  el.setAttribute("role", "alert");
-  el.style.cssText = `
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    background: var(--color-text); color: white;
-    padding: 12px 20px; border-radius: 12px; font-size: 14px;
-    z-index: 200; display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    animation: slideUp 0.3s ease;
-    max-width: calc(100vw - 32px); text-align: center;
-  `;
-  el.innerHTML = `<span style="color: ${colors[type]}; font-weight: 700;">${icons[type]}</span> ${message}`;
-  document.body.appendChild(el);
-
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => el.remove(), 3000);
-}
-
-// ── Info Card ────────────────────────────────────────────────────────
-export function InfoCard({ icon, title, children, color }: {
-  icon: string; title: string; children: React.ReactNode; color?: string;
+export function LotCard({
+  cropName,
+  emoji,
+  quantityKg,
+  grade,
+  status,
+  address,
+  onClick,
+}: {
+  cropName: string;
+  emoji: string;
+  quantityKg: number;
+  grade: string;
+  status: string;
+  address?: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="card" style={{ borderLeft: `3px solid ${color || "var(--color-info)"}`, padding: 16 }}>
-      <h3 className="heading-sm" style={{ color: color || "var(--color-info)", margin: "0 0 8px 0" }}>{icon} {title}</h3>
-      {children}
+    <div
+      className="card"
+      onClick={onClick}
+      style={{ cursor: onClick ? "pointer" : "default", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 28 }}>{emoji}</span>
+        <div>
+          <p className="text-md" style={{ fontWeight: 600, margin: 0 }}>
+            {cropName} · {quantityKg.toLocaleString("en-IN")} kg
+          </p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
+            Grade {grade} · {address || "Maharashtra"}
+          </p>
+        </div>
+      </div>
+      <span className={`badge ${status === "active" ? "badge-green" : "badge-gray"}`}>
+        {status}
+      </span>
     </div>
   );
 }
 
-// ── Score Badge ──────────────────────────────────────────────────────
-export function ScoreBadge({ score, label }: { score: number; label?: string }) {
-  const cls = score >= 80 ? "score-high" : score >= 60 ? "score-medium" : "score-low";
+// ── Empty State ──────────────────────────────────────────────────────
+
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  onAction,
+}: {
+  icon: string;
+  title: string;
+  description?: string;
+  action?: string | { label: string; onClick: () => void };
+  onAction?: () => void;
+}) {
+  const actionLabel = typeof action === "object" ? action?.label : action;
+  const actionClick = typeof action === "object" ? action?.onClick : onAction;
   return (
-    <span className={`score-badge ${cls}`}>
-      {score}{label ? ` ${label}` : "/100"}
-    </span>
+    <div className="card" style={{ textAlign: "center", padding: "32px 24px" }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
+      <p className="heading-sm" style={{ margin: "0 0 8px 0" }}>{title}</p>
+      {description && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)", margin: "0 0 16px 0" }}>
+          {description}
+        </p>
+      )}
+      {actionLabel && actionClick && (
+        <button className="btn-primary" onClick={actionClick} style={{ maxWidth: 240, margin: "0 auto" }}>
+          {actionLabel}
+        </button>
+      )}
+    </div>
   );
 }
 
-// ── Loading Skeleton ─────────────────────────────────────────────────
-export function Skeleton({ height = 100, count = 1 }: { height?: number; count?: number }) {
+// ── Voice Button ─────────────────────────────────────────────────────
+
+export function VoiceButton({ text, label }: { text: string; label?: string }) {
+  const speak = () => {
+    if ("speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "hi-IN";
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+    }
+  };
+  return (
+    <button className="voice-btn" onClick={speak} aria-label="Listen to text">
+      🔊 {label || "Listen"}
+    </button>
+  );
+}
+
+// VoicePlayButton alias
+export function VoicePlayButton({ text, label }: { text: string; label?: string }) {
+  return <VoiceButton text={text} label={label} />;
+}
+
+// ── Skeleton ────────────────────────────────────────────────────────
+
+export function Skeleton({ height = 60, count = 1 }: { height?: number; count?: number }) {
   return (
     <div className="flex-col gap-3">
       {Array.from({ length: count }, (_, i) => (
@@ -224,62 +523,105 @@ export function Skeleton({ height = 100, count = 1 }: { height?: number; count?:
   );
 }
 
-// ── Action Card ──────────────────────────────────────────────────────
-export function ActionCard({ icon, title, subtitle, onClick, variant = "default" }: {
-  icon: string; title: string; subtitle?: string; onClick: () => void; variant?: "default" | "featured";
-}) {
-  if (variant === "featured") {
-    return (
-      <div className="featured-card" onClick={onClick} role="button" tabIndex={0}
-        onKeyDown={e => e.key === "Enter" && onClick()}
-        style={{ cursor: "pointer" }}>
-        <span style={{ fontSize: 40 }}>{icon}</span>
-        <span className="heading-sm" style={{ color: "white", textAlign: "center" }}>{title}</span>
-        {subtitle && <span className="text-xs" style={{ color: "rgba(255,255,255,0.7)", textAlign: "center" }}>{subtitle}</span>}
-      </div>
-    );
-  }
+// ── Trust Score ─────────────────────────────────────────────────────
+
+export function TrustScore({ score }: { score: number }) {
+  let color = "var(--danger)";
+  let label = "Low";
+  if (score >= 85) { color = "var(--success)"; label = "High"; }
+  else if (score >= 70) { color = "var(--warning)"; label = "Medium"; }
   return (
-    <div className="card" onClick={onClick} role="button" tabIndex={0}
-      onKeyDown={e => e.key === "Enter" && onClick()}
-      style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 10px", gap: 6, minHeight: 80, justifyContent: "center" }}>
-      <span style={{ fontSize: 28 }}>{icon}</span>
-      <span className="text-sm" style={{ fontWeight: 600, textAlign: "center" }}>{title}</span>
-      {subtitle && <span className="text-xs" style={{ color: "var(--color-text-secondary)", textAlign: "center" }}>{subtitle}</span>}
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 24, fontWeight: 800, color }}>{score}</div>
+      <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{label} trust</div>
     </div>
   );
 }
 
-// ── Bottom Nav ───────────────────────────────────────────────────────
-export function BottomNav({ items, active }: {
-  items: { icon: string; label: string; href: string; badge?: number }[];
-  active: string;
+// ── Why Explainer ────────────────────────────────────────────────────
+
+export function WhyExplainer({
+  reasons,
+  risks,
+  assumptions,
+}: {
+  reasons: string[];
+  risks?: string[];
+  assumptions?: string[];
 }) {
+  const [open, setOpen] = React.useState(false);
   return (
-    <nav className="bottom-nav hide-desktop" aria-label="Main navigation">
-      {items.map(item => (
-        <a key={item.href} href={item.href} className={`nav-item ${item.href === active ? "active" : ""}`}
-          aria-current={item.href === active ? "page" : undefined}>
-          <span style={{ fontSize: 20, position: "relative" }}>
-            {item.icon}
-            {item.badge !== undefined && item.badge > 0 && (
-              <span style={{
-                position: "absolute", top: -4, right: -8,
-                background: "var(--color-danger)", color: "white",
-                fontSize: 10, fontWeight: 700, width: 16, height: 16,
-                borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              }}>{item.badge > 9 ? "9+" : item.badge}</span>
-            )}
-          </span>
-          <span style={{ fontSize: 10 }}>{item.label}</span>
-        </a>
-      ))}
-    </nav>
+    <div className="card" style={{ padding: 14 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--green-600)",
+        }}
+      >
+        <span>💡 Why is this recommended?</span>
+        <span style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "0.2s" }}>▼</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          {reasons.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+              <span style={{ color: "var(--success)", marginTop: 2 }}>✓</span>
+              <span className="text-sm">{r}</span>
+            </div>
+          ))}
+          {risks && risks.length > 0 && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "var(--warning-bg)", borderRadius: 8 }}>
+              <p className="text-xs" style={{ fontWeight: 600, color: "var(--warning)", margin: "0 0 4px 0" }}>Risks</p>
+              {risks.map((r, i) => (
+                <p key={i} className="text-xs" style={{ margin: "2px 0", color: "var(--text-secondary)" }}>⚠ {r}</p>
+              ))}
+            </div>
+          )}
+          {assumptions && assumptions.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <p className="text-xs" style={{ fontWeight: 600, color: "var(--text-secondary)", margin: "0 0 4px 0" }}>Assumptions</p>
+              {assumptions.map((a, i) => (
+                <p key={i} className="text-xs" style={{ margin: "2px 0", color: "var(--text-muted)" }}>• {a}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-// ── Crop Icon ────────────────────────────────────────────────────────
-export function CropIcon({ crop, size = 20 }: { crop: string; size?: number }) {
-  const icons: Record<string, string> = { tomato: "🍅", onion: "🧅", soybean: "🫘" };
-  return <span style={{ fontSize: size }}>{icons[crop.toLowerCase()] || "🌾"}</span>;
+// ── Mobile Sticky Action ─────────────────────────────────────────────
+
+export function MobileStickyAction({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="hide-desktop"
+      style={{
+        position: "fixed",
+        bottom: 64,
+        left: 0,
+        right: 0,
+        padding: "12px var(--page-padding)",
+        background: "linear-gradient(transparent, var(--bg-cream) 20%)",
+        zIndex: 90,
+      }}
+    >
+      {children}
+    </div>
+  );
 }

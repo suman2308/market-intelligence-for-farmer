@@ -1,104 +1,104 @@
-# ShetBhav Limitations
+# ShetBhav — Limitations
 
-## What's Real vs What's Prototype
-
-### ✅ Fully Working (Verified in This Audit)
-- JWT authentication with role-based access (Farmer/FPO/Buyer/Admin)
-- Complete CRUD operations for lots, demands, offers, orders, grievances
-- Offer negotiation flow (counter-offer, accept, reject) with state validation
-- Order lifecycle with proper FK integrity (bug fixed in this audit)
-- Payment simulation (clearly labeled)
-- Smart Sell Decision Engine with 8-factor weighted scoring
-- XGBoost price forecasting (trained per crop with synthetic data)
-- Net realization calculation
-- What-if scenario comparison
-- EN/HI/MR translations (core strings)
-- Mobile-first responsive design (nature-inspired palette)
-- Admin dashboard with Recharts analytics (pie, bar, line charts)
-- FPO dashboard with member management and aggregated lots
-- Grievance management with admin resolve/reject
-- Transport cost estimation (Haversine)
-- Quality grading (prototype for Tomato, manual for others)
-- Leaflet/OpenStreetMap integration (market prices, buyer discovery)
-- Image upload for quality grading (JPEG/PNG/WebP, 10MB max)
-- Rate limiting (production mode)
-- Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
-- Skip-to-content accessibility
-- Focus-visible keyboard navigation
-- Reduced-motion support
-- 114/114 automated tests passing (89 pytest + 25 E2E)
-
-### ⚠️ Prototype / Demo-Only
-- **Market prices**: Synthetic data; real AGMARKNET/CEDA APIs require registration
-- **Price forecasts**: Trained on synthetic data, not real historical prices
-- **Quality grading**: Only works for Tomato (prototype rules, not real CV model)
-- **Transport costs**: Haversine distance + INR 20/km, not live OSRM/routing
-- **Storage facilities**: 2 demo facilities, not real directory
-- **Payments**: Simulated, not real financial transactions
-- **Buyer verification**: Admin-driven, not real KYC
-- **Buyer trust scores**: Based on synthetic transaction history
-- **Notifications**: In-app only, no push/SMS/email
-- **Admin weekly trend charts**: Simulated data (would need time-series backend)
-- **FPO aggregation**: UI exists, backend aggregation needs more seeded data
-
-### ❌ Not Implemented
-- Real AGMARKNET data feed integration (requires API key registration)
-- Computer vision quality grading (placeholder prototype only)
-- Push notifications / SMS / Email
-- Real payment gateway (Razorpay/UPI)
-- Buyer KYC / government verification
-- Offline mode / service worker
-- Analytics / reporting exports
-- WebSocket real-time updates
-- Database migrations (Alembic)
-- CI/CD pipeline
-- Load testing
-- Penetration testing
+**Last Updated:** September 3, 2026
 
 ---
 
-## Geographic Limitations
-- **Scope**: Maharashtra only (5 cities: Nashik, Pune, Mumbai, Nagpur, Kolhapur)
-- **Crops**: 3 (Tomato, Onion, Soybean)
-- **Markets**: 5 demo markets
-- **Markets are synthetic**: No real mandi data feed active
+## Honest Assessment
 
-## Security Limitations (Demo Only)
-- JWT tokens stored in localStorage (XSS vulnerable — acceptable for prototype)
-- Rate limiting disabled in demo mode (DEMO_MODE=true)
-- No HTTPS enforcement (localhost dev)
-- Demo passwords are simple (`demo123`)
-- No CSP headers
+ShetBhav is an **MVP prototype** built for Smart India Hackathon 2026. It is **not** a production system.
 
-## Performance Limitations
-- SQLite database (not concurrent-safe, but PostgreSQL-ready)
-- No pagination on list endpoints (capped at 50)
-- No image compression on upload
-- No CDN for static assets
-- No Redis caching
-- ML models loaded into memory per request
+---
 
-## Test Limitations
-- 89 pytest tests run individually (test file isolation issue when run together due to shared FastAPI app dependency override)
-- 25 E2E tests via Node.js HTTP client
-- No browser-level E2E tests (Playwright)
-- No load testing
+## Scope Limitations
 
-## Known Bugs
-- All previously identified bugs fixed (17 total)
-- Order creation FK violation fixed in this audit
-- No remaining known bugs
+| Item | Current State | Production Need |
+|------|---------------|-----------------|
+| Region | Maharashtra only | Pan-India coverage |
+| Crops | Onion, Tomato, Soybean | All major crops |
+| Users | 4 demo accounts | Real user registration |
+| Payments | Simulated (clearly labeled) | Real payment gateway |
+| Transport | Estimated/seeded quotes | Live transporter API |
+| Storage | Estimated/seeded facilities | Real warehouse inventory |
+| Quality grading | Rule-based CV prototype | Trained ML model + lab verification |
+| Forecasts | XGBoost estimates | Production-grade forecasting pipeline |
 
-## What Would Make It Production-Real
-1. Real AGMARKNET data adapter with cron job (API key needed from data.gov.in or CEDA)
-2. PostgreSQL with Supabase
-3. Push notification service (Firebase)
-4. Image upload + storage (Supabase Storage)
-5. Unit + integration test expansion
-6. HTTPS + security headers in production
-7. Database migrations (Alembic)
-8. CI/CD pipeline
-9. Monitoring + error tracking (Sentry)
-10. Real payment integration (Razorpay/UPI)
-11. Load testing (k6/Locust)
-12. E2E browser tests (Playwright)
+---
+
+## Data Limitations
+
+- **Daily mandi data** — not real-time second-by-second prices
+- **AGMARKNET coverage** — some mandis may not report daily
+- **Soybean seasonal gaps** — not always available in API
+- **Historical depth** — 219 imported records (limited for ML training)
+- **No real buyer transactions** — buyer reliability is based on seeded data
+
+---
+
+## ML Limitations
+
+- XGBoost trained on limited historical data (219 records)
+- Confidence intervals are approximate
+- Model retraining requires fresh data
+- Quality grading is rule-based CV, not trained neural network
+- Forecasts are estimates, not guaranteed prices
+- Naive baseline used when data is insufficient
+
+---
+
+## Payment Limitations
+
+- All payments are simulated
+- No real money movement
+- Clearly labeled as "Demo payment tracking"
+- No payment gateway integration
+- No bank account verification
+
+---
+
+## Buyer Reliability
+
+- Based only on observed platform history
+- New buyers show "Insufficient transaction history"
+- No external credit checks
+- No bank verification
+- Reliability label is internal to ShetBhav
+
+---
+
+## Quality Grading
+
+- AI grading is **not** certified laboratory testing
+- Rule-based computer vision (not trained model)
+- Cannot detect: internal damage, moisture content, pesticide residue, hidden rot
+- Requires manual verification for final grade
+- Lab verification recommended for commercial transactions
+
+---
+
+## What Works End-to-End
+
+✅ Farmer login → create lot → market prices → Smart Sell → publish lot
+✅ Buyer login → find lot → make offer → counter-offer → accept → order
+✅ Order timeline → transport → simulated payment → grievance → admin resolve
+✅ data.gov.in API sync → cached fallback → synthetic fallback
+✅ Price forecasting with XGBoost + baselines
+✅ AI-assisted quality grading for Tomato, Onion, Soybean
+✅ English, Hindi, Marathi localization
+✅ Mobile-first responsive design
+
+---
+
+## What Requires Production Work
+
+- PostgreSQL database (SQLite for dev only)
+- Alembic migrations
+- Real payment gateway (Razorpay, PayU, etc.)
+- Live transporter/warehouse APIs
+- Trained quality grading model
+- Comprehensive XGBoost training data
+- CI/CD pipeline
+- HTTPS and domain
+- Rate limiting hardening
+- Push notifications
+- Real user registration and KYC

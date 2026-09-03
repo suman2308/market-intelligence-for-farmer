@@ -363,9 +363,11 @@ interface I18nState {
 }
 
 export const useI18n = create<I18nState>((set, get) => ({
-  lang: (typeof window !== "undefined" && (localStorage.getItem("shetbhav_lang") as Lang)) || "en",
+  lang: "en",
   setLang: (l) => {
-    localStorage.setItem("shetbhav_lang", l);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("shetbhav_lang", l);
+    }
     set({ lang: l });
   },
   t: (key) => {
@@ -373,5 +375,17 @@ export const useI18n = create<I18nState>((set, get) => ({
     return translations[lang]?.[key] || translations.en[key] || key;
   },
 }));
+
+/**
+ * Call this in a useEffect after mount to load the saved language.
+ * Must NOT run during SSR or initial hydration to avoid mismatches.
+ */
+export function hydrateLang() {
+  if (typeof window === "undefined") return;
+  const saved = localStorage.getItem("shetbhav_lang") as Lang;
+  if (saved && saved !== useI18n.getState().lang) {
+    useI18n.getState().setLang(saved);
+  }
+}
 
 export type { Lang };

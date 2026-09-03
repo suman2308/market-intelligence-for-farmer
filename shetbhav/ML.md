@@ -1,77 +1,175 @@
-# ShetBhav ML Pipeline
+# ShetBhav — Machine Learning Pipeline
+
+**Last Updated:** September 3, 2026
+
+---
+
+## Overview
+
+ShetBhav uses two ML components:
+1. **Price Forecasting** — XGBoost regression with baseline comparison
+2. **Quality Grading** — Rule-based computer vision analysis
+
+---
 
 ## Price Forecasting
 
-### Model
-- **Algorithm**: XGBoost Regressor (per-crop, per-market)
-- **Alternative**: LightGBM available as fallback
-- **Training**: 90 days of historical synthetic market prices
-- **Features**: day_of_week, month, day_of_month, seasonality, lag values (1-7 days), rolling averages (3/7 day)
+### Training Data
 
-### Training Pipeline
-1. Fetch historical prices for crop + market
-2. Engineer time-series features
-3. Chronological train/test split (80/20)
-4. Train XGBoost with default hyperparameters
-5. Evaluate against naive baseline (yesterday's price)
-6. Store model metadata and evaluation metrics
+| Field | Value |
+|-------|-------|
+| Source | data.gov.in AGMARKNET + imported historical dataset |
+| Records | 549 market price records (219 imported + seeded demo) |
+| Crops | Onion, Tomato, Soybean |
+| Markets | 7 Maharashtra mandis |
+| Date range | Recent 93 days |
+| Target | Next 7-day modal price per crop |
 
-### Evaluation
-| Crop | Model MAE | Baseline MAE | Beats Baseline |
-|------|-----------|-------------|----------------|
-| Tomato | ~160 | ~160 | Marginal |
-| Onion | ~145 | ~120 | No (use baseline) |
-| Soybean | ~128 | ~174 | Yes |
+### Features (40+)
 
-### Prediction
-- 7-day ahead forecast
-- Confidence bands based on model error
-- Low confidence: "Price outlook is uncertain"
+- Lag prices: 1, 3, 7, 14, 28 days
+- Rolling averages: 7, 14, 30 days
+- Rolling volatility (std deviation)
+- Coefficient of variation
+- Arrival quantity and changes
+- Seasonality: month, week of year
+- Mandi, crop, variety, grade (categorical)
+- Nearby mandi price features
+
+### Models
+
+| Model | Purpose |
+|-------|---------|
+| Naive baseline | Next price = latest price |
+| MA-7 baseline | Next price = 7-day moving average |
+| MA-14 baseline | Next price = 14-day moving average |
+| XGBoost | Primary regression model |
+| HistGBR (optional) | Alternative gradient boosting |
+
+### Validation
+
+- **Chronological split**: 70% train / 15% validation / 15% test
+- **No random splitting** — time-series order preserved
+- **No future data leakage** — lags are backward-only, target shifted forward
+- **Rolling-origin** validation supported
+
+### Model Selection
+
+XGBoost is only used if it beats the naive baseline by ≥2% MAE. Otherwise, the naive or MA-7 baseline is used with low confidence.
+
+### Metrics
+
+| Metric | Description |
+|--------|-------------|
+| MAE | Mean Absolute Error in Rs/quintal |
+| RMSE | Root Mean Squared Error |
+| MAPE | Mean Absolute Percentage Error (only when safe) |
+| Naive comparison | % improvement over naive baseline |
+
+### Forecast Output
+
+```json
+{
+  "crop": "onion",
+  "mandi": "Nashik APMC",
+  "horizon_days": 7,
+  "predicted_price": 2200,
+  "expected_low": 2050,
+  "expected_high": 2350,
+  "confidence": 0.72,
+  "model_name": "xgboost",
+  "model_version": "1.0",
+  "trained_until": "2026-09-01",
+  "data_source": "data.gov.in / AGMARKNET",
+  "forecast_status": "forecast_available",
+  "explanation": "Based on 93 days of mandi price data"
+}
+```
+
+### Insufficient Data
+
+When data is insufficient for XGBoost (<50 records per crop):
+- Returns `forecast_status = insufficient_data`
+- Returns `confidence = low`
+- Uses naive or MA-7 baseline
+- Explains the limitation to the user
+
+### Model Persistence
+
+- Models saved via joblib
+- Version tracking with metadata
+- Auto-retrained on startup if data available
+- Stored in `shetbhav/backend/data/models/`
+
+---
+
+## Quality Grading (Computer Vision)
+
+### Approach
+
+Rule-based analysis using PIL and numpy — **not a trained neural network**.
+
+### Supported Crops
+
+| Crop | Indicators |
+|------|-----------|
+| Tomato | Ripeness/color, size uniformity, bruising, cracking, visible rot, shape |
+| Onion | Size uniformity, skin color, visible rot, sprouting, bruising, surface damage, foreign matter |
+| Soybean | Visible foreign matter, color consistency, damaged beans, visible surface defects |
+
+### Image Quality Checks
+
+- Resolution validation (minimum 200x200)
+- Blur detection (Laplacian variance)
+- Darkness/brightness detection
+- Overexposure detection
+
+### Output
+
+```json
+{
+  "crop": "tomato",
+  "estimated_grade": "B",
+  "confidence": 0.65,
+  "visible_observations": ["Good color uniformity", "Minor bruising detected"],
+  "detected_issues": ["Some surface bruising"],
+  "missing_information": ["Internal quality not assessed"],
+  "verification_type": "ai_assisted",
+  "manual_verification_required": true,
+  "model_name": "rule_based_cv",
+  "model_version": "1.0"
+}
+```
+
+### Verification Types
+
+- `self_declared` — Farmer's own assessment
+- `ai_assisted` — Computer vision estimate
+- `manually_verified` — Admin/FPO verified
+- `lab_verified` — Laboratory testing
 
 ### Limitations
-- Trained on synthetic data, not real AGMARKNET prices
-- No external feature integration (weather, policy, supply chain)
-- Model retraining available via API but not scheduled
 
-## Smart Sell Decision Engine
+- Cannot detect internal damage, moisture, pesticide residue, hidden rot
+- Low confidence (<50%) returns "Unable to estimate confidently"
+- Always labeled as "AI-assisted quality estimate" (not "certified grade")
+- Manual verification recommended for commercial transactions
 
-### Scoring Methodology (0-100)
-| Factor | Weight | Source |
-|--------|--------|--------|
-| Net realization | 30 | Calculated from gross price - costs |
-| Price advantage | 15 | vs market average |
-| Transport cost | 15 | Haversine distance + cost model |
-| Buyer reliability | 10 | Transaction history, payment rate |
-| Quality match | 10 | Lot grade vs buyer requirement |
-| Quantity fit | 5 | Lot size vs demand |
-| Urgency alignment | 5 | Sell window vs urgency |
-| Forecast trend | 10 | Price direction prediction |
+---
 
-### Net Realization Formula
-```
-net = gross_price - transport_cost - storage_cost - expected_loss
-```
+## Smart Sell Integration
 
-### What-If Scenarios
-- Sell now at current price
-- Store and sell later (with storage cost and forecast)
-- Sell to different buyers/markets
-- Risk levels: Low / Medium / High
+The Smart Sell engine uses ML outputs as **one input among many**:
 
-## Quality Grading
+| Factor | Weight | ML Input |
+|--------|--------|----------|
+| Net realization | 30% | Price forecast, transport cost, storage cost |
+| Price advantage | 15% | Mandi price comparison |
+| Transport cost | 10% | Distance-based estimate |
+| Buyer demand | 10% | Platform demand data |
+| Quality match | 10% | Quality grading result |
+| Payment reliability | 10% | Buyer transaction history |
+| Timing | 10% | Urgency and forecast trend |
+| Distance | 5% | GPS-based distance |
 
-### Current Implementation
-- **Tomato**: Prototype model with fixed scoring rules
-- **Others**: Manual grade selection only
-- **Confidence**: Reported but based on synthetic data
-
-### Future
-- Computer vision model for image-based grading
-- Multi-crop support
-- Buyer feedback integration
-
-## Data Sources
-- Market prices: Synthetic demo data (clearly labeled)
-- Transport costs: Haversine distance + INR 20/km estimation
-- Storage costs: Synthetic demo data
-- Buyer reliability: Calculated from demo transaction history
+**Never relies on forecast alone** — always compares mandi, buyer, storage, and FPO options.

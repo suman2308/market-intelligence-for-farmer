@@ -207,7 +207,7 @@ class DemandRequestResponse(BaseModel):
 class OfferCreate(BaseModel):
     lot_id: int
     demand_id: Optional[int] = None
-    to_user_id: int
+    to_user_id: Optional[int] = None  # Resolved from lot if not provided
     price_per_q: float = Field(gt=0)
     quantity_kg: float = Field(gt=0)
     delivery_date: Optional[datetime] = None
