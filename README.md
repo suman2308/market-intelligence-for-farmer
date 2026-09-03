@@ -246,20 +246,26 @@ REQUEST_TIMEOUT_SECONDS=30                   # API request timeout
 
 > ⚠️ Never commit `.env` files to version control. The `.env` file is git-ignored.
 
----
+---## Deployment
 
-## Deployment
+This project uses **Render Blueprint** (`render.yaml`) to deploy all services from one YAML file:
 
-| Service | How |
-|---------|-----|
-| **Frontend** | Push to GitHub → Vercel auto-deploys |
-| **Backend** | Push to GitHub → Render/Railway deploy |
-| **Database** | Supabase (free tier) → set `DATABASE_URL` |
+| Service | Description | URL |
+|---------|-------------|-----|
+| **Backend** | FastAPI + Python | `https://shetbhav-backend.onrender.com` |
+| **Frontend** | Next.js | `https://shetbhav-frontend.onrender.com` |
+| **Database** | PostgreSQL (free tier) | Auto-wired by Blueprint |
 
+### Deploy Steps
+1. Push to GitHub
+2. Go to [render.com/blueprints](https://render.com/blueprints) → connect repo → Apply
+3. Add `DATA_GOV_API_KEY` env var on backend service
+4. Set up [UptimeRobot](https://uptimerobot.com) ping to `/health` (keeps free tier alive)
+
+### Build Verification
 ```bash
-# Build verification
-cd shetbhav/frontend && npm run build    # Should show 17 routes, 0 errors
-cd shetbhav/backend && python -m pytest tests/ -v  # Should show 175 pass
+cd shetbhav/frontend && npm run build # Should show 17 routes, 0 errors
+cd shetbhav/backend && python -m pytest tests/ -v # Should show 175 pass
 ```
 
 ---

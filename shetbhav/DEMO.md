@@ -1,7 +1,15 @@
 # ShetBhav Demo Script
 
 ## Setup
-1. Open http://localhost:3000
+
+| Environment | URL |
+|-------------|-----|
+| **Production** | `https://shetbhav-frontend.onrender.com` |
+| **Local dev** | `http://localhost:3000` |
+| **Backend API** | `https://shetbhav-backend.onrender.com` |
+| **API Docs** | `https://shetbhav-backend.onrender.com/docs` |
+
+1. Open the production or local URL above
 2. Database is pre-seeded with demo data
 3. All demo accounts use password: `demo123`
 

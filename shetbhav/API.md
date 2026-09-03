@@ -1,6 +1,11 @@
 # ShetBhav API Reference
 
-Base URL: `http://localhost:8000`
+| Environment | Base URL |
+|-------------|----------|
+| **Production** | `https://shetbhav-backend.onrender.com` |
+| **Local dev** | `http://localhost:8000` |
+| **API Docs** | `https://shetbhav-backend.onrender.com/docs` |
+| **Health Check** | `https://shetbhav-backend.onrender.com/health` |
 
 All authenticated endpoints require: `Authorization: Bearer <token>`
 

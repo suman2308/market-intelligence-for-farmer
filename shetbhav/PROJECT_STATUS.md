@@ -96,7 +96,16 @@
 
 ---
 
-## How to Run
+## Live URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend | `https://shetbhav-frontend.onrender.com` |
+| Backend API | `https://shetbhav-backend.onrender.com` |
+| API Docs | `https://shetbhav-backend.onrender.com/docs` |
+| Health Check | `https://shetbhav-backend.onrender.com/health` |
+
+## How to Run Locally
 
 ```bash
 # Backend
@@ -122,13 +131,19 @@ Open http://localhost:3000
 
 ---
 
+## Deployment
+
+- **Platform**: Render Blueprint (`render.yaml`)
+- **Auto-deploy**: Every push to `main` triggers both frontend + backend
+- **Database**: PostgreSQL (free tier, auto-wired by Blueprint)
+- **Keep-alive**: UptimeRobot pings `/health` every 5 min
+
+---
+
 ## Production Blockers
 
-1. PostgreSQL for production (SQLite used for dev)
-2. Alembic database migrations
-3. CI/CD pipeline
-4. Rate limiting hardening
-5. Push notifications
-6. Real payment gateway
-7. HTTPS and domain
-8. Alembic migrations
+1. Alembic database migrations (currently using `create_all()`)
+2. CI/CD pipeline (GitHub Actions)
+3. Rate limiting hardening (Redis-based)
+4. Push notifications (WebSocket/Firebase)
+5. Real payment gateway (Razorpay/PayU)

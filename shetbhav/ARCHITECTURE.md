@@ -22,7 +22,7 @@ ShetBhav is a full-stack web application with a Python/FastAPI backend and Next.
                   │
 ┌─────────────────▼───────────────────────────┐
 │               Database                      │
-│  SQLite (dev) · PostgreSQL/Supabase (prod)  │
+│  SQLite (dev) · PostgreSQL/Render (prod)     │
 │  30 tables · SQLAlchemy ORM                 │
 │  Referential integrity · Indexes            │
 └─────────────────────────────────────────────┘
@@ -132,11 +132,24 @@ Factors (0-100 scale):
 - Urgency alignment (5)
 - Forecast trend (10)
 
-## Deployment Targets
+## Deployment (Render Blueprint)
 
-| Component | Target | Config |
-|-----------|--------|--------|
-| Frontend | Vercel | `npm run build` |
-| Backend | Render/Railway | `uvicorn app.main:app` |
-| Database | Supabase | PostgreSQL connection string |
-| ML Models | Backend server | Trained at startup |
+All services deploy from a single `render.yaml` file:
+
+| Component | Service | URL |
+|-----------|---------|-----|
+| Frontend | shetbhav-frontend | `https://shetbhav-frontend.onrender.com` |
+| Backend | shetbhav-backend | `https://shetbhav-backend.onrender.com` |
+| Database | shetbhav-db | PostgreSQL (free tier, auto-wired) |
+| Health Check | /health | `https://shetbhav-backend.onrender.com/health` |
+| API Docs | /docs | `https://shetbhav-backend.onrender.com/docs` |
+
+### Auto-Deploy
+- `autoDeployTrigger: commit` on both services
+- Every push to `main` triggers automatic deploy
+- UptimeRobot pings `/health` every 5 min (keeps free tier alive)
+
+### ML Models
+- Trained at startup from imported market data
+- Persisted via joblib in `data/models/`
+- No separate model serving infrastructure
