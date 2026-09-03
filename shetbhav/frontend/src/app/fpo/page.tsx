@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { Sidebar } from "@/components/ui";
 
 export default function FPODashboard() {
   const router = useRouter();
@@ -39,16 +40,25 @@ export default function FPODashboard() {
 
   if (!user || user.role !== "fpo") return null;
 
+  const sidebarItems = [
+    { icon: "🌾", label: "Overview", href: "/fpo#overview" },
+    { icon: "👥", label: "Members", href: "/fpo#members" },
+    { icon: "📦", label: "Lots", href: "/fpo#lots" },
+  ];
+
   return (
-    <>
-      <div className="page-header" style={{ background: "var(--color-primary)", color: "white" }}>
-        <div>
-          <h1 className="heading-md" style={{ color: "white", margin: 0 }}>🌾 {dashboard?.fpo_name || "FPO Dashboard"}</h1>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)", margin: "2px 0 0 0" }}>
-            {dashboard?.district || "Maharashtra"} · {dashboard?.member_count || 0} members
-          </p>
+    <div className="has-sidebar">
+      <Sidebar active="/fpo" items={sidebarItems} title="ShetBhav FPO" subtitle="Collective Selling" />
+
+      <div className="page-body">
+        <div className="page-header" style={{ padding: "16px 0 12px" }}>
+          <div>
+            <h1 className="heading-md" style={{ margin: 0 }}>🌾 {dashboard?.fpo_name || "FPO Dashboard"}</h1>
+            <p className="text-xs" style={{ color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
+              {dashboard?.district || "Maharashtra"} · {dashboard?.member_count || 0} members
+            </p>
+          </div>
         </div>
-      </div>
 
       {/* Stats */}
       {dashboard && (
@@ -215,12 +225,13 @@ export default function FPODashboard() {
       )}
 
       <nav className="bottom-nav hide-desktop">
-        <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>Home</span></a>
-        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>Prices</span></a>
         <a href="/fpo" className="nav-item active"><span style={{ fontSize: 20 }}>🌾</span><span>FPO</span></a>
+        <a href="/buyer" className="nav-item"><span style={{ fontSize: 20 }}>🏭</span><span>Buyers</span></a>
+        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>Prices</span></a>
         <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>Orders</span></a>
-        <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>Profile</span></a>
+        <a href="/login" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>Profile</span></a>
       </nav>
-    </>
+      </div>
+    </div>
   );
 }

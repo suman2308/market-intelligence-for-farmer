@@ -1,6 +1,6 @@
 # ShetBhav — Machine Learning Pipeline
 
-**Last Updated:** September 3, 2026
+**Last Updated:** September 4, 2026
 
 ---
 
@@ -18,11 +18,11 @@ ShetBhav uses two ML components:
 
 | Field | Value |
 |-------|-------|
-| Source | data.gov.in AGMARKNET + imported historical dataset |
-| Records | 549 market price records (219 imported + seeded demo) |
+| Source | data.gov.in AGMARKNET live API + imported historical dataset |
+| Records | 861 market price records (770 imported historical + 91 live-fetched) — no synthetic data in training |
 | Crops | Onion, Tomato, Soybean |
-| Markets | 7 Maharashtra mandis |
-| Date range | Recent 93 days |
+| Markets | Maharashtra mandis (Nashik, Pune, Mumbai, and more) |
+| Date range | Recent ~90 days |
 | Target | Next 7-day modal price per crop |
 
 ### Features (40+)
@@ -88,7 +88,7 @@ XGBoost is only used if it beats the naive baseline by ≥2% MAE. Otherwise, the
 
 ### Insufficient Data
 
-When data is insufficient for XGBoost (<50 records per crop):
+When data is insufficient for XGBoost (fewer than 50 records per crop):
 - Returns `forecast_status = insufficient_data`
 - Returns `confidence = low`
 - Uses naive or MA-7 baseline

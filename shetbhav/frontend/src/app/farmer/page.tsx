@@ -8,6 +8,7 @@ import {
   DataSourceBadge, BottomNav, Skeleton, ConfidenceBadge,
   WhyExplainer, VoicePlayButton,
 } from "@/components/ui";
+import FarmerHeader from "@/components/FarmerHeader";
 
 /**
  * Farmer Dashboard — शेतभाव
@@ -56,31 +57,15 @@ export default function FarmerHome() {
   const best = recommendation?.best_option;
 
   return (
-    <div className="page-bg-organic" style={{ padding: "0 0 20px" }}>
-      {/* ── Header ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" }}>
-        <div>
-          <p className="text-xs" style={{ margin: 0 }}>{greeting()},</p>
-          <h1 className="heading-xl" style={{ background: "linear-gradient(135deg, var(--green-700), var(--green-600))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "2px 0 0" }}>
-            {user.full_name.split(" ")[0]}
-          </h1>
-          <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--stone-400)" }}>📍 Nashik, Maharashtra</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <select value={lang} onChange={e => setLang(e.target.value as any)} aria-label="Language"
-            style={{ padding: "6px 10px", fontSize: 12, borderRadius: 8, border: "1.5px solid var(--stone-200)", background: "white", cursor: "pointer", fontWeight: 600, color: "var(--stone-700)", fontFamily: "inherit" }}>
-            <option value="en">EN</option>
-            <option value="hi">हिं</option>
-            <option value="mr">मरा</option>
-          </select>
-          <div style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: "var(--green-600)", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, fontWeight: 700, color: "white",
-          }}>
-            {user.full_name.charAt(0)}
-          </div>
-        </div>
+    <div className="page-bg-organic farmer-shell">
+      <FarmerHeader />
+      {/* ── Greeting ── */}
+      <div style={{ padding: "8px 0 12px" }}>
+        <p className="text-xs" style={{ margin: 0 }}>{greeting()},</p>
+        <h1 className="heading-xl" style={{ background: "linear-gradient(135deg, var(--green-700), var(--green-600))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "2px 0 0" }}>
+          {user.full_name.split(" ")[0]}
+        </h1>
+        <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--stone-400)" }}>📍 Nashik, Maharashtra</p>
       </div>
 
       {/* ── Smart Sell Recommendation Card ── */}

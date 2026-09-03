@@ -1,6 +1,6 @@
 # ShetBhav — Data Sources
 
-**Last Updated:** September 3, 2026
+**Last Updated:** September 4, 2026
 
 ---
 
@@ -26,10 +26,19 @@
 | Field | Value |
 |-------|-------|
 | File | shetbhav/backend/data/maharashtra_market_prices.csv |
-| Records | 219 |
+| Records in DB | 770 (imported as `historical_dataset`) |
 | Crops | Onion, Tomato, Soybean |
-| Markets | 6 Maharashtra mandis |
+| Markets | Maharashtra mandis |
 | Import command | `python -m app.scripts.import_market_data --file data/maharashtra_market_prices.csv` |
+
+### Live API Fetches
+
+| Field | Value |
+|-------|-------|
+| Endpoint | data.gov.in resource API (resource ID `9ef84268-d588-465a-a308-a864a43d0070`) |
+| Records in DB | 91 (labeled `live`, `is_demo=false`) |
+| Frequency | Daily (the dataset refreshes once a day, not second-by-second) |
+| Sync trigger | `POST /sync/mandi` (admin) or the sync command |
 
 ### Seeded Demo Data
 

@@ -62,7 +62,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { order, crop_name, timeline, payment, logistics } = orderData;
 
   return (
-    <>
+    <div className="farmer-shell">
       {/* Header */}
       <div className="page-header">
         <button onClick={() => router.push("/farmer/orders")}
@@ -78,6 +78,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      <div className="page-body">
       {/* Order Summary Card */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -212,6 +213,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </button>
         )}
       </div>
-    </>
+      </div>
+    </div>
   );
 }

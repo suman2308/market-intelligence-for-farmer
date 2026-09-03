@@ -28,7 +28,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <LangHydrator />
-        <a href="#main-content" className="skip-to-content">Skip to content</a>
         <div className="app-container" id="main-content" role="main">
           {children}
         </div>

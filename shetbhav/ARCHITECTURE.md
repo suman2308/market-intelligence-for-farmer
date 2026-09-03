@@ -1,74 +1,87 @@
 # ShetBhav Architecture
 
+**Last updated:** September 2026
+
+This document explains how ShetBhav is built — the pieces, how they talk to each other, and how data flows from data.gov.in all the way to the farmer's phone.
+
+---
+
 ## System Overview
 
-ShetBhav is a full-stack web application with a Python/FastAPI backend and Next.js/TypeScript frontend.
+ShetBhav is a full-stack web app with a Python backend and a Next.js frontend.
 
 ```
-┌─────────────────────────────────────────────┐
-│                  Frontend                    │
-│  Next.js 14 · TypeScript · Tailwind CSS     │
-│  Zustand state · Axios API client           │
-│  16 routes · EN/HI/MR i18n                  │
-│  Mobile-first responsive design             │
-└─────────────────┬───────────────────────────┘
-                  │ REST API (JSON)
-┌─────────────────▼───────────────────────────┐
-│                  Backend                     │
-│  FastAPI · Python 3.11 · Pydantic           │
-│  50 API routes · JWT auth · RBAC            │
-│  7 service modules · 1 ML pipeline          │
-└─────────────────┬───────────────────────────┘
-                  │
-┌─────────────────▼───────────────────────────┐
-│               Database                      │
-│  SQLite (dev) · PostgreSQL/Render (prod)     │
-│  30 tables · SQLAlchemy ORM                 │
-│  Referential integrity · Indexes            │
-└─────────────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│                   Frontend                     │
+│  Next.js 16 · TypeScript · Tailwind CSS        │
+│  Zustand state · Axios API client              │
+│  19 routes · EN/HI/MR i18n                     │
+│  Mobile-first (farmer) + desktop (business)    │
+└───────────────────┬────────────────────────────┘
+                    │ REST API (JSON + JWT)
+┌───────────────────▼────────────────────────────┐
+│                   Backend                      │
+│  FastAPI · Python 3.11 · Pydantic              │
+│  73 API paths (78 methods) · JWT auth · RBAC   │
+│  7 service modules · 1 ML pipeline             │
+└───────────────────┬────────────────────────────┘
+                    │
+┌───────────────────▼────────────────────────────┐
+│                 Database                       │
+│  SQLite (dev) · PostgreSQL (Render prod)       │
+│  43 tables · SQLAlchemy ORM                    │
+│  Referential integrity · Indexes               │
+└────────────────────────────────────────────────┘
 ```
+
+---
 
 ## Backend Architecture
 
 ### Service Modules
-1. **Smart Sell Decision Engine** (`smart_sell.py`) — Multi-factor scoring: net realization, buyer reliability, transport, storage, price forecast, quality match
-2. **Market Data Service** (`market_data.py`) — Adapter pattern: external API → validation → normalization → DB → app. Fallback chain: live → cached → synthetic
-3. **Forecasting Service** (`ml/forecasting.py`) — XGBoost/LightGBM price prediction with chronological train/test split, naive baseline comparison
-4. **Logistics Service** (`logistics.py`) — Haversine distance, cost estimation, route consolidation
-5. **FPO Aggregation** (`fpo_aggregation.py`) — Group farmer lots into aggregated orders
-6. **Quality Grading** (`quality_grading.py`) — Prototype AI grading for Tomato, manual override for others
-7. **Auth Service** (`services/auth.py`) — JWT tokens, password hashing, role verification
+
+1. **Smart Sell Decision Engine** (`services/smart_sell.py`) — Compares selling options (mandi now, verified buyer, store-and-sell-later, FPO collective) using multi-factor scoring. Net realisation = gross value − transport − storage − handling − charges − spoilage.
+2. **Market Data Service** (`services/market_data.py`) — Adapter pattern: external API → validation → normalization → DB → app. Fallback chain: **live → cached → demo**.
+3. **data.gov.in Client** (`services/data_gov.py`) — Fetches official AGMARKNET mandi prices, validates records, deduplicates, stores with full source metadata.
+4. **Forecasting Service** (`ml/forecasting.py`) — XGBoost price prediction with chronological train/test split and naive-baseline comparison. Falls back gracefully when data is thin.
+5. **Logistics Service** (`services/logistics.py`) — Haversine distance, cost estimation, storage decisions.
+6. **FPO Aggregation** (`services/fpo_aggregation.py`) — Groups member farmer lots into collective lots for better bargaining.
+7. **Quality Grading** (`services/quality_grading.py` + `ml/crop_vision.py`) — Rule-based computer-vision estimate for Tomato, Onion, Soybean. Always labeled "AI-assisted estimate", never "certified".
+8. **Auth Service** (`services/auth.py`) — JWT tokens, bcrypt password hashing, role verification.
 
 ### Data Flow
+
 ```
-External Source (AGMARKNET/synthetic)
-    ↓
-MarketDataAdapter (validate, normalize)
-    ↓
-Database (PostgreSQL/SQLite)
-    ↓
-API Layer (FastAPI + Pydantic validation)
-    ↓
+data.gov.in API (official daily mandi prices)
+    ↓ validate, normalize, deduplicate
+Database cache (market_price_records)
+    ↓ FastAPI + Pydantic validation
 Frontend (Next.js)
     ↓
-User Interface (mobile-first)
+Farmer sees price cards with source badges
 ```
 
+If the live API fails: cached official data → clearly-labeled demo data. We never show cached or demo data as live.
+
 ### Authorization
-- JWT tokens with role claim
-- `get_current_user` dependency extracts token
-- `require_role(FARMER, BUYER, ADMIN)` gates endpoints
-- Server-side enforcement: farmer cannot access buyer/admin endpoints
+
+- JWT tokens carry a role claim.
+- `get_current_user` dependency extracts and validates the token.
+- `require_role(FARMER, BUYER, ADMIN)` gates endpoints server-side.
+- A farmer token cannot access buyer or admin endpoints.
+
+---
 
 ## Frontend Architecture
 
 ### Routing
+
 | Path | Role | Description |
 |------|------|-------------|
-| `/login` | Public | Login with demo accounts |
-| `/register` | Public | Create new account |
-| `/farmer` | Farmer | Home dashboard |
-| `/farmer/sell` | Farmer | Smart Sell 7-step wizard |
+| `/login` | Public | Sign in (credentials → role selection) |
+| `/register` | Public | Create account (details → role selection) |
+| `/farmer` | Farmer | Home dashboard with Smart Sell recommendation |
+| `/farmer/sell` | Farmer | Smart Sell wizard (one question per screen) |
 | `/farmer/prices` | Farmer | Market prices + forecast |
 | `/farmer/buyers` | Farmer | Buyer directory |
 | `/farmer/orders` | Farmer | Order tracking |
@@ -77,18 +90,27 @@ User Interface (mobile-first)
 | `/farmer/profile` | Farmer | Profile + farm details |
 | `/farmer/quality` | Farmer | Quality grading |
 | `/buyer` | Buyer | Dashboard, lots, offers |
+| `/fpo` | FPO | Members, lots, aggregation |
 | `/admin` | Admin | Platform management |
-| `/demo` | Public | SIH demo script |
+
+### Layouts
+
+- **Farmer pages** are mobile-first. On desktop browsers the app still renders the phone-width experience (`farmer-shell`, centered, max 420px) so the farmer interface is identical everywhere.
+- **Buyer, FPO, Admin pages** use the desktop sidebar layout (`has-sidebar`) on wide screens and collapse to single column on mobile.
 
 ### State Management
-- **Zustand** for auth (user, token, loadUser, login, logout, register)
-- Local `useState` for page-level state
-- API responses cached in component state
+
+- **Zustand** for auth (user, token, loadUser, login, logout, register).
+- Local `useState` for page-level state.
+- Language and session persisted in localStorage.
 
 ### i18n
-- Translation object in `i18n.ts` with `en`, `hi`, `mr` keys
-- `useI18n()` hook returns `t(key)` function
-- Language persisted in localStorage
+
+- Translation dictionary in `lib/i18n.ts` for `en`, `hi`, `mr`.
+- `useI18n()` hook returns `t(key)`.
+- Language persists and switches instantly; Devanagari renders via Noto Sans Devanagari.
+
+---
 
 ## Database Schema (Key Relationships)
 
@@ -96,58 +118,75 @@ User Interface (mobile-first)
 User (1) ─── (1) FarmerProfile ─── (N) ProduceLot
 User (1) ─── (1) BuyerProfile ─── (N) DemandRequest
 User (1) ─── (1) AdminProfile
+User (1) ─── (1) FPOProfile ─── (N) FPOMember
 
 ProduceLot (N) ─── (N) Offer ─── (1) DemandRequest
-Offer (1) ─── (N) OfferHistory
+Offer (1) ─── (N) OfferHistory (every counter-offer preserved)
 Offer (1) ─── (0..1) Order ─── (1) Payment
-Order (N) ─── (N) OrderItem
+Order (N) ─── (N) OrderEvent (timeline)
 
 Crop (1) ─── (N) ProduceLot
 Market (1) ─── (N) MarketPrice
-Market (1) ─── (N) MarketArrival
+MarketPrice carries source_name, source_type, data_as_of, retrieved_at, is_demo
 
 Order (1) ─── (0..1) Logistics
 Order (1) ─── (N) Grievance
 User (1) ─── (N) Notification
+Lot (1) ─── (1) QualityReport (verification_type, grade, confidence)
 ```
+
+43 tables total, defined in `models/database.py`.
+
+---
 
 ## ML Pipeline
 
 ### Price Forecasting
-1. **Data**: Historical synthetic market prices (90-day window per crop/market)
-2. **Features**: day_of_week, month, day_of_month, seasonality, lag values, rolling averages
-3. **Model**: XGBoost regressor (per-crop models)
-4. **Training**: Chronological split (no data leakage)
-5. **Evaluation**: MAE, RMSE vs naive baseline
-6. **Prediction**: Next 7 days with confidence bands
+
+1. **Data**: 861 real market-price records in the database — 770 imported AGMARKNET historical records + 91 records fetched live from the data.gov.in API. No synthetic data used for training.
+2. **Features**: lag prices (1, 3, 7, 14, 28 days), rolling averages (7/14/30), rolling volatility, arrival quantity, month/week-of-year seasonality, mandi + crop + variety + grade.
+3. **Model**: XGBoost regressor, one per crop. Naive (last value) and moving-average (7/14-day) baselines for comparison.
+4. **Validation**: chronological split only — never random shuffling on time-series data. No future leakage (lags are backward-only, target shifted forward).
+5. **Evaluation**: MAE (₹/quintal), RMSE, MAPE (only when safe), % improvement over naive baseline.
+6. **Honesty rule**: XGBoost is only used when it beats the naive baseline by at least 2% MAE. Otherwise the naive/MA baseline is used with low confidence.
 
 ### Smart Sell Scoring
-Factors (0-100 scale):
-- Net realization (30 points)
-- Price advantage vs market average (15)
-- Transport cost (15)
-- Buyer reliability/payment history (10)
-- Quality match (10)
-- Quantity fit (5)
-- Urgency alignment (5)
-- Forecast trend (10)
+
+Factors (0–100 scale):
+
+| Factor | Weight | What it measures |
+|--------|--------|------------------|
+| Net realisation | 30% | Gross value minus all costs |
+| Price advantage | 15% | vs market average |
+| Transport cost | 10% | Distance-based estimate |
+| Buyer demand | 10% | Platform demand for the crop |
+| Quality match | 10% | Lot vs buyer requirements |
+| Payment reliability | 10% | Buyer transaction history |
+| Timing | 10% | Urgency + forecast trend |
+| Distance | 5% | Farmer ↔ buyer distance |
+
+The forecast is **one input among many** — never the sole basis for a recommendation.
+
+---
 
 ## Deployment
 
 | Component | Platform | URL |
 |-----------|----------|-----|
-| Frontend | Vercel | `https://<your-app>.vercel.app` |
+| Frontend | Vercel | `https://market-intelligence-for-farmer.vercel.app` |
 | Backend | Render | `https://shetbhav-backend.onrender.com` |
-| Database | Render PostgreSQL | Auto-wired by Blueprint |
+| Database | Render PostgreSQL | Auto-provisioned by Blueprint |
 | Health Check | /health | `https://shetbhav-backend.onrender.com/health` |
 | API Docs | /docs | `https://shetbhav-backend.onrender.com/docs` |
 
 ### Auto-Deploy
-- **Vercel**: Auto-deploys frontend on every push to `main`
-- **Render**: `autoDeployTrigger: commit` — auto-deploys backend on every push
-- UptimeRobot pings `/health` every 5 min (keeps Render free tier alive)
+
+- **Vercel** deploys the frontend on every push to `main`.
+- **Render** deploys the backend on every push (`autoDeployTrigger: commit`).
+- **UptimeRobot** pings `/health` every 5 minutes so the free Render instance stays awake.
 
 ### ML Models
-- Trained at startup from imported market data
-- Persisted via joblib in `data/models/`
-- No separate model serving infrastructure
+
+- Trained at startup from imported market data.
+- Persisted via joblib.
+- No separate model-serving infrastructure (fine for an MVP).

@@ -143,6 +143,18 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/auth/check")
+def check_availability(username: Optional[str] = None, email: Optional[str] = None, db: Session = Depends(get_db)):
+    result = {"username_available": True, "email_available": True}
+    if username:
+        existing = db.query(User).filter(User.username == username).first()
+        result["username_available"] = existing is None
+    if email:
+        existing = db.query(User).filter(User.email == email).first()
+        result["email_available"] = existing is None
+    return result
+
+
 @app.post("/auth/register", response_model=UserResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(
@@ -1425,6 +1437,76 @@ def _seed_demo_data():
             status="active",
         )
         db.add(lot)
+
+        # Diverse lots from other farmers (Onion, Soybean)
+        onion_crop = db.query(Crop).filter(Crop.name == "Onion").first()
+        soybean_crop = db.query(Crop).filter(Crop.name == "Soybean").first()
+        if onion_crop and soybean_crop:
+            lot2 = ProduceLot(
+                farmer_id=farmer_ids[0][1],
+                crop_id=onion_crop.id,
+                quantity_kg=8000,
+                quality_grade=QualityGrade.A,
+                location_lat=20.01, location_lng=73.80,
+                address="Village Gangapur, Nashik",
+                harvest_date=datetime.utcnow() + timedelta(days=1),
+                storage_available=True,
+                urgency=UrgencyLevel.SOON,
+                status="active",
+            )
+            db.add(lot2)
+            lot3 = ProduceLot(
+                farmer_id=farmer_ids[1][1],
+                crop_id=tomato_crop.id,
+                quantity_kg=3000,
+                quality_grade=QualityGrade.B,
+                location_lat=18.53, location_lng=73.87,
+                address="Hadapsar, Pune",
+                harvest_date=datetime.utcnow() + timedelta(days=3),
+                storage_available=False,
+                urgency=UrgencyLevel.FLEXIBLE,
+                status="active",
+            )
+            db.add(lot3)
+            lot4 = ProduceLot(
+                farmer_id=farmer_ids[2][1],
+                crop_id=soybean_crop.id,
+                quantity_kg=15000,
+                quality_grade=QualityGrade.A,
+                location_lat=21.15, location_lng=79.09,
+                address="Wardha Road, Nagpur",
+                harvest_date=datetime.utcnow() + timedelta(days=7),
+                storage_available=True,
+                urgency=UrgencyLevel.FLEXIBLE,
+                status="active",
+            )
+            db.add(lot4)
+            lot5 = ProduceLot(
+                farmer_id=farmer_ids[3][1],
+                crop_id=onion_crop.id,
+                quantity_kg=5000,
+                quality_grade=QualityGrade.B,
+                location_lat=19.88, location_lng=75.34,
+                address="Jalna Road, Aurangabad",
+                harvest_date=datetime.utcnow() + timedelta(days=2),
+                storage_available=False,
+                urgency=UrgencyLevel.SOON,
+                status="active",
+            )
+            db.add(lot5)
+            lot6 = ProduceLot(
+                farmer_id=farmer_ids[4][1],
+                crop_id=tomato_crop.id,
+                quantity_kg=6000,
+                quality_grade=QualityGrade.A,
+                location_lat=16.71, location_lng=74.24,
+                address="Ichalkaranji, Kolhapur",
+                harvest_date=datetime.utcnow() + timedelta(days=4),
+                storage_available=True,
+                urgency=UrgencyLevel.FLEXIBLE,
+                status="active",
+            )
+            db.add(lot6)
 
         # Demo demand from ABC Foods
         demand = DemandRequest(

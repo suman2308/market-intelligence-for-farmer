@@ -1,6 +1,6 @@
 # ShetBhav — Limitations
 
-**Last Updated:** September 3, 2026
+**Last Updated:** September 4, 2026
 
 ---
 
@@ -30,14 +30,14 @@ ShetBhav is an **MVP prototype** built for Smart India Hackathon 2026. It is **n
 - **Daily mandi data** — not real-time second-by-second prices
 - **AGMARKNET coverage** — some mandis may not report daily
 - **Soybean seasonal gaps** — not always available in API
-- **Historical depth** — 219 imported records (limited for ML training)
+- **Historical depth** — 770 imported + 91 live records (useful for demo, still thin for production-grade ML)
 - **No real buyer transactions** — buyer reliability is based on seeded data
 
 ---
 
 ## ML Limitations
 
-- XGBoost trained on limited historical data (219 records)
+- XGBoost trained on ~860 records (770 historical + 91 live) — enough for a demo, not for production forecasting
 - Confidence intervals are approximate
 - Model retraining requires fresh data
 - Quality grading is rule-based CV, not trained neural network

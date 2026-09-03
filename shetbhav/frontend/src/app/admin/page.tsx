@@ -97,7 +97,7 @@ export default function AdminDashboard() {
   return (
     <div className="has-sidebar">
       <Sidebar active="/admin" items={sidebarItems} title="ShetBhav Admin" subtitle="Platform Management" />
-      <div style={{ padding: "0 16px" }}>
+      <div className="page-body">
         <div style={{ padding: "16px 0 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 className="heading-lg" style={{ margin: 0 }}>⚙️ Platform Dashboard</h1>

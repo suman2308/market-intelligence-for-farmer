@@ -80,7 +80,7 @@ export default function BuyerDashboard() {
     <div className={typeof window !== "undefined" && window.innerWidth >= 768 ? "has-sidebar" : ""}>
       <Sidebar active="/buyer" items={sidebarItems} title="ShetBhav Buyer" subtitle="Marketplace" />
 
-      <div style={{ padding: "0 0 20px" }}>
+      <div className="page-body">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" }}>
           <div>
             <h1 className="heading-lg" style={{ margin: 0 }}>🏭 {user.full_name}</h1>

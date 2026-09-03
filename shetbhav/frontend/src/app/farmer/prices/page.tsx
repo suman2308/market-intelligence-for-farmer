@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import MapView, { MapPoint } from "@/components/MapView";
+import FarmerHeader from "@/components/FarmerHeader";
 
 export default function PricesPage() {
   const router = useRouter();
@@ -54,13 +55,15 @@ export default function PricesPage() {
     }));
 
   return (
-    <>
+    <div className="farmer-shell">
+      <FarmerHeader />
       <div className="page-header">
         <button onClick={() => router.back()}
           style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8 }}>←</button>
         <h1 className="heading-md">{t("todays_prices")}</h1>
       </div>
 
+      <div className="page-body">
       {/* Crop Tabs */}
       <div className="scroll-x section-gap">
         {crops.map(crop => (
@@ -192,6 +195,8 @@ export default function PricesPage() {
         </div>
       )}
 
+      </div>
+
       <nav className="bottom-nav hide-desktop">
         <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
         <a href="/farmer/prices" className="nav-item active"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
@@ -199,6 +204,6 @@ export default function PricesPage() {
         <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
         <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
       </nav>
-    </>
+    </div>
   );
 }

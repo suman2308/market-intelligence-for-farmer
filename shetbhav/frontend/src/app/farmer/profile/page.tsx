@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import FarmerHeader from "@/components/FarmerHeader";
 
 export default function FarmerProfile() {
   const { user, logout, loadUser } = useAuth();
@@ -30,9 +31,12 @@ export default function FarmerProfile() {
   }, []);
 
   if (loading) return (
-    <div style={{ padding: 16 }}>
-      <div className="skeleton" style={{ height: 100, marginBottom: 12 }} />
-      <div className="skeleton" style={{ height: 200 }} />
+    <div>
+      <FarmerHeader />
+      <div style={{ padding: 16 }}>
+        <div className="skeleton" style={{ height: 100, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 200 }} />
+      </div>
     </div>
   );
 
@@ -48,7 +52,9 @@ export default function FarmerProfile() {
   };
 
   return (
-    <div style={{ padding: "0 16px" }}>
+    <div>
+      <FarmerHeader />
+    <div className="farmer-page farmer-shell">
       <div style={{ padding: "16px 0" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("profile")}</h1>
       </div>
@@ -74,7 +80,7 @@ export default function FarmerProfile() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Farm Details</h3>
           <button onClick={() => setEditing(!editing)}
-            style={{ fontSize: 13, color: "#16a34a", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>
+            style={{ fontSize: 13, color: "#16a34a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -10px", minHeight: 36, minWidth: 44 }}>
             {editing ? "Cancel" : "Edit"}
           </button>
         </div>
@@ -183,6 +189,7 @@ export default function FarmerProfile() {
         <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
         <a href="/farmer/profile" className="nav-item active"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
       </nav>
+    </div>
     </div>
   );
 }

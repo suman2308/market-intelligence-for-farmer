@@ -27,7 +27,7 @@ services:
       - key: REQUEST_TIMEOUT_SECONDS
         value: 30
       - key: FRONTEND_URL
-        value: https://<your-vercel-app>.vercel.app
+        value: https://market-intelligence-for-farmer.vercel.app
     healthCheckPath: /health
 
 databases:

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { ProgressBar, BottomNav } from "@/components/ui";
+import FarmerHeader from "@/components/FarmerHeader";
 
 /**
  * Smart Sell Wizard — Redesigned
@@ -86,7 +87,8 @@ export default function SmartSellPage() {
   if (!user) return null;
 
   return (
-    <>
+    <div className="farmer-shell">
+      <FarmerHeader />
       {/* Header */}
       <div className="page-header">
         <button onClick={() => step > 0 ? setStep(step - 1) : router.back()}
@@ -105,6 +107,7 @@ export default function SmartSellPage() {
       {/* Progress */}
       <ProgressBar current={step + 1} total={7} />
 
+      <div className="page-body">
       {/* ═══ STEP 1: What do you want to sell? ═══ */}
       {step === 0 && (
         <div>
@@ -515,6 +518,7 @@ export default function SmartSellPage() {
           </p>
         </div>
       )}
-    </>
+      </div>
+    </div>
   );
 }

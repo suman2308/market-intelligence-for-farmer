@@ -1,6 +1,6 @@
 # ShetBhav Testing Report
 
-**Date:** September 3, 2026
+**Date:** September 4, 2026
 **Status:** ✅ 175/175 TESTS PASS + 22/22 E2E DEMO PASS
 
 ---
@@ -53,8 +53,7 @@ Complete end-to-end flow through the live API:
 ## Frontend Build
 
 ```
-Route                          Type
-├ ○ /                          Static
+Route                          Type├ ○ / (landing)              Static
 ├ ○ /admin                     Static
 ├ ○ /buyer                     Static
 ├ ○ /farmer                    Static
@@ -72,7 +71,7 @@ Route                          Type
 ├ ○ /login                     Static
 └ ○ /register                  Static
 
-17 routes, 0 errors
+19 routes, 0 errors
 ```
 
 ---
@@ -93,7 +92,7 @@ python -m pytest tests/test_data_gov.py -v          # 15
 python -m pytest tests/test_quality_grading.py -v   # 24
 
 # E2E demo flow (22 steps)
-python tests/test_e2e_demo.py
+python e2e_demo.py
 
 # Frontend build
 cd shetbhav/frontend && npm run build

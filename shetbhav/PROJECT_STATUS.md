@@ -1,6 +1,6 @@
 # ShetBhav — Project Status
 
-**Last Updated:** September 3, 2026
+**Last Updated:** September 4, 2026
 **Status:** MVP demo-ready, GitHub-ready
 
 ---
@@ -9,15 +9,15 @@
 
 | Metric | Value |
 |--------|-------|
-| Frontend Routes | 17 |
-| Backend API Endpoints | 62 methods across 55 paths |
-| Database Tables | 42 |
+| Frontend Routes | 19 |
+| Backend API Endpoints | 78 methods across 73 paths |
+| Database Tables | 43 |
 | pytest Tests | 175/175 PASS |
 | E2E Demo Steps | 22/22 PASS |
-| Frontend Build | 17 routes, 0 errors |
+| Frontend Build | 19 routes, 0 errors |
 | Languages | English, Hindi, Marathi |
 | Demo Accounts | 4 (Farmer, Buyer, Admin, FPO) |
-| Market Price Records | 549 |
+| Market Price Records | 861 (770 historical + 91 live) |
 
 ---
 
@@ -30,7 +30,7 @@
 | Farmer dashboard | ✅ COMPLETE | /farmer, E2E step 3 |
 | Language switch (EN/HI/MR) | ✅ COMPLETE | test_api.py (3 tests) |
 | Crop lot creation | ✅ COMPLETE | test_api.py, E2E step 6 |
-| Market prices (AGMARKNET) | ✅ COMPLETE | 549 records, E2E step 4 |
+| Market prices (AGMARKNET) | ✅ COMPLETE | 861 records, E2E step 4 |
 | Price source labeling | ✅ COMPLETE | live/cached/dataset/synthetic |
 | data.gov.in live API | ✅ COMPLETE | sync/status, sync/mandi endpoints |
 | Smart Sell recommendation | ✅ COMPLETE | 8-factor scoring, E2E step 5 |
@@ -76,8 +76,8 @@
 
 | Source | Status | Records |
 |--------|--------|---------|
-| data.gov.in live API | ✅ Working | 82 fetched (Tomato 30, Onion 52) |
-| AGMARKNET dataset | ✅ Imported | 219 records |
+| data.gov.in live API | ✅ Working | 91 records labeled `live` |
+| AGMARKNET dataset | ✅ Imported | 770 records labeled `historical_dataset` |
 | Seeded demo data | ✅ Fallback | Synthetic, clearly labeled |
 | Transport quotes | ✅ Seeded | 2 transporters |
 | Storage facilities | ✅ Seeded | 2 facilities |
@@ -100,7 +100,7 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | `https://<your-app>.vercel.app` (Vercel) |
+| Frontend | `https://market-intelligence-for-farmer.vercel.app` (Vercel) |
 | Backend API | `https://shetbhav-backend.onrender.com` |
 | API Docs | `https://shetbhav-backend.onrender.com/docs` |
 | Health Check | `https://shetbhav-backend.onrender.com/health` |
@@ -124,7 +124,7 @@ python -m pytest tests/ -v
 
 # E2E demo test (22 steps)
 cd shetbhav/backend
-python tests/test_e2e_demo.py
+python e2e_demo.py
 ```
 
 Open http://localhost:3000

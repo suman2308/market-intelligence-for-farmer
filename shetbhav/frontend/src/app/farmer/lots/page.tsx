@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import FarmerHeader from "@/components/FarmerHeader";
 
 export default function FarmerLots() {
   const router = useRouter();
@@ -15,7 +16,9 @@ export default function FarmerLots() {
   }, []);
 
   return (
-    <div style={{ padding: "0 16px" }}>
+    <div>
+      <FarmerHeader />
+      <div className="farmer-page farmer-shell">
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => router.back()}
           style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>←</button>
@@ -61,6 +64,7 @@ export default function FarmerLots() {
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }

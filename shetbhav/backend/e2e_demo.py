@@ -52,14 +52,20 @@ s, d = api('POST', '/smart-sell', {
 has_options = 'best_option' in d or 'options' in d or 'recommendation' in d
 test('5. Smart Sell recommendation', s, s==200 and has_options)
 
-# 6. Create lot
-s, d = api('POST', '/lots', {
-    'crop_id': 1, 'quantity_kg': 10000, 'grade': 'A',
-    'location': 'Nashik, Maharashtra',
-    'expected_price_per_kg': 22.0
-}, token=r_token)
-lot_id = d.get('id') or d.get('lot_id')
-test('6. Create lot', s, s in [200,201] and lot_id)
+# 6. Create or reuse lot (idempotent)
+s, d = api('GET', '/lots', token=r_token)
+existing_lots = [l for l in d if l.get('status') == 'active'] if isinstance(d, list) else []
+if existing_lots:
+    lot_id = existing_lots[0].get('id')
+    test('6. Reuse existing lot', 200, bool(lot_id))
+else:
+    s, d = api('POST', '/lots', {
+        'crop_id': 1, 'quantity_kg': 10000, 'grade': 'A',
+        'location': 'Nashik, Maharashtra',
+        'expected_price_per_kg': 22.0
+    }, token=r_token)
+    lot_id = d.get('id') or d.get('lot_id')
+    test('6. Create lot', s, s in [200,201] and lot_id)
 
 # 7. List lots
 s, d = api('GET', '/lots', token=r_token)

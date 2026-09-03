@@ -4,7 +4,7 @@
 
 | Environment | URL |
 |-------------|-----|
-| **Production** | `https://<your-app>.vercel.app` |
+| **Production** | `https://market-intelligence-for-farmer.vercel.app` |
 | **Local dev** | `http://localhost:3000` |
 | **Backend API** | `https://shetbhav-backend.onrender.com` |
 | **API Docs** | `https://shetbhav-backend.onrender.com/docs` |
@@ -13,11 +13,22 @@
 2. Database is pre-seeded with demo data
 3. All demo accounts use password: `demo123`
 
+## Demo Accounts
+
+| Role | Username | Password | Dashboard |
+|------|----------|----------|-----------|
+| 👨‍🌾 Farmer (Ramesh Patil) | `ramesh` | `demo123` | `/farmer` |
+| 🏭 Buyer (ABC Foods) | `abc_foods` | `demo123` | `/buyer` |
+| 🌾 FPO (Nashik FPO) | `nashik_fpo` | `demo123` | `/fpo` |
+| ⚙️ Admin | `admin` | `demo123` | `/admin` |
+
+Sign in at **/login**: enter the username and password, click **Continue**, then select the matching role.
+
 ## Demo Flow (5 minutes)
 
 ### 1. Login as Farmer (30 sec)
-- Click "👨‍🌾 Demo Farmer (Ramesh Patil)"
-- **Show**: Greeting, today's tomato price ₹2,149/quintal, 6 active lots, earnings
+- Username `ramesh`, password `demo123`, role **Farmer**
+- **Show**: Greeting, today's tomato price, active lots, earnings
 
 ### 2. Smart Sell Decision Engine (2 min)
 - Click "Sell My Produce"
@@ -41,16 +52,16 @@
 - **Show**: Data source label "Synthetic demo data"
 
 ### 4. Buyer Dashboard (1 min)
-- Logout → Login as "🏭 Demo Buyer (ABC Foods)"
-- **Show**: 5 demands, 7 available lots, 6 offers
+- Logout → Login with username `abc_foods`, password `demo123`, role **Buyer**
+- **Show**: demands, available lots, offers
 - Click "Make Offer" on a lot
 - **Show**: Offer modal with price, quantity, delivery date, total value
 - Submit offer
 - Navigate to "Offers" tab to see offer status
 
 ### 5. Admin Dashboard (30 sec)
-- Logout → Login as "⚙️ Demo Admin"
-- **Show**: 7 farmers, 5 buyers, 7 active lots, 5 active demand
+- Logout → Login with username `admin`, password `demo123`, role **Admin**
+- **Show**: farmers, buyers, active lots, active demand
 - **Show**: Platform health metrics
 - Click "Grievances" tab
 - **Show**: 4 open disputes with Resolve/Reject buttons

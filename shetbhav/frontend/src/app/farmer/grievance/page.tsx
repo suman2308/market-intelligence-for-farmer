@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { BottomNav } from "@/components/ui";
+import FarmerHeader from "@/components/FarmerHeader";
 
 const CATEGORIES = [
   { value: "wrong_quantity", label: "Wrong Quantity Delivered", icon: "⚖️" },
@@ -72,20 +72,17 @@ export default function GrievancePage() {
   };
 
   return (
-    <>
-      <div className="page-header">
-        <button onClick={() => router.push("/farmer")}
-          aria-label="Back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>
-          ←
-        </button>
-        <div style={{ flex: 1 }}>
-          <h1 className="heading-md" style={{ margin: 0 }}>Help & Grievance</h1>
-          <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
-            Report an issue or get help
-          </p>
+    <div>
+      <FarmerHeader />
+      <div className="farmer-page farmer-shell">
+        <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => router.back()}
+            style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4 }}>←</button>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Help & Grievance</h1>
+            <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>Report an issue or get help</p>
+          </div>
         </div>
-      </div>
 
       {success && (
         <div className="card" style={{ marginBottom: 16, background: "var(--color-success-bg)", borderLeft: "4px solid var(--color-success)" }}>
@@ -201,16 +198,14 @@ export default function GrievancePage() {
         ))}
       </div>
 
-      <BottomNav
-        active="/farmer/profile"
-        items={[
-          { icon: "🏠", label: t("home"), href: "/farmer" },
-          { icon: "📊", label: t("markets"), href: "/farmer/prices" },
-          { icon: "💰", label: t("sell_my_produce"), href: "/farmer/sell" },
-          { icon: "📋", label: t("orders"), href: "/farmer/orders" },
-          { icon: "👤", label: t("more"), href: "/farmer/profile" },
-        ]}
-      />
-    </>
+      <nav className="bottom-nav hide-desktop">
+        <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
+        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
+        <a href="/farmer/sell" className="nav-item"><span style={{ fontSize: 20 }}>💰</span><span style={{ fontWeight: 700 }}>{t("sell_my_produce")}</span></a>
+        <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
+        <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
+      </nav>
+      </div>
+    </div>
   );
 }

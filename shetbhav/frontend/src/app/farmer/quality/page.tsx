@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import FarmerHeader from "@/components/FarmerHeader";
 
 export default function QualityPage() {
   const router = useRouter();
@@ -117,7 +118,9 @@ export default function QualityPage() {
   const gradeBg = (g: string) => g === "A" ? "#f0fdf4" : g === "B" ? "#fffbeb" : "#fef2f2";
 
   return (
-    <div style={{ padding: "0 16px" }}>
+    <div>
+      <FarmerHeader />
+      <div className="farmer-page farmer-shell">
       {/* Header */}
       <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => router.back()}
@@ -402,6 +405,7 @@ export default function QualityPage() {
           Supported: Tomato, Onion, Soybean. Upload a clear, well-lit photo for best results.
           Final grade is subject to buyer verification.
         </p>
+      </div>
       </div>
     </div>
   );
