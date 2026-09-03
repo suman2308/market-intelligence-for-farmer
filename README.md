@@ -248,19 +248,27 @@ REQUEST_TIMEOUT_SECONDS=30                   # API request timeout
 
 ---## Deployment
 
-This project uses **Render Blueprint** (`render.yaml`) to deploy all services from one YAML file:
+| Service | Platform | URL |
+|---------|----------|-----|
+| **Frontend** | [Vercel](https://vercel.com) | `https://<your-app>.vercel.app` |
+| **Backend** | [Render](https://render.com) | `https://shetbhav-backend.onrender.com` |
+| **Database** | Render (PostgreSQL free tier) | Auto-wired by Blueprint |
 
-| Service | Description | URL |
-|---------|-------------|-----|
-| **Backend** | FastAPI + Python | `https://shetbhav-backend.onrender.com` |
-| **Frontend** | Next.js | `https://shetbhav-frontend.onrender.com` |
-| **Database** | PostgreSQL (free tier) | Auto-wired by Blueprint |
+### Frontend (Vercel)
+1. Go to [vercel.com](https://vercel.com) → Import GitHub repo
+2. Set **Root Directory** to `shetbhav/frontend`
+3. Add env var: `NEXT_PUBLIC_API_URL` = `https://shetbhav-backend.onrender.com`
+4. Deploy
 
-### Deploy Steps
+### Backend + Database (Render Blueprint)
 1. Push to GitHub
 2. Go to [render.com/blueprints](https://render.com/blueprints) → connect repo → Apply
 3. Add `DATA_GOV_API_KEY` env var on backend service
 4. Set up [UptimeRobot](https://uptimerobot.com) ping to `/health` (keeps free tier alive)
+
+### Auto-Deploy
+- **Vercel**: Auto-deploys on every push to `main`
+- **Render**: `autoDeployTrigger: commit` — auto-deploys on every push to `main`
 
 ### Build Verification
 ```bash

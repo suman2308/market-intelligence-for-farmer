@@ -27,20 +27,8 @@ services:
       - key: REQUEST_TIMEOUT_SECONDS
         value: 30
       - key: FRONTEND_URL
-        value: https://shetbhav-frontend.onrender.com
+        value: https://<your-vercel-app>.vercel.app
     healthCheckPath: /health
-
-  # Frontend
-  - type: web
-    name: shetbhav-frontend
-    runtime: node
-    plan: free
-    autoDeployTrigger: commit
-    buildCommand: cd shetbhav/frontend && npm install && npm run build
-    startCommand: cd shetbhav/frontend && npm start
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        value: https://shetbhav-backend.onrender.com
 
 databases:
   # PostgreSQL Database

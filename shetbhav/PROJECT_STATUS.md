@@ -100,7 +100,7 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | `https://shetbhav-frontend.onrender.com` |
+| Frontend | `https://<your-app>.vercel.app` (Vercel) |
 | Backend API | `https://shetbhav-backend.onrender.com` |
 | API Docs | `https://shetbhav-backend.onrender.com/docs` |
 | Health Check | `https://shetbhav-backend.onrender.com/health` |

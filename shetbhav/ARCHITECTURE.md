@@ -132,22 +132,20 @@ Factors (0-100 scale):
 - Urgency alignment (5)
 - Forecast trend (10)
 
-## Deployment (Render Blueprint)
+## Deployment
 
-All services deploy from a single `render.yaml` file:
-
-| Component | Service | URL |
-|-----------|---------|-----|
-| Frontend | shetbhav-frontend | `https://shetbhav-frontend.onrender.com` |
-| Backend | shetbhav-backend | `https://shetbhav-backend.onrender.com` |
-| Database | shetbhav-db | PostgreSQL (free tier, auto-wired) |
+| Component | Platform | URL |
+|-----------|----------|-----|
+| Frontend | Vercel | `https://<your-app>.vercel.app` |
+| Backend | Render | `https://shetbhav-backend.onrender.com` |
+| Database | Render PostgreSQL | Auto-wired by Blueprint |
 | Health Check | /health | `https://shetbhav-backend.onrender.com/health` |
 | API Docs | /docs | `https://shetbhav-backend.onrender.com/docs` |
 
 ### Auto-Deploy
-- `autoDeployTrigger: commit` on both services
-- Every push to `main` triggers automatic deploy
-- UptimeRobot pings `/health` every 5 min (keeps free tier alive)
+- **Vercel**: Auto-deploys frontend on every push to `main`
+- **Render**: `autoDeployTrigger: commit` — auto-deploys backend on every push
+- UptimeRobot pings `/health` every 5 min (keeps Render free tier alive)
 
 ### ML Models
 - Trained at startup from imported market data

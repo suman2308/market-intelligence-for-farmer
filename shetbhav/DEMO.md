@@ -4,7 +4,7 @@
 
 | Environment | URL |
 |-------------|-----|
-| **Production** | `https://shetbhav-frontend.onrender.com` |
+| **Production** | `https://<your-app>.vercel.app` |
 | **Local dev** | `http://localhost:3000` |
 | **Backend API** | `https://shetbhav-backend.onrender.com` |
 | **API Docs** | `https://shetbhav-backend.onrender.com/docs` |
