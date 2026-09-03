@@ -84,9 +84,9 @@
   /* Borders & Shadows */
   --border: #E5E7EB;
   --border-focus: var(--green-600);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(23,32,51,0.08), 0 1px 2px rgba(23,32,51,0.04);
+  --shadow-md: 0 6px 16px -6px rgba(23,32,51,0.14), 0 2px 6px -2px rgba(23,32,51,0.05);
+  --shadow-lg: 0 16px 32px -12px rgba(23,32,51,0.20), 0 4px 10px -4px rgba(23,32,51,0.07);
 
   /* Typography */
   --font-sans: 'Noto Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -329,6 +329,7 @@ body {
   display: flex;
   background: white;
   border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
   padding: 6px 0;
   padding-bottom: max(6px, env(safe-area-inset-bottom));
   z-index: var(--z-bottom-nav);
@@ -407,14 +408,204 @@ body {
   min-height: 100vh;
 }
 
+/* ── Role App Shell (Buyer / FPO / Admin) ────────────────────────── */
+.role-app {
+  display: flex;
+  background: var(--bg-cream);
+  height: 100vh;
+  overflow: hidden;
+}
+/* Left panel: brand (site name + light-green role chip) → nav */
+.role-side {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--green-800), var(--green-900));
+  color: white;
+}
+/* Brand block shares the same 76px band as the white top bar so the two
+   columns read as one continuous header strip. */
+.role-side-brand {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.role-brand-name {
+  font-size: 23px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+/* Role title: light-green pill so it reads clearly on the deep green panel */
+.role-brand-title {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: var(--green-100);
+  color: var(--green-900);
+  padding: 3px 10px;
+  border-radius: 999px;
+  line-height: 1.3;
+}
+.role-side-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.role-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 44px;
+}
+.role-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+.role-nav-item.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--saffron-400);
+}
+/* Red logout — lives in the white top bar (desktop + mobile), one place only */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: #dc2626;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 9px 16px;
+  border-radius: 10px;
+  min-height: 38px;
+  transition: background 0.15s;
+}
+.logout-btn:hover { background: #b91c1c; }
+/* Right column: fixed top bar + scrollable content */
+.role-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.role-topbar {
+  flex-shrink: 0;
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 28px;
+  background: #ffffff;
+  border-bottom: 2px solid var(--green-100);
+  box-shadow: 0 6px 18px -12px rgba(23, 32, 51, 0.18);
+  z-index: 20;
+}
+.role-topbar-name {
+  font-size: 25px;
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-topbar-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 3px 0 0;
+}
+.role-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.role-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+.role-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+@media (max-width: 767px) {
+  .role-app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .role-side { display: none; }
+  .role-main {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .role-topbar {
+    position: sticky;
+    top: 0;
+    min-height: 66px;
+    padding: 10px 16px;
+    box-shadow: 0 4px 14px -8px rgba(23, 32, 51, 0.16);
+  }
+  .role-topbar-name { font-size: 20px; }
+  .logout-btn { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  .role-content {
+    overflow: visible;
+    padding: 0 16px 100px;
+  }
+}
+button.nav-item {
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+  color: inherit;
+}
+
 /* ── Stat Cards ───────────────────────────────────────────────────── */
 .stat-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 14px;
   text-align: center;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
 }
+.stat-card:hover { box-shadow: var(--shadow-md); }
 .stat-value {
   font-size: clamp(20px, 4vw, 26px);
   font-weight: 800;
@@ -548,16 +739,10 @@ body {
   --stone-900: #111827;
 }
 
-/* ── Page Background Organic ───────────────────────────────────────── */
-.page-bg-organic {
-  background: var(--bg-cream);
-  min-height: 100dvh;
-  padding: 0 var(--page-padding);
-  padding-bottom: 100px;
-}
 .farmer-page {
   padding: 0 16px;
-  padding-bottom: 100px;
+  /* Clear the fixed bottom nav on phones (nav ≈ 75px + a small breathing gap). */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
 /* Farmer Shell: mobile-first, centered on desktop */
@@ -829,20 +1014,23 @@ body {
 .auth-mobile-header {
   display: none;
 }
-/* Language toggle */
-.auth-lang-toggle {
+/* Language toggle — shared pill (login-desktop design: white pill, solid green active chip) */
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  padding: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.lang-toggle--fixed {
   position: fixed;
   top: 12px;
   right: 12px;
   z-index: 100;
-  display: flex;
-  gap: 4px;
-  background: rgba(255,255,255,0.9);
-  border-radius: 20px;
-  padding: 3px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
-.auth-lang-btn {
+.lang-btn {
   min-width: 40px;
   min-height: 36px;
   padding: 6px 10px;
@@ -859,9 +1047,46 @@ body {
   align-items: center;
   justify-content: center;
 }
-.auth-lang-btn.active {
+.lang-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.lang-btn.active {
   background: var(--green-600);
   color: white;
+  font-weight: 700;
+}
+/* In tight headers the pill stays comfortably small so the brand leads. */
+@media (min-width: 371px) {
+  .farmer-header .lang-toggle {
+    padding: 2px;
+    border-radius: 18px;
+    gap: 3px;
+  }
+  .farmer-header .lang-btn {
+    min-width: 36px;
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 13px;
+  }
+}
+@media (max-width: 370px) {
+  .lang-toggle {
+    border-radius: 18px;
+    padding: 2px;
+    gap: 3px;
+  }
+  .lang-btn {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 7px;
+    font-size: 11px;
+    border-radius: 14px;
+  }
+  .farmer-header .lang-btn {
+    min-width: 30px;
+    padding: 4px 5px;
+  }
 }
 /* Desktop: show left panel */
 @media (min-width: 768px) {
@@ -881,12 +1106,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 16px;
+    gap: 10px;
+    padding: 24px 16px 22px;
     background: linear-gradient(135deg, var(--green-700), var(--green-900));
     color: white;
     position: sticky;
     top: 0;
     z-index: 50;
+    border-bottom: 3px solid var(--saffron-500);
+    box-shadow: 0 6px 18px -10px rgba(18, 59, 42, 0.5);
   }
   .auth-mobile-header-left {
     display: flex;
@@ -894,10 +1122,10 @@ body {
     gap: 10px;
   }
   .auth-mobile-header-logo {
-    font-size: 40px;
+    font-size: 42px;
   }
   .auth-mobile-header-title {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 800;
     color: white;
     margin: 0;
@@ -908,17 +1136,17 @@ body {
     color: rgba(255,255,255,0.7);
     margin: 2px 0 0;
   }
-  .auth-lang-toggle {
-    position: static;
-    background: rgba(255,255,255,0.15);
-    box-shadow: none;
+  .auth-mobile-header .lang-toggle {
+    padding: 2px;
+    border-radius: 18px;
+    gap: 3px;
   }
-  .auth-lang-btn {
-    color: rgba(255,255,255,0.7);
-  }
-  .auth-lang-btn.active {
-    background: rgba(255,255,255,0.9);
-    color: var(--green-800);
+  .auth-mobile-header .lang-btn {
+    min-width: 34px;
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 13px;
   }
   .auth-right {
     padding: 24px 20px 16px;
@@ -940,7 +1168,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 12px var(--page-padding);
   background: linear-gradient(135deg, var(--green-700), var(--green-900));
   color: white;
   position: sticky;
@@ -948,126 +1177,46 @@ body {
   left: 0;
   right: 0;
   z-index: 100;
-  height: 56px;
+  height: 76px;
+  flex-shrink: 0;
+  border-bottom: 3px solid var(--saffron-500);
+  box-shadow: 0 6px 18px -8px rgba(18, 59, 42, 0.45);
 }
 .farmer-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .farmer-header-logo {
-  font-size: 30px;
+  font-size: 38px;
+  line-height: 1;
 }
 .farmer-header-title {
-  font-size: 22px;
+  font-size: 30px;
   font-weight: 800;
   color: white;
   letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .farmer-header-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
-.farmer-lang-toggle {
-  display: flex;
-  gap: 2px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 16px;
-  padding: 2px;
-}
-.farmer-lang-btn {
-  min-width: 34px;
-  min-height: 32px;
-  padding: 4px 8px;
-  border-radius: 14px;
-  border: none;
-  background: transparent;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.farmer-lang-btn.active {
-  background: rgba(255,255,255,0.9);
-  color: var(--green-800);
-}
-.farmer-profile-btn {
-  position: relative;
-  cursor: pointer;
-}
-.farmer-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  border: 2px solid rgba(255,255,255,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 700;
-  color: white;
-}
-.farmer-profile-menu {
-  position: absolute;
-  top: 44px;
-  right: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  min-width: 200px;
-  overflow: hidden;
-  z-index: 200;
-}
-.farmer-profile-info {
-  padding: 14px 16px;
-  background: #f9fafb;
-}
-.farmer-profile-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--stone-900);
-}
-.farmer-profile-role {
-  font-size: 12px;
-  color: var(--green-600);
-  font-weight: 600;
-  text-transform: capitalize;
-  margin-top: 2px;
-}
-.farmer-profile-email {
-  font-size: 12px;
-  color: var(--stone-400);
-  margin-top: 2px;
-}
-.farmer-profile-divider {
-  height: 1px;
-  background: var(--stone-200);
-}
-.farmer-profile-menu button {
-  display: block;
-  width: 100%;
-  padding: 12px 16px;
-  text-align: left;
-  background: none;
-  border: none;
-  font-size: 14px;
-  color: var(--stone-700);
-  cursor: pointer;
-  font-family: inherit;
-}
-.farmer-profile-menu button:hover {
-  background: #f3f4f6;
-}
-.farmer-profile-logout {
-  color: #dc2626 !important;
-  border-top: 1px solid var(--stone-200) !important;
+@media (max-width: 370px) {
+  .farmer-header {
+    padding: 10px 12px;
+    height: 70px;
+  }
+  .farmer-header-logo {
+    font-size: 34px;
+  }
+  .farmer-header-title {
+    font-size: 25px;
+  }
 }
 
 /* ── Has Sidebar Layout ───────────────────────────────────────────── */
@@ -1098,6 +1247,9 @@ body {
   .farmer-shell .hide-desktop { display: flex !important; }
   .farmer-shell .hide-mobile { display: none !important; }
   .page-body { padding-bottom: 24px; }
+  /* Desktop: the bottom nav is in-flow (sticky) inside the shell, so no overlay
+     clearance is needed — just a modest gap so the page ends neatly above it. */
+  .farmer-page { padding-bottom: 24px; }
   .grid-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
   .grid-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .grid-4 { grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -1135,4 +1287,20 @@ body {
   font-size: 10px;
   color: var(--text-muted);
   padding: 8px 0;
+}
+
+/* ── Very small phones: keep the brand leading the language pill ─── */
+@media (max-width: 370px) {
+  .auth-mobile-header {
+    padding: 16px 12px;
+  }
+  .auth-mobile-header-logo {
+    font-size: 40px;
+  }
+  .auth-mobile-header-title {
+    font-size: 26px;
+  }
+  .auth-mobile-header .lang-btn {
+    min-width: 30px;
+  }
 }

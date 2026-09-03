@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 export default function FarmerProfile() {
   const { user, logout, loadUser } = useAuth();
@@ -52,9 +53,9 @@ export default function FarmerProfile() {
   };
 
   return (
-    <div>
+    <div className="farmer-shell">
       <FarmerHeader />
-    <div className="farmer-page farmer-shell">
+    <div className="farmer-page">
       <div style={{ padding: "16px 0" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("profile")}</h1>
       </div>
@@ -144,13 +145,16 @@ export default function FarmerProfile() {
       {/* Language */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{t("language")}</h3>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[{ v: "en", l: "English" }, { v: "hi", l: "हिन्दी" }, { v: "mr", l: "मराठी" }].map(({ v, l }) => (
-            <button key={v} className={`toggle-btn ${lang === v ? "selected" : ""}`}
-              onClick={() => setLang(v as any)} style={{ flex: 1 }}>
-              {l}
-            </button>
-          ))}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div className="lang-toggle" role="group" aria-label="Language">
+            {[{ v: "en", l: "EN" }, { v: "hi", l: "हिं" }, { v: "mr", l: "मरा" }].map(({ v, l }) => (
+              <button key={v} className={`lang-btn ${lang === v ? "active" : ""}`}
+                aria-pressed={lang === v}
+                onClick={() => setLang(v as any)}>
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -178,18 +182,12 @@ export default function FarmerProfile() {
 
       {/* Logout */}
       <button className="btn-primary" onClick={() => { logout(); router.push("/login"); }}
-        style={{ background: "#ef4444", marginBottom: 80, width: "100%" }}>
+        style={{ background: "#ef4444", width: "100%" }}>
         {t("logout")}
       </button>
 
-      <nav className="bottom-nav hide-desktop">
-        <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
-        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
-        <a href="/farmer/sell" className="nav-item"><span style={{ fontSize: 20 }}>💰</span><span style={{ fontWeight: 700 }}>{t("sell_my_produce")}</span></a>
-        <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
-        <a href="/farmer/profile" className="nav-item active"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
-      </nav>
     </div>
+      <FarmerBottomNav />
     </div>
   );
 }

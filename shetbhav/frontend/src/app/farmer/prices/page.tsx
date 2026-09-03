@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import MapView, { MapPoint } from "@/components/MapView";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 export default function PricesPage() {
   const router = useRouter();
@@ -197,13 +198,7 @@ export default function PricesPage() {
 
       </div>
 
-      <nav className="bottom-nav hide-desktop">
-        <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
-        <a href="/farmer/prices" className="nav-item active"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
-        <a href="/farmer/sell" className="nav-item"><span style={{ fontSize: 20 }}>💰</span><span>{t("sell_my_produce")}</span></a>
-        <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
-        <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
-      </nav>
+      <FarmerBottomNav />
     </div>
   );
 }

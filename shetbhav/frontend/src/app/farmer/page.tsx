@@ -5,10 +5,11 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import {
-  DataSourceBadge, BottomNav, Skeleton, ConfidenceBadge,
+  DataSourceBadge, Skeleton, ConfidenceBadge,
   WhyExplainer, VoicePlayButton,
 } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 /**
  * Farmer Dashboard — शेतभाव
@@ -57,8 +58,9 @@ export default function FarmerHome() {
   const best = recommendation?.best_option;
 
   return (
-    <div className="page-bg-organic farmer-shell">
+    <div className="farmer-shell">
       <FarmerHeader />
+      <div className="page-body">
       {/* ── Greeting ── */}
       <div style={{ padding: "8px 0 12px" }}>
         <p className="text-xs" style={{ margin: 0 }}>{greeting()},</p>
@@ -71,35 +73,36 @@ export default function FarmerHome() {
       {/* ── Smart Sell Recommendation Card ── */}
       {best && (
         <div className="card section-gap" style={{
-          background: "linear-gradient(135deg, var(--green-700), var(--green-600))",
+          background: "linear-gradient(135deg, var(--saffron-500), var(--saffron-700))",
           color: "white", border: "none", cursor: "pointer",
+          boxShadow: "0 6px 18px rgba(217, 119, 6, 0.25)",
         }} onClick={() => router.push("/farmer/sell")}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, opacity: 0.85, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 🧠 Smart Sell Recommendation
               </p>
               <p style={{ fontSize: 20, fontWeight: 800, margin: "4px 0 0" }}>
-                ₹{best.net_realization_per_q.toLocaleString("en-IN")}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}> /q net</span>
+                ₹{best.net_realization_per_q.toLocaleString("en-IN")}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.75 }}> /q net</span>
               </p>
             </div>
             <span style={{
-              background: "rgba(255,255,255,0.2)", padding: "4px 10px",
-              borderRadius: 20, fontSize: 13, fontWeight: 700,
+              background: "white", color: "var(--saffron-700)", padding: "4px 10px",
+              borderRadius: 20, fontSize: 13, fontWeight: 800,
             }}>
               {best.score}/100
             </span>
           </div>
-          <p style={{ fontSize: 14, margin: "0 0 8px", opacity: 0.9 }}>
+          <p style={{ fontSize: 14, margin: "0 0 8px", opacity: 0.95 }}>
             → {best.target_name}
           </p>
           {best.reasons?.slice(0, 2).map((r: string, i: number) => (
-            <p key={i} style={{ fontSize: 12, margin: "2px 0", opacity: 0.8 }}>✓ {r}</p>
+            <p key={i} style={{ fontSize: 12, margin: "2px 0", opacity: 0.85 }}>✓ {r}</p>
           ))}
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
             <button className="btn-sm" style={{
-              background: "white", color: "var(--green-700)", border: "none",
-              fontWeight: 700, padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+              background: "white", color: "var(--saffron-700)", border: "none",
+              fontWeight: 800, padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
             }}>
               View Details →
             </button>
@@ -203,17 +206,9 @@ export default function FarmerHome() {
       <p className="data-source data-source-synthetic" style={{ textAlign: "center", marginTop: 8 }}>
         🧪 {prices?.source === "synthetic_demo" ? "Demo data — not live market prices" : "Live market data"}
       </p>
+      </div>
 
-      <BottomNav
-        active="/farmer"
-        items={[
-          { icon: "🏠", label: t("home") || "Home", href: "/farmer" },
-          { icon: "📊", label: t("markets") || "Prices", href: "/farmer/prices" },
-          { icon: "💰", label: t("sell_my_produce") || "Sell", href: "/farmer/sell" },
-          { icon: "📋", label: t("orders") || "Deals", href: "/farmer/orders" },
-          { icon: "👤", label: t("more") || "Profile", href: "/farmer/profile" },
-        ]}
-      />
+      <FarmerBottomNav />
     </div>
   );
 }

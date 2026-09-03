@@ -15,3 +15,4 @@ pandas
 numpy
 joblib
 python-dotenv
+pytest>=8.0

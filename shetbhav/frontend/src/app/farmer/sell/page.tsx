@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { ProgressBar, BottomNav } from "@/components/ui";
+import { ProgressBar } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 /**
  * Smart Sell Wizard — Redesigned
@@ -519,6 +520,8 @@ export default function SmartSellPage() {
         </div>
       )}
       </div>
+
+      <FarmerBottomNav />
     </div>
   );
 }

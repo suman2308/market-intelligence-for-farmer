@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from dataclasses import asdict
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / "data" / "models"
+MODELS_DIR = Path(os.environ.get("SHETBHAV_MODELS_DIR") or (Path(__file__).resolve().parent.parent / "data" / "models"))
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 

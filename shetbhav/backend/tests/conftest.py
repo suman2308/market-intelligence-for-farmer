@@ -4,8 +4,14 @@ Prevents isolation issues when running multiple test files together.
 """
 import os
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Isolate model artifacts written during tests (synthetic training runs) so they
+# never clobber the real production models in backend/data/models. Must be set
+# before ml.* modules are imported below.
+os.environ["SHETBHAV_MODELS_DIR"] = tempfile.mkdtemp(prefix="shetbhav_test_models_")
 
 import pytest
 from sqlalchemy import create_engine, event

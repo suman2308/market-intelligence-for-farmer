@@ -1,10 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { Sidebar } from "@/components/ui";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
@@ -21,6 +20,7 @@ export default function AdminDashboard() {
   const [grievances, setGrievances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "grievances" | "ml" | "analytics">("overview");
+  const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => { loadUser(); }, []);
   useEffect(() => {
@@ -45,14 +45,6 @@ export default function AdminDashboard() {
       </div>
     );
   }
-
-  const verifyBuyer = async (buyerId: number, status: string) => {
-    try {
-      await api.put(`/admin/buyers/${buyerId}/verify`, null, { params: { status } });
-      const { data } = await api.get("/admin/users");
-      setUsers(data);
-    } catch {}
-  };
 
   const resolveGrievance = async (grievanceId: number, action: string) => {
     try {
@@ -87,36 +79,54 @@ export default function AdminDashboard() {
   ];
 
   const sidebarItems = [
-    { icon: "📊", label: "Overview", href: "/admin#overview" },
-    { icon: "📈", label: "Analytics", href: "/admin#analytics" },
-    { icon: "👥", label: "Users", href: "/admin#users" },
-    { icon: "⚠️", label: "Grievances", href: "/admin#grievances" },
-    { icon: "🤖", label: "ML Models", href: "/admin#models" },
+    { icon: "📊", label: "Overview", tab: "overview" as const },
+    { icon: "📈", label: "Analytics", tab: "analytics" as const },
+    { icon: "👥", label: "Users", tab: "users" as const },
+    { icon: "⚠️", label: "Grievances", tab: "grievances" as const },
+    { icon: "🤖", label: "ML Models", tab: "ml" as const },
   ];
 
+  const goLogout = () => { logout(); router.push("/login"); };
+
+  const openTab = (tab: "overview" | "analytics" | "users" | "grievances" | "ml") => {
+    setActiveTab(tab);
+    contentRef.current?.scrollTo({ top: 0 });
+  };
+
   return (
-    <div className="has-sidebar">
-      <Sidebar active="/admin" items={sidebarItems} title="ShetBhav Admin" subtitle="Platform Management" />
-      <div className="page-body">
-        <div style={{ padding: "16px 0 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h1 className="heading-lg" style={{ margin: 0 }}>⚙️ Platform Dashboard</h1>
-            <p className="text-xs" style={{ margin: "2px 0 0" }}>Platform Management</p>
-          </div>
-          <button onClick={() => { logout(); router.push("/login"); }} className="btn-secondary btn-sm">Logout</button>
+    <div className="role-app">
+      {/* Left panel — brand, role, navigation (desktop) */}
+      <aside className="role-side hide-mobile" aria-label="Admin navigation">
+        <div className="role-side-brand">
+          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-title">Admin</div>
         </div>
+        <nav className="role-side-nav">
+          {sidebarItems.map(item => (
+            <button key={item.tab}
+              className={`role-nav-item ${activeTab === item.tab ? "active" : ""}`}
+              onClick={() => openTab(item.tab)}>
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-      {/* Tabs */}
-      <div className="scroll-x section-gap">
-        {(["overview", "analytics", "users", "grievances", "ml"] as const).map(tab => (
-          <button key={tab} className={`toggle-btn ${activeTab === tab ? "selected" : ""}`}
-            onClick={() => setActiveTab(tab)}
-            style={{ whiteSpace: "nowrap", textTransform: "capitalize", flex: "none" }}>
-            {tab === "ml" ? "🤖 Models" : tab === "analytics" ? "📊 Analytics" : tab}
-          </button>
-        ))}
-      </div>
+      {/* Right column — white top bar + scrollable content */}
+      <div className="role-main">
+        <header className="role-topbar">
+          <div style={{ minWidth: 0 }}>
+            <h1 className="role-topbar-name">{user.full_name}</h1>
+            <p className="role-topbar-sub">Platform Dashboard</p>
+          </div>
+          <div className="role-topbar-actions">
+            <button className="logout-btn" onClick={goLogout}>⏻ {t("logout") || "Log out"}</button>
+          </div>
+        </header>
 
+        <main className="role-content" ref={contentRef}>
+          <div className="role-inner">
       {loading ? (
         <div>{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 100, marginBottom: 12 }} />)}</div>
       ) : (
@@ -326,7 +336,7 @@ export default function AdminDashboard() {
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>🤖 ML Models</h2>
               <div className="card" style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 8px 0" }}>
-                  Price forecasting models trained on historical market data.
+                  Forecasts are evaluated on real AGMARKNET data. XGBoost is used only when it beats the naive baseline; otherwise the baseline is served and labeled honestly.
                 </p>
                 {["Tomato", "Onion", "Soybean"].map(crop => (
                   <div key={crop} style={{
@@ -338,13 +348,14 @@ export default function AdminDashboard() {
                       <span style={{ fontSize: 12, color: "var(--color-text-secondary)", marginLeft: 8 }}>Price Forecast</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <span className="badge badge-verified">Trained</span>
-                      <span className="badge badge-active">XGBoost</span>
+                      <span className="badge badge-active">
+                        {crop === "Soybean" ? "No AGMARKNET data" : "Baseline (auto-evaluated)"}
+                      </span>
                     </div>
                   </div>
                 ))}
                 <p className="data-source" style={{ marginTop: 12 }}>
-                  Models trained on synthetic demo data. See ML.md for methodology.
+                  Real-data evaluation only — no synthetic rows in training. See ML.md for methodology and metrics.
                 </p>
               </div>
 
@@ -359,7 +370,21 @@ export default function AdminDashboard() {
           )}
         </>
       )}
+          </div>
+        </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="bottom-nav hide-desktop" aria-label="Admin navigation">
+        {sidebarItems.map(item => (
+          <button key={item.tab}
+            className={`nav-item ${activeTab === item.tab ? "active" : ""}`}
+            onClick={() => openTab(item.tab)}>
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

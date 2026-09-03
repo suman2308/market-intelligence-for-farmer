@@ -27,7 +27,7 @@ from ml.evaluation import (
     ModelMetrics, rolling_origin_validation, aggregate_rolling_metrics,
 )
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / "data" / "models"
+MODELS_DIR = Path(os.environ.get("SHETBHAV_MODELS_DIR") or (Path(__file__).resolve().parent.parent / "data" / "models"))
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 SUPPORTED_CROPS = ["tomato", "onion", "soybean"]
@@ -256,6 +256,14 @@ def train_crop_model(
         all_metrics["hist_gradient_boosting"] = hgb_result["metrics"].to_dict()
 
     selected = best_result["metrics"].to_dict() if use_model else naive_metrics.to_dict()
+
+    # If the fallback is selected, remove any stale model artifacts so status
+    # endpoints never report an old model as current.
+    if not use_model:
+        for suffix in ("xgb_price_forecast", "features", "metadata"):
+            p = MODELS_DIR / f"{suffix}_{crop}.joblib"
+            if p.exists():
+                p.unlink()
 
     return {
         "status": "trained" if use_model else "insufficient_data",

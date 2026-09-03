@@ -9,6 +9,26 @@ A market intelligence platform that helps Indian farmers decide where, when, and
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![Tests](https://img.shields.io/badge/Tests-175%2F175-brightgreen)](#testing)
 
+<details>
+<summary>📑 Table of contents</summary>
+
+- [Live demo](#live-demo)
+- [What this does](#what-this-does)
+- [A quick look](#a-quick-look)
+- [Tech stack](#tech-stack)
+- [Running locally](#running-locally)
+- [Project structure](#project-structure)
+- [How Smart Sell works](#how-smart-sell-works)
+- [Where the market data comes from](#where-the-market-data-comes-from)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+- [What's real vs. what's simulated](#whats-real-vs-whats-simulated)
+- [Limitations](#limitations)
+- [License](#license)
+
+</details>
+
 ---
 
 ## Live Demo
@@ -47,25 +67,29 @@ Farmer creates crop lot
 
 ---
 
-## What You'll See
+## A Quick Look
 
-**Farmer dashboard** — greeting, quick actions, Smart Sell card with estimated income, nearby mandi prices, and active crop lots.
+Farmers use the app on their phones — one screen at a time, in their own language. Below are real screenshots from the running app:
 
-**Smart Sell wizard** — a 6-step guided flow (one question per screen) that compares:
-- Selling at the nearest mandi
-- Selling directly to a verified buyer
-- Storing and selling later when prices improve
-- Selling collectively through an FPO
+| 👨‍🌾 Farmer home | 📊 Market prices | 💰 Smart Sell wizard | 🧺 My crop lots |
+|---|---|---|---|
+| <img src="screenshots/farmer-home.png" alt="Farmer dashboard on mobile" width="200"> | <img src="screenshots/farmer-prices.png" alt="Market prices page on mobile" width="200"> | <img src="screenshots/farmer-sell.png" alt="Smart Sell wizard on mobile" width="200"> | <img src="screenshots/farmer-lots.png" alt="Crop lots list on mobile" width="200"> |
 
-**Buyer dashboard** — demand posting, lot discovery, offer management, and order tracking.
+- **Farmer home** — greeting, a Smart Sell card with estimated income, nearby mandi prices, and active crop lots.
+- **Smart Sell** — a guided step-by-step wizard that compares selling at the mandi, to a verified buyer, after storage, or through an FPO.
+- **Market prices** — official daily mandi data with source and freshness badges, in cards sized for a phone.
 
-**Admin panel** — platform stats, user verification, market data sync status, and grievance resolution.
+Buyers, FPOs, and admins work on desktop — dashboards with stats, tables, and charts:
 
-**All in three languages** — English, Hindi (हिन्दी), and Marathi (मराठी).
+| 🔐 Login | 🏭 Buyer dashboard | 🌾 FPO dashboard | ⚙️ Admin dashboard |
+|---|---|---|---|
+| <img src="screenshots/login-desktop.png" alt="Login page on desktop" width="200"> | <img src="screenshots/buyer-home.png" alt="Buyer dashboard on desktop" width="200"> | <img src="screenshots/fpo-home.png" alt="FPO dashboard on desktop" width="200"> | <img src="screenshots/admin-home.png" alt="Admin dashboard on desktop" width="200"> |
+
+Everything on the platform works in **English, Hindi (हिन्दी), and Marathi (मराठी)** — farmers can switch languages at any time.
 
 ---
 
-## Tech
+## Tech Stack
 
 | Layer | What |
 |-------|------|
@@ -104,26 +128,25 @@ Open **http://localhost:3000**, go to **/login**, and sign in with any demo acco
 
 ```
 shetbhav/
-├── backend/
-│   ├── app/main.py              # FastAPI app, 73 API paths
-│   ├── config/                  # Database, settings
-│   ├── models/                  # 43 SQLAlchemy tables + Pydantic schemas
-│   ├── services/                # Smart Sell, auth, market data, logistics, quality
-│   ├── ml/                      # Forecasting pipeline, baselines, evaluation
-│   ├── tests/                   # 175 pytest tests
-│   └── data/                    # Imported AGMARKNET datasets
-├── frontend/
-│   └── src/
-│       ├── app/                 # 19 Next.js routes
-│       ├── components/          # Shared UI components
-│       └── lib/                 # API client, auth store, i18n
-├── render.yaml                  # Render Blueprint config
-└── *.md                         # Documentation
+├── backend/          FastAPI + Python 3.11 (73 API paths)
+│   ├── app/          Entry point and route mounting
+│   ├── services/     Smart Sell, auth, market data, logistics, quality
+│   ├── ml/           XGBoost forecast pipeline + evaluation
+│   ├── models/       43 SQLAlchemy tables + Pydantic schemas
+│   ├── tests/        175 pytest tests
+│   └── data/         Imported AGMARKNET dataset sample
+└── frontend/         Next.js 16 + TypeScript (19 routes)
+    └── src/
+        ├── app/      Pages: farmer, buyer, fpo, admin, auth
+        ├── components/  Shared UI components
+        └── lib/      API client, auth store, i18n
 ```
+
+Jump straight in: [`shetbhav/backend`](shetbhav/backend) · [`shetbhav/frontend`](shetbhav/frontend) · [ARCHITECTURE.md](shetbhav/ARCHITECTURE.md) · [API.md](shetbhav/API.md) · [`render.yaml`](render.yaml) (backend blueprint) · [`vercel.json`](shetbhav/frontend/vercel.json) (frontend config)
 
 ---
 
-## The Smart Sell Engine
+## How Smart Sell Works
 
 The core feature. It scores 8 factors to recommend the best selling option:
 
@@ -142,7 +165,7 @@ The 7-day price forecast (XGBoost) is used as one input — it never alone decid
 
 ---
 
-## Market Data
+## Where the Market Data Comes From
 
 The app connects to the **official data.gov.in AGMARKNET API** for daily mandi prices in Maharashtra (Onion, Tomato, Soybean).
 
@@ -198,7 +221,6 @@ Both services auto-deploy on every push to `main`.
 | [ARCHITECTURE.md](./shetbhav/ARCHITECTURE.md) | System design and data flow |
 | [DESIGN.md](./shetbhav/DESIGN.md) | Design system: colors, typography, spacing, components, accessibility |
 | [SECURITY.md](./shetbhav/SECURITY.md) | Secret handling, auth, and security notes |
-| [CONTRIBUTING.md](./shetbhav/CONTRIBUTING.md) | How to contribute |
 | [API.md](./shetbhav/API.md) | Full API reference |
 | [ML.md](./shetbhav/ML.md) | Forecasting pipeline and model details |
 | [DATA_SOURCES.md](./shetbhav/DATA_SOURCES.md) | data.gov.in integration and AGMARKNET dataset |
@@ -206,9 +228,7 @@ Both services auto-deploy on every push to `main`.
 | [LIMITATIONS.md](./shetbhav/LIMITATIONS.md) | Honest scope assessment |
 | [DEMO.md](./shetbhav/DEMO.md) | Presentation walkthrough |
 | [PROJECT_STATUS.md](./shetbhav/PROJECT_STATUS.md) | Current status |
-| [LICENSE](./shetbhav/LICENSE) | MIT license |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) | Community guidelines |
-| [SUPPORT.md](./SUPPORT.md) | Where to get help |
+| [LICENSE](./LICENSE) | MIT license |
 
 ---
 
@@ -218,7 +238,7 @@ Both services auto-deploy on every push to `main`.
 |---------|--------|
 | Mandi prices | ✅ Real data from data.gov.in API |
 | Smart Sell recommendations | ✅ Working with real calculations |
-| Price forecasting | ✅ XGBoost with baseline comparison |
+| Price forecasting | ✅ Real-data evaluation — XGBoost vs naive baseline, auto-fallback |
 | Lot creation and matching | ✅ Full CRUD with buyer matching |
 | Offer negotiation | ✅ Counter-offer history preserved |
 | Order tracking | ✅ Event timeline |
@@ -242,6 +262,6 @@ Both services auto-deploy on every push to `main`.
 
 ## License
 
-MIT License — see [LICENSE](./shetbhav/LICENSE).
+MIT License — see [LICENSE](./LICENSE).
 
 Built for Smart India Hackathon 2026 (problem SIH26132).

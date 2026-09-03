@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 const CATEGORIES = [
   { value: "wrong_quantity", label: "Wrong Quantity Delivered", icon: "⚖️" },
@@ -72,9 +73,9 @@ export default function GrievancePage() {
   };
 
   return (
-    <div>
+    <div className="farmer-shell">
       <FarmerHeader />
-      <div className="farmer-page farmer-shell">
+      <div className="farmer-page">
         <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => router.back()}
             style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4 }}>←</button>
@@ -198,14 +199,8 @@ export default function GrievancePage() {
         ))}
       </div>
 
-      <nav className="bottom-nav hide-desktop">
-        <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
-        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
-        <a href="/farmer/sell" className="nav-item"><span style={{ fontSize: 20 }}>💰</span><span style={{ fontWeight: 700 }}>{t("sell_my_produce")}</span></a>
-        <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
-        <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
-      </nav>
       </div>
+      <FarmerBottomNav />
     </div>
   );
 }

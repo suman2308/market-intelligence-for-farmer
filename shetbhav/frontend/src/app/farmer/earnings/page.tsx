@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 export default function EarningsPage() {
   const router = useRouter();
@@ -36,9 +37,9 @@ export default function EarningsPage() {
     : 0;
 
   return (
-    <div>
+    <div className="farmer-shell">
       <FarmerHeader />
-      <div className="farmer-page farmer-shell">
+      <div className="farmer-page">
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => router.back()}
           style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>←</button>
@@ -133,10 +134,11 @@ export default function EarningsPage() {
       )}
 
       {/* Source disclaimer */}
-      <p className="data-source" style={{ textAlign: "center", marginTop: 16, paddingBottom: 80 }}>
+      <p className="data-source" style={{ textAlign: "center", marginTop: 16 }}>
         Payment tracking is simulated for demo. Not a real financial transaction.
       </p>
     </div>
+      <FarmerBottomNav />
     </div>
   );
 }

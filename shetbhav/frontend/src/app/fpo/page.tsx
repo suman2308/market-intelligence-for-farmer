@@ -1,20 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
-import { Sidebar } from "@/components/ui";
 
 export default function FPODashboard() {
   const router = useRouter();
-  const { user, token, loadUser } = useAuth();
+  const { user, loadUser, logout } = useAuth();
   const { t } = useI18n();
   const [dashboard, setDashboard] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [lots, setLots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"overview" | "members" | "lots">("overview");
+  const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     loadUser();
@@ -41,24 +41,54 @@ export default function FPODashboard() {
   if (!user || user.role !== "fpo") return null;
 
   const sidebarItems = [
-    { icon: "🌾", label: "Overview", href: "/fpo#overview" },
-    { icon: "👥", label: "Members", href: "/fpo#members" },
-    { icon: "📦", label: "Lots", href: "/fpo#lots" },
+    { icon: "🌾", label: "Overview", tab: "overview" as const },
+    { icon: "👥", label: "Members", tab: "members" as const },
+    { icon: "📦", label: "Lots", tab: "lots" as const },
   ];
 
-  return (
-    <div className="has-sidebar">
-      <Sidebar active="/fpo" items={sidebarItems} title="ShetBhav FPO" subtitle="Collective Selling" />
+  const goLogout = () => { logout(); router.push("/login"); };
 
-      <div className="page-body">
-        <div className="page-header" style={{ padding: "16px 0 12px" }}>
-          <div>
-            <h1 className="heading-md" style={{ margin: 0 }}>🌾 {dashboard?.fpo_name || "FPO Dashboard"}</h1>
-            <p className="text-xs" style={{ color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
+  const openTab = (t: "overview" | "members" | "lots") => {
+    setTab(t);
+    contentRef.current?.scrollTo({ top: 0 });
+  };
+
+  return (
+    <div className="role-app">
+      {/* Left panel — brand, role, navigation (desktop) */}
+      <aside className="role-side hide-mobile" aria-label="FPO navigation">
+        <div className="role-side-brand">
+          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-title">FPO</div>
+        </div>
+        <nav className="role-side-nav">
+          {sidebarItems.map(item => (
+            <button key={item.tab}
+              className={`role-nav-item ${tab === item.tab ? "active" : ""}`}
+              onClick={() => openTab(item.tab)}>
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Right column — white top bar + scrollable content */}
+      <div className="role-main">
+        <header className="role-topbar">
+          <div style={{ minWidth: 0 }}>
+            <h1 className="role-topbar-name">🌾 {dashboard?.fpo_name || "FPO Dashboard"}</h1>
+            <p className="role-topbar-sub">
               {dashboard?.district || "Maharashtra"} · {dashboard?.member_count || 0} members
             </p>
           </div>
-        </div>
+          <div className="role-topbar-actions">
+            <button className="logout-btn" onClick={goLogout}>⏻ {t("logout") || "Log out"}</button>
+          </div>
+        </header>
+
+        <main className="role-content" ref={contentRef}>
+          <div className="role-inner">
 
       {/* Stats */}
       {dashboard && (
@@ -79,16 +109,6 @@ export default function FPODashboard() {
           ))}
         </div>
       )}
-
-      {/* Tabs */}
-      <div className="scroll-x section-gap">
-        {(["overview", "members", "lots"] as const).map((t) => (
-          <button key={t} className={`toggle-btn ${tab === t ? "selected" : ""}`}
-            onClick={() => setTab(t)} style={{ textTransform: "capitalize" }}>
-            {t === "overview" ? "📊 Overview" : t === "members" ? "👥 Members" : "📦 Lots"}
-          </button>
-        ))}
-      </div>
 
       {loading ? (
         <div className="flex-col gap-3">
@@ -223,15 +243,21 @@ export default function FPODashboard() {
           )}
         </>
       )}
-
-      <nav className="bottom-nav hide-desktop">
-        <a href="/fpo" className="nav-item active"><span style={{ fontSize: 20 }}>🌾</span><span>FPO</span></a>
-        <a href="/buyer" className="nav-item"><span style={{ fontSize: 20 }}>🏭</span><span>Buyers</span></a>
-        <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>Prices</span></a>
-        <a href="/farmer/orders" className="nav-item"><span style={{ fontSize: 20 }}>📋</span><span>Orders</span></a>
-        <a href="/login" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>Profile</span></a>
-      </nav>
+          </div>
+        </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="bottom-nav hide-desktop" aria-label="FPO navigation">
+        {sidebarItems.map(item => (
+          <button key={item.tab}
+            className={`nav-item ${tab === item.tab ? "active" : ""}`}
+            onClick={() => openTab(item.tab)}>
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

@@ -17,7 +17,7 @@
 | Frontend Build | 19 routes, 0 errors |
 | Languages | English, Hindi, Marathi |
 | Demo Accounts | 4 (Farmer, Buyer, Admin, FPO) |
-| Market Price Records | 861 (770 historical + 91 live) |
+| Market Price Records | 863 (770 historical + 93 live) |
 
 ---
 
@@ -30,7 +30,7 @@
 | Farmer dashboard | ✅ COMPLETE | /farmer, E2E step 3 |
 | Language switch (EN/HI/MR) | ✅ COMPLETE | test_api.py (3 tests) |
 | Crop lot creation | ✅ COMPLETE | test_api.py, E2E step 6 |
-| Market prices (AGMARKNET) | ✅ COMPLETE | 861 records, E2E step 4 |
+| Market prices (AGMARKNET) | ✅ COMPLETE | 863 real records, E2E step 4 |
 | Price source labeling | ✅ COMPLETE | live/cached/dataset/synthetic |
 | data.gov.in live API | ✅ COMPLETE | sync/status, sync/mandi endpoints |
 | Smart Sell recommendation | ✅ COMPLETE | 8-factor scoring, E2E step 5 |

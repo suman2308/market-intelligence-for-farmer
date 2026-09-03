@@ -18,12 +18,14 @@ ShetBhav uses two ML components:
 
 | Field | Value |
 |-------|-------|
-| Source | data.gov.in AGMARKNET live API + imported historical dataset |
-| Records | 861 market price records (770 imported historical + 91 live-fetched) — no synthetic data in training |
-| Crops | Onion, Tomato, Soybean |
-| Markets | Maharashtra mandis (Nashik, Pune, Mumbai, and more) |
-| Date range | Recent ~90 days |
+| Source | data.gov.in AGMARKNET live API + imported historical dataset (real records only — synthetic demo rows are excluded from training) |
+| Records (dev DB) | 863 market price records — 770 imported as `historical_dataset` + 93 live-fetched |
+| Aggregation | Prices arrive per mandi per day; records are aggregated to **one daily series per crop** (mean modal/min/max across mandis) before training |
+| Crops | Onion, Tomato (the AGMARKNET subset we pull contains no Soybean arrivals — Soybean forecasts are unavailable) |
+| Markets | ~69 Maharashtra mandis mapped in the DB |
+| Date range | 2026-06-05 → 2026-09-03 (~78 unique daily points per crop in the dev DB) |
 | Target | Next 7-day modal price per crop |
+| Reproducibility | A fresh database auto-imports the tracked real CSV (`IMPORT_HISTORICAL_CSV=true`) and re-evaluates models at boot (`TRAIN_ON_STARTUP=true`) |
 
 ### Features (40+)
 
@@ -55,7 +57,17 @@ ShetBhav uses two ML components:
 
 ### Model Selection
 
-XGBoost is only used if it beats the naive baseline by ≥2% MAE. Otherwise, the naive or MA-7 baseline is used with low confidence.
+XGBoost is only used if it beats the naive baseline by ≥2% MAE on a chronological holdout. Otherwise the naive baseline is used **and clearly labeled** — no model artifact is reported as current.
+
+**Current evaluation (September 4, 2026):** trained on the real aggregated series (~78 daily points per crop). XGBoost did not beat naive persistence on the 11-day holdout, so the system correctly fell back:
+
+| Crop | Selected | Holdout MAE (₹/q) | Holdout RMSE | MAPE |
+|------|----------|-------------------|--------------|------|
+| Tomato | naive baseline | 25.94 | 33.51 | 2.0% |
+| Onion | naive baseline | 94.58 | 132.2 | 2.45% |
+| Soybean | none (no real data) | — | — | — |
+
+Re-evaluate any time more data is available: `POST /forecasts/train?crop=tomato|onion` (admin). The forecast status endpoint reflects reality — it reports `model_available: false` while the baseline is in use, instead of claiming a stale model.
 
 ### Metrics
 
@@ -86,13 +98,12 @@ XGBoost is only used if it beats the naive baseline by ≥2% MAE. Otherwise, the
 }
 ```
 
-### Insufficient Data
+### When XGBoost Isn't Used
 
-When data is insufficient for XGBoost (fewer than 50 records per crop):
-- Returns `forecast_status = insufficient_data`
-- Returns `confidence = low`
-- Uses naive or MA-7 baseline
-- Explains the limitation to the user
+XGBoost needs a long, clean daily series to beat persistence — a few months of daily mandi data isn't enough, and that's expected. When it can't beat naive:
+- Forecasts still work (naive persistence + confidence intervals)
+- `confidence = low` and the UI explains the limitation
+- The API never labels a baseline prediction as an "ML forecast"
 
 ### Model Persistence
 

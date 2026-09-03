@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { Sidebar, BottomNav, EmptyState, Skeleton, VerificationBadge, TrustScore } from "@/components/ui";
+import { EmptyState, Skeleton } from "@/components/ui";
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -24,6 +24,7 @@ export default function BuyerDashboard() {
   });
   const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders">("lots");
   const [loading, setLoading] = useState(true);
+  const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => { loadUser().finally(() => setLoading(false)); }, []);
   useEffect(() => {
@@ -45,13 +46,18 @@ export default function BuyerDashboard() {
   if (!user) return null;
 
   const sidebarItems = [
-    { icon: "🏠", label: "Dashboard", href: "/buyer#dashboard" },
-    { icon: "📋", label: "My Demands", href: "/buyer#demands" },
-    { icon: "📦", label: "Browse Lots", href: "/buyer#lots" },
-    { icon: "📨", label: "Offers", href: "/buyer#offers" },
-    { icon: "🚚", label: "Orders", href: "/buyer#orders" },
-    { icon: "👤", label: "Profile", href: "/buyer#profile" },
+    { icon: "📦", label: "Browse Lots", tab: "lots" as const },
+    { icon: "📋", label: "My Demands", tab: "demands" as const },
+    { icon: "📨", label: "My Offers", tab: "offers" as const },
+    { icon: "🚚", label: "My Orders", tab: "orders" as const },
   ];
+
+  const goLogout = () => { logout(); router.push("/login"); };
+
+  const openTab = (tab: "lots" | "demands" | "offers" | "orders") => {
+    setActiveTab(tab);
+    contentRef.current?.scrollTo({ top: 0 });
+  };
 
   const createDemand = async () => {
     try {
@@ -77,20 +83,43 @@ export default function BuyerDashboard() {
   };
 
   return (
-    <div className={typeof window !== "undefined" && window.innerWidth >= 768 ? "has-sidebar" : ""}>
-      <Sidebar active="/buyer" items={sidebarItems} title="ShetBhav Buyer" subtitle="Marketplace" />
-
-      <div className="page-body">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" }}>
-          <div>
-            <h1 className="heading-lg" style={{ margin: 0 }}>🏭 {user.full_name}</h1>
-            <p className="text-xs" style={{ margin: "2px 0 0" }}>Buyer Dashboard</p>
-          </div>
-          <button onClick={() => { logout(); router.push("/login"); }} className="btn-secondary btn-sm">Logout</button>
+    <div className="role-app">
+      {/* Left panel — brand, role, navigation, logout (desktop) */}
+      <aside className="role-side hide-mobile" aria-label="Buyer navigation">
+        <div className="role-side-brand">
+          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-title">Buyer</div>
         </div>
+        <nav className="role-side-nav">
+          {sidebarItems.map(item => (
+            <button key={item.tab}
+              className={`role-nav-item ${activeTab === item.tab ? "active" : ""}`}
+              onClick={() => openTab(item.tab)}>
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Right column — fixed top bar + scrollable content */}
+      <div className="role-main">
+        <header className="role-topbar">
+          <div style={{ minWidth: 0 }}>
+            <h1 className="role-topbar-name">{user.full_name}</h1>
+            <p className="role-topbar-sub">Buyer Dashboard</p>
+          </div>
+          <div className="role-topbar-actions">
+            <span className="badge badge-green hide-mobile">✓ Verified Buyer</span>
+            <button className="logout-btn" onClick={goLogout}>⏻ {t("logout") || "Log out"}</button>
+          </div>
+        </header>
+
+        <main className="role-content" ref={contentRef}>
+          <div className="role-inner">
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
           {[
             { value: demand.length, label: "Demands", color: "var(--sky-500)" },
             { value: lots.length, label: "Lots", color: "var(--green-600)" },
@@ -101,17 +130,6 @@ export default function BuyerDashboard() {
               <div className="stat-value" style={{ color: s.color, fontSize: 22 }}>{s.value}</div>
               <div className="stat-label">{s.label}</div>
             </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div className="scroll-x section-gap">
-          {(["lots", "demands", "offers", "orders"] as const).map(tab => (
-            <button key={tab} className={`toggle-btn ${activeTab === tab ? "selected" : ""}`}
-              onClick={() => setActiveTab(tab)}
-              style={{ whiteSpace: "nowrap", textTransform: "capitalize", flex: "none" }}>
-              {tab} ({tab === "lots" ? lots.length : tab === "demands" ? demand.length : tab === "offers" ? offers.length : orders.length})
-            </button>
           ))}
         </div>
 
@@ -241,6 +259,8 @@ export default function BuyerDashboard() {
             ))}
           </>
         )}
+          </div>
+        </main>
       </div>
 
       {/* Offer Modal */}
@@ -283,13 +303,22 @@ export default function BuyerDashboard() {
         </div>
       )}
 
-      <BottomNav active="/buyer" items={[
-        { icon: "🏠", label: "Home", href: "/buyer" },
-        { icon: "📋", label: "Demand", href: "/buyer" },
-        { icon: "📦", label: "Lots", href: "/buyer" },
-        { icon: "🚚", label: "Orders", href: "/buyer" },
-        { icon: "👤", label: "Profile", href: "/buyer" },
-      ]} />
+      {/* Mobile bottom navigation */}
+      <nav className="bottom-nav hide-desktop" aria-label="Buyer navigation">
+        {[
+          { icon: "📦", label: "Lots", tab: "lots" as const },
+          { icon: "📋", label: "Demands", tab: "demands" as const },
+          { icon: "📨", label: "Offers", tab: "offers" as const },
+          { icon: "🚚", label: "Orders", tab: "orders" as const },
+        ].map(item => (
+          <button key={item.tab}
+            className={`nav-item ${activeTab === item.tab ? "active" : ""}`}
+            onClick={() => openTab(item.tab)}>
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

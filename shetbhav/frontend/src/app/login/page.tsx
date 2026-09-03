@@ -64,22 +64,22 @@ export default function LoginPage() {
             <div className="auth-mobile-header-tagline">{t("tagline")}</div>
           </div>
         </div>
-        <div className="auth-lang-toggle">
+        <div className="lang-toggle">
           {LANGS.map(l => (
             <button key={l.code}
               onClick={() => setLang(l.code)}
-              className={`auth-lang-btn ${lang === l.code ? "active" : ""}`}>
+              className={`lang-btn ${lang === l.code ? "active" : ""}`}>
               {l.label}
             </button>
           ))}
         </div>
       </header>
       {/* Desktop language toggle */}
-      <div className="auth-lang-toggle hide-mobile">
+      <div className="lang-toggle lang-toggle--fixed hide-mobile">
         {LANGS.map(l => (
           <button key={l.code}
             onClick={() => setLang(l.code)}
-            className={`auth-lang-btn ${lang === l.code ? "active" : ""}`}>
+            className={`lang-btn ${lang === l.code ? "active" : ""}`}>
             {l.label}
           </button>
         ))}

@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { Skeleton } from "@/components/ui";
+import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 const EVENT_ICONS: Record<string, string> = {
   offer_accepted: "✅",
@@ -63,6 +65,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="farmer-shell">
+      <FarmerHeader />
       {/* Header */}
       <div className="page-header">
         <button onClick={() => router.push("/farmer/orders")}
@@ -214,6 +217,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
       </div>
+      <FarmerBottomNav />
     </div>
   );
 }

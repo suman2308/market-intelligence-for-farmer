@@ -5,6 +5,7 @@ ShetBhav — FastAPI Backend
 import os
 import sys
 import random
+import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -118,10 +119,81 @@ async def rate_limit_middleware(request: Request, call_next):
 
 
 # ── Startup ──────────────────────────────────────────────────────────
+def _to_native(obj):
+    """Recursively convert numpy values to plain Python for JSON responses."""
+    if isinstance(obj, dict):
+        return {str(k): _to_native(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_native(v) for v in obj]
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if hasattr(obj, "to_dict"):
+        return _to_native(obj.to_dict())
+    return obj
+
+
+def _maybe_import_historical_csv():
+    """Bootstrap a fresh database with the real AGMARKNET CSV (env-gated)."""
+    if os.getenv("IMPORT_HISTORICAL_CSV", "false").lower() != "true":
+        return
+    db = SessionLocal()
+    try:
+        if db.query(MarketPrice).count() > 0:
+            return
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "maharashtra_market_prices.csv")
+        if not os.path.exists(csv_path):
+            return
+        from app.scripts.import_market_data import import_csv
+        summary = import_csv(csv_path, db, overwrite=False)
+        print(f"[OK] Historical CSV imported: {summary.get('inserted', 0)} inserted, {summary.get('updated', 0)} updated")
+    finally:
+        db.close()
+
+
+def _maybe_train_models_on_startup():
+    """Train forecast models on the real daily series at boot (env-gated)."""
+    if os.getenv("TRAIN_ON_STARTUP", "false").lower() != "true":
+        return
+    db = SessionLocal()
+    try:
+        records = db.query(MarketPrice).filter(MarketPrice.is_demo == False).order_by(MarketPrice.date.asc()).all()
+        for crop in ["tomato", "onion"]:
+            crop_obj = db.query(Crop).filter(Crop.name.ilike(crop)).first()
+            if not crop_obj:
+                continue
+            raw = [
+                {"date": r.date.strftime("%Y-%m-%d"), "modal_price": r.modal_price,
+                 "min_price": r.min_price, "max_price": r.max_price,
+                 "arrivals_qty": r.arrivals_qty or 200}
+                for r in records if r.crop_id == crop_obj.id and r.modal_price
+            ]
+            if not raw:
+                continue
+            daily: dict = {}
+            for rec in raw:
+                daily.setdefault(rec["date"], []).append(rec)
+            series = [
+                {"date": d, "modal_price": round(sum(x["modal_price"] for x in g) / len(g), 2),
+                 "min_price": round(sum(x["min_price"] for x in g) / len(g), 2),
+                 "max_price": round(sum(x["max_price"] for x in g) / len(g), 2),
+                 "arrivals_qty": round(sum(x["arrivals_qty"] for x in g) / len(g), 1)}
+                for d, g in sorted(daily.items())
+            ]
+            try:
+                train_and_evaluate(crop, series)
+                print(f"[OK] Model re-evaluated for {crop} on {len(series)} real daily records")
+            except Exception as e:
+                print(f"[WARN] Training {crop} failed: {e}")
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 def startup():
     init_db()
+    _maybe_import_historical_csv()
     _seed_demo_data()
+    _maybe_train_models_on_startup()
 
 
 # ── Health Check ─────────────────────────────────────────────────────
@@ -428,7 +500,7 @@ def train_forecast_models(
     """Train forecast model for a crop using imported market data."""
     records = (
         db.query(MarketPrice)
-        .filter(MarketPrice.crop_id.in_([1, 2, 3]))
+        .filter(MarketPrice.crop_id.in_([1, 2, 3]), MarketPrice.is_demo == False)
         .order_by(MarketPrice.date.asc())
         .all()
     )
@@ -436,15 +508,32 @@ def train_forecast_models(
     crop_obj = db.query(Crop).filter(Crop.name.ilike(crop)).first()
     if not crop_obj:
         return {"error": f"Crop '{crop}' not found"}
-    crop_records = [
+    raw = [
         {"date": r.date.strftime("%Y-%m-%d") if r.date else "", "modal_price": r.modal_price,
          "min_price": r.min_price, "max_price": r.max_price,
          "arrivals_qty": r.arrivals_qty or 200}
         for r in records if r.crop_id == crop_obj.id and r.modal_price
     ]
-    if not crop_records:
+    if not raw:
         return {"status": "no_data", "crop": crop}
-    return train_and_evaluate(crop, crop_records)
+    # Market prices arrive per mandi per day. The forecast model learns a daily
+    # crop-level series, so aggregate all mandis into one price per date
+    # (mean of modal/min/max, mean arrivals) before training.
+    from collections import defaultdict
+    daily: dict = defaultdict(list)
+    for rec in raw:
+        daily[rec["date"]].append(rec)
+    crop_records = [
+        {
+            "date": day,
+            "modal_price": round(sum(r["modal_price"] for r in recs) / len(recs), 2),
+            "min_price": round(sum(r["min_price"] for r in recs) / len(recs), 2),
+            "max_price": round(sum(r["max_price"] for r in recs) / len(recs), 2),
+            "arrivals_qty": round(sum(r["arrivals_qty"] for r in recs) / len(recs), 1),
+        }
+        for day, recs in sorted(daily.items())
+    ]
+    return _to_native(train_and_evaluate(crop, crop_records))
 
 
 # ── data.gov.in Sync Routes ──────────────────────────────────────────

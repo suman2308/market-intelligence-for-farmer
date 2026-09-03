@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import FarmerHeader from "@/components/FarmerHeader";
+import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 /**
  * Order status to human-readable mapping
@@ -108,9 +109,9 @@ export default function OrdersPage() {
   const displayOrders = activeTab === "active" ? activeOrders : completedOrders;
 
   return (
-    <div>
+    <div className="farmer-shell">
       <FarmerHeader />
-      <div className="farmer-page farmer-shell">
+      <div className="farmer-page">
         <div style={{ padding: "16px 0" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("my_orders")}</h1>
         </div>
@@ -192,14 +193,8 @@ export default function OrdersPage() {
           </div>
         )}
 
-        <nav className="bottom-nav hide-desktop">
-          <a href="/farmer" className="nav-item"><span style={{ fontSize: 20 }}>🏠</span><span>{t("home")}</span></a>
-          <a href="/farmer/prices" className="nav-item"><span style={{ fontSize: 20 }}>📊</span><span>{t("markets")}</span></a>
-          <a href="/farmer/sell" className="nav-item"><span style={{ fontSize: 20 }}>💰</span><span style={{ fontWeight: 700 }}>{t("sell_my_produce")}</span></a>
-          <a href="/farmer/orders" className="nav-item active"><span style={{ fontSize: 20 }}>📋</span><span>{t("orders")}</span></a>
-          <a href="/farmer/profile" className="nav-item"><span style={{ fontSize: 20 }}>👤</span><span>{t("more")}</span></a>
-        </nav>
       </div>
+        <FarmerBottomNav />
     </div>
   );
 }

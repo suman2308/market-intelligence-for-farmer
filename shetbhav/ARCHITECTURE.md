@@ -143,7 +143,7 @@ Lot (1) ─── (1) QualityReport (verification_type, grade, confidence)
 
 ### Price Forecasting
 
-1. **Data**: 861 real market-price records in the database — 770 imported AGMARKNET historical records + 91 records fetched live from the data.gov.in API. No synthetic data used for training.
+1. **Data**: 863 real market-price records in the database — 770 imported AGMARKNET historical records + 93 records fetched live from the data.gov.in API. No synthetic data used for training.
 2. **Features**: lag prices (1, 3, 7, 14, 28 days), rolling averages (7/14/30), rolling volatility, arrival quantity, month/week-of-year seasonality, mandi + crop + variety + grade.
 3. **Model**: XGBoost regressor, one per crop. Naive (last value) and moving-average (7/14-day) baselines for comparison.
 4. **Validation**: chronological split only — never random shuffling on time-series data. No future leakage (lags are backward-only, target shifted forward).

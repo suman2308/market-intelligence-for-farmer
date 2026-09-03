@@ -420,6 +420,10 @@ class Forecast(Base):
 class ProduceLot(Base):
     """Central business entity — a crop lot for sale."""
     __tablename__ = "produce_lots"
+    __table_args__ = (
+        Index("ix_lots_farmer_status", "farmer_id", "status"),
+        Index("ix_lots_crop_status", "crop_id", "status"),
+    )
     id = Column(Integer, primary_key=True, index=True)
     farmer_id = Column(Integer, ForeignKey("farmer_profiles.id"), nullable=False)
     fpo_id = Column(Integer, ForeignKey("fpo_profiles.id"))
@@ -842,6 +846,10 @@ class Logistics(Base):
 class Payment(Base):
     """Payment records — simulated for MVP, clearly labelled."""
     __tablename__ = "payments"
+    __table_args__ = (
+        Index("ix_payments_order_id", "order_id"),
+        Index("ix_payments_status", "status"),
+    )
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     amount = Column(Float, nullable=False)

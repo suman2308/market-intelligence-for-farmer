@@ -14,7 +14,7 @@
 | Resource ID | 9ef84268-d588-465a-a308-a864a43d0070 |
 | Dataset | Current Daily Price of Various Commodities from Various Markets (Mandi) |
 | Coverage | Maharashtra, selected mandis |
-| Crops | Onion, Tomato, Soybean |
+| Crops | Onion, Tomato (Soybean arrivals absent from the fetched subset) |
 | Fields | State, District, Market, Commodity, Variety, Grade, Arrival_Date, Min_Price, Max_Price, Modal_Price |
 | Access | Backend API client via backend/.env (DATA_GOV_API_KEY) |
 | Rate | Daily updates (not real-time) |
@@ -27,18 +27,20 @@
 |-------|-------|
 | File | shetbhav/backend/data/maharashtra_market_prices.csv |
 | Records in DB | 770 (imported as `historical_dataset`) |
-| Crops | Onion, Tomato, Soybean |
-| Markets | Maharashtra mandis |
+| Crops | Onion, Tomato |
+| Markets | ~69 Maharashtra mandis |
 | Import command | `python -m app.scripts.import_market_data --file data/maharashtra_market_prices.csv` |
+| Auto-bootstrap | Fresh databases import this CSV on first boot when `IMPORT_HISTORICAL_CSV=true` (set on Render) so a new deploy starts with real records, not blanks |
 
 ### Live API Fetches
 
 | Field | Value |
 |-------|-------|
 | Endpoint | data.gov.in resource API (resource ID `9ef84268-d588-465a-a308-a864a43d0070`) |
-| Records in DB | 91 (labeled `live`, `is_demo=false`) |
+| Records in DB | ~93 and auto-updating daily (labeled `live`, `is_demo=false`) |
 | Frequency | Daily (the dataset refreshes once a day, not second-by-second) |
 | Sync trigger | `POST /sync/mandi` (admin) or the sync command |
+| Ceiling | The API currently serves only ~100 recent Maharashtra records per crop, so live history can't extend beyond the imported set — imported + live together are the practical real-data maximum |
 
 ### Seeded Demo Data
 
