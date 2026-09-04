@@ -8,10 +8,10 @@ import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 /**
  * Farmer Demands — the buyer-initiated direction of the transaction loop.
- * A buyer posts a demand; a farmer picks one of their own lots for that
- * crop and sends an offer against it. GET /demand already returns every
- * open demand to a farmer (no role-based filtering on that side), so this
- * page needed no backend changes beyond exposing crop/buyer names.
+ * A buyer posts a demand at a fixed price/quantity; a farmer locks it in
+ * with one of their own lots (POST /demand/{id}/fulfil) — no negotiation,
+ * since the buyer already set the terms. The buyer is notified to pay,
+ * and the transaction completes once they do.
  */
 
 type Demand = {
@@ -27,9 +27,9 @@ export default function FarmerDemands() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [respondingTo, setRespondingTo] = useState<number | null>(null);
-  const [form, setForm] = useState({ lot_id: "", price_per_q: "", quantity_kg: "" });
-  const [sending, setSending] = useState(false);
-  const [sentIds, setSentIds] = useState<Set<number>>(new Set());
+  const [selectedLotId, setSelectedLotId] = useState("");
+  const [fulfilling, setFulfilling] = useState(false);
+  const [fulfilledIds, setFulfilledIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
@@ -43,38 +43,30 @@ export default function FarmerDemands() {
 
   useEffect(() => { load(); }, [load]);
 
+  const lotsForDemand = (demand: Demand) =>
+    lots.filter(l => l.crop_id === demand.crop_id && l.quantity_kg >= demand.quantity_kg);
+
   const openRespond = (demand: Demand) => {
     setError("");
     setRespondingTo(demand.id);
-    const matchingLot = lots.find(l => l.crop_id === demand.crop_id);
-    setForm({
-      lot_id: matchingLot ? String(matchingLot.id) : "",
-      price_per_q: String(demand.offered_price_per_q || ""),
-      quantity_kg: String(Math.min(demand.quantity_kg, matchingLot?.quantity_kg || demand.quantity_kg)),
-    });
+    const matchingLot = lotsForDemand(demand)[0];
+    setSelectedLotId(matchingLot ? String(matchingLot.id) : "");
   };
 
-  const sendOffer = async (demand: Demand) => {
-    if (!form.lot_id || !form.price_per_q || !form.quantity_kg) return;
-    setSending(true);
+  const fulfil = async (demand: Demand) => {
+    if (!selectedLotId) return;
+    setFulfilling(true);
     setError("");
     try {
-      await api.post("/offers", {
-        lot_id: Number(form.lot_id),
-        demand_id: demand.id,
-        price_per_q: Number(form.price_per_q),
-        quantity_kg: Number(form.quantity_kg),
-      });
-      setSentIds(prev => new Set(prev).add(demand.id));
+      await api.post(`/demand/${demand.id}/fulfil`, { lot_id: Number(selectedLotId) });
+      setFulfilledIds(prev => new Set(prev).add(demand.id));
       setRespondingTo(null);
-    } catch {
-      setError("Could not send the offer. Please try again.");
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Could not fulfil this demand. Please try again.");
     } finally {
-      setSending(false);
+      setFulfilling(false);
     }
   };
-
-  const lotsForCrop = (cropId: number) => lots.filter(l => l.crop_id === cropId);
 
   return (
     <div className="farmer-shell">
@@ -99,8 +91,8 @@ export default function FarmerDemands() {
             description="Buyers looking for produce will show up here." />
         ) : (
           demands.map(demand => {
-            const cropLots = lotsForCrop(demand.crop_id);
-            const sent = sentIds.has(demand.id);
+            const cropLots = lotsForDemand(demand);
+            const fulfilled = fulfilledIds.has(demand.id);
             return (
               <div key={demand.id} className="card" style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -118,39 +110,34 @@ export default function FarmerDemands() {
                   </p>
                 </div>
 
-                {sent ? (
+                {fulfilled ? (
                   <p style={{ fontSize: 13, color: "var(--green-600)", fontWeight: 600, marginTop: 10 }}>
-                    ✓ Offer sent
+                    ✓ Locked — buyer notified to pay
                   </p>
                 ) : respondingTo === demand.id ? (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--stone-100, #f5f5f4)" }}>
                     {cropLots.length === 0 ? (
                       <p style={{ fontSize: 13, color: "var(--stone-400)" }}>
-                        You have no active lot for this crop yet.{" "}
+                        You have no active lot with enough quantity for this demand.{" "}
                         <a href="/farmer/sell" style={{ color: "var(--green-600)" }}>Create one</a>.
                       </p>
                     ) : (
                       <>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--stone-400)" }}>Which lot?</label>
-                        <select className="select" value={form.lot_id}
-                          onChange={e => setForm(f => ({ ...f, lot_id: e.target.value }))}
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--stone-400)" }}>Fulfil with which lot?</label>
+                        <select className="select" value={selectedLotId}
+                          onChange={e => setSelectedLotId(e.target.value)}
                           style={{ width: "100%", marginBottom: 8 }}>
                           {cropLots.map(l => (
                             <option key={l.id} value={l.id}>Lot #{l.id} · {l.quantity_kg}kg</option>
                           ))}
                         </select>
-                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                          <input className="input" type="number" placeholder="Price ₹/q"
-                            value={form.price_per_q} onChange={e => setForm(f => ({ ...f, price_per_q: e.target.value }))}
-                            style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                          <input className="input" type="number" placeholder="Quantity kg"
-                            value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
-                            style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                        </div>
+                        <p style={{ fontSize: 12, color: "var(--stone-400)", marginBottom: 8 }}>
+                          You'll supply {demand.quantity_kg}kg at the buyer's price of ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q — no negotiation, this locks the deal.
+                        </p>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
-                            disabled={sending} onClick={() => sendOffer(demand)}>
-                            {sending ? "Sending…" : "Send Offer"}
+                            disabled={fulfilling} onClick={() => fulfil(demand)}>
+                            {fulfilling ? "Locking…" : "Lock & Fulfil"}
                           </button>
                           <button style={{
                             flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
@@ -165,7 +152,7 @@ export default function FarmerDemands() {
                 ) : (
                   <button className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px", fontSize: 14 }}
                     onClick={() => openRespond(demand)}>
-                    Respond with an offer
+                    Lock & Fulfil
                   </button>
                 )}
               </div>

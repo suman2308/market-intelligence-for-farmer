@@ -13,9 +13,15 @@ export default function FPODashboard() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [lots, setLots] = useState<any[]>([]);
+  const [demands, setDemands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [tab, setTab] = useState<"overview" | "members" | "lots">("overview");
+  const [tab, setTab] = useState<"overview" | "members" | "lots" | "demands">("overview");
+  const [respondingTo, setRespondingTo] = useState<number | null>(null);
+  const [selectedLotId, setSelectedLotId] = useState("");
+  const [fulfilling, setFulfilling] = useState(false);
+  const [fulfilledIds, setFulfilledIds] = useState<Set<number>>(new Set());
+  const [demandError, setDemandError] = useState("");
   const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -33,10 +39,12 @@ export default function FPODashboard() {
       api.get("/fpo/dashboard"),
       api.get("/fpo/members"),
       api.get("/fpo/lots"),
-    ]).then(([d, m, l]) => {
+      api.get("/demand", { params: { status: "open" } }),
+    ]).then(([d, m, l, dem]) => {
       setDashboard(d.data);
       setMembers(m.data);
       setLots(l.data);
+      setDemands(dem.data);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user, authChecked]);
@@ -47,13 +55,40 @@ export default function FPODashboard() {
     { icon: "🌾", label: "Overview", tab: "overview" as const },
     { icon: "👥", label: "Members", tab: "members" as const },
     { icon: "📦", label: "Lots", tab: "lots" as const },
+    { icon: "📋", label: "Demands", tab: "demands" as const },
   ];
 
   const goLogout = () => { logout(); router.push("/login"); };
 
-  const openTab = (t: "overview" | "members" | "lots") => {
+  const openTab = (t: "overview" | "members" | "lots" | "demands") => {
     setTab(t);
     contentRef.current?.scrollTo({ top: 0 });
+  };
+
+  const activeLots = lots.filter((l: any) => l.status === "active");
+  const lotsForDemand = (demand: any) =>
+    activeLots.filter((l: any) => l.crop_id === demand.crop_id && l.quantity_kg >= demand.quantity_kg);
+
+  const openRespond = (demand: any) => {
+    setDemandError("");
+    setRespondingTo(demand.id);
+    const matchingLot = lotsForDemand(demand)[0];
+    setSelectedLotId(matchingLot ? String(matchingLot.id) : "");
+  };
+
+  const fulfil = async (demand: any) => {
+    if (!selectedLotId) return;
+    setFulfilling(true);
+    setDemandError("");
+    try {
+      await api.post(`/demand/${demand.id}/fulfil`, { lot_id: Number(selectedLotId) });
+      setFulfilledIds(prev => new Set(prev).add(demand.id));
+      setRespondingTo(null);
+    } catch (e: any) {
+      setDemandError(e.response?.data?.detail || "Could not fulfil this demand. Please try again.");
+    } finally {
+      setFulfilling(false);
+    }
   };
 
   return (
@@ -244,6 +279,88 @@ export default function FPODashboard() {
                     )}
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {/* Demands Tab */}
+          {tab === "demands" && (
+            <div className="flex-col gap-3">
+              {demandError && (
+                <div className="auth-error"><span>⚠️</span><p>{demandError}</p></div>
+              )}
+              {demands.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: 40 }}>
+                  <p style={{ fontSize: 32 }}>📋</p>
+                  <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No open demands right now</p>
+                </div>
+              ) : (
+                demands.map((demand: any) => {
+                  const cropLots = lotsForDemand(demand);
+                  const fulfilled = fulfilledIds.has(demand.id);
+                  return (
+                    <div key={demand.id} className="card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <h3 className="heading-sm" style={{ margin: 0 }}>
+                            {demand.crop_name || "Crop"} · {demand.quantity_kg}kg
+                          </h3>
+                          <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                            {demand.buyer_name || "Buyer"} · {demand.district || "—"}
+                            {demand.quality_grade ? ` · Grade ${demand.quality_grade}` : ""}
+                          </p>
+                        </div>
+                        <p style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>
+                          ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q
+                        </p>
+                      </div>
+
+                      {fulfilled ? (
+                        <p style={{ fontSize: 13, color: "var(--color-success)", fontWeight: 600, marginTop: 10 }}>
+                          ✓ Locked — buyer notified to pay
+                        </p>
+                      ) : respondingTo === demand.id ? (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--color-border)" }}>
+                          {cropLots.length === 0 ? (
+                            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                              No aggregated lot has enough quantity for this demand.
+                            </p>
+                          ) : (
+                            <>
+                              <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>
+                                Fulfil with which lot?
+                              </label>
+                              <select className="select" value={selectedLotId}
+                                onChange={e => setSelectedLotId(e.target.value)}
+                                style={{ width: "100%", marginBottom: 8 }}>
+                                {cropLots.map((l: any) => (
+                                  <option key={l.id} value={l.id}>Lot #{l.id} · {l.quantity_kg}kg</option>
+                                ))}
+                              </select>
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                                  disabled={fulfilling} onClick={() => fulfil(demand)}>
+                                  {fulfilling ? "Locking…" : "Lock & Fulfil"}
+                                </button>
+                                <button style={{
+                                  flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
+                                  border: "1px solid var(--color-border)", background: "white", cursor: "pointer",
+                                }} onClick={() => setRespondingTo(null)}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <button className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px", fontSize: 14 }}
+                          onClick={() => openRespond(demand)}>
+                          Lock & Fulfil
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           )}

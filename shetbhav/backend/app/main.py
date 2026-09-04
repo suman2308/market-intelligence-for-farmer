@@ -37,7 +37,7 @@ from models.schemas import (
     BuyerProfileResponse,
     CropResponse, MarketResponse,
     ProduceLotCreate, ProduceLotResponse,
-    DemandRequestCreate, DemandRequestResponse,
+    DemandRequestCreate, DemandRequestResponse, FulfilDemandRequest,
     OfferCreate, OfferCounter, OfferResponse,
     OrderResponse, OrderStatusUpdate,
     PaymentResponse,
@@ -384,6 +384,41 @@ def farmer_dashboard(
 
 
 # ── Produce Lot Routes ──────────────────────────────────────────────
+def _lot_seller_user_id(db: Session, lot: ProduceLot) -> Optional[int]:
+    """The user to notify about this lot — the FPO's own account if it's an
+    FPO-aggregated lot, otherwise the farmer who posted it."""
+    if lot.fpo_id:
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == lot.fpo_id).first()
+        if fpo:
+            return fpo.user_id
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+    return farmer_profile.user_id if farmer_profile else None
+
+
+def _order_seller_user_id(db: Session, order: Order) -> Optional[int]:
+    """Same idea as _lot_seller_user_id but for an Order, which carries its
+    own farmer_id/fpo_id rather than pointing back at a ProduceLot."""
+    if order.fpo_id:
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == order.fpo_id).first()
+        if fpo:
+            return fpo.user_id
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == order.farmer_id).first()
+    return farmer_profile.user_id if farmer_profile else None
+
+
+def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
+    crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
+    return ProduceLotResponse(
+        id=lot.id, farmer_id=lot.farmer_id, fpo_id=lot.fpo_id, crop_id=lot.crop_id,
+        crop_name=crop.name if crop else None,
+        quantity_kg=lot.quantity_kg, price_per_q=lot.expected_price_per_q,
+        quality_grade=lot.quality_grade,
+        address=lot.address, harvest_date=lot.harvest_date,
+        storage_available=lot.storage_available, urgency=lot.urgency,
+        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
+    )
+
+
 @app.post("/lots", response_model=ProduceLotResponse)
 def create_lot(
     data: ProduceLotCreate,
@@ -400,6 +435,7 @@ def create_lot(
         farmer_id=farmer_profile.id,
         crop_id=data.crop_id,
         quantity_kg=data.quantity_kg,
+        expected_price_per_q=data.price_per_q,
         quality_grade=data.quality_grade,
         location_lat=data.location_lat or farmer_profile.farm_location_lat,
         location_lng=data.location_lng or farmer_profile.farm_location_lng,
@@ -412,15 +448,7 @@ def create_lot(
     db.add(lot)
     db.commit()
     db.refresh(lot)
-    crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
-    return ProduceLotResponse(
-        id=lot.id, farmer_id=lot.farmer_id, crop_id=lot.crop_id,
-        crop_name=crop.name if crop else None,
-        quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
-        address=lot.address, harvest_date=lot.harvest_date,
-        storage_available=lot.storage_available, urgency=lot.urgency,
-        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
-    )
+    return _lot_to_response(db, lot)
 
 
 @app.get("/lots", response_model=List[ProduceLotResponse])
@@ -435,18 +463,7 @@ def list_lots(
     if status:
         query = query.filter(ProduceLot.status == status)
     lots = query.order_by(ProduceLot.created_at.desc()).limit(50).all()
-    results = []
-    for lot in lots:
-        crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
-        results.append(ProduceLotResponse(
-            id=lot.id, farmer_id=lot.farmer_id, crop_id=lot.crop_id,
-            crop_name=crop.name if crop else None,
-            quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
-            address=lot.address, harvest_date=lot.harvest_date,
-            storage_available=lot.storage_available, urgency=lot.urgency,
-            status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
-        ))
-    return results
+    return [_lot_to_response(db, lot) for lot in lots]
 
 
 @app.get("/lots/{lot_id}", response_model=ProduceLotResponse)
@@ -454,15 +471,71 @@ def get_lot(lot_id: int, db: Session = Depends(get_db)):
     lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
     if not lot:
         raise HTTPException(status_code=404, detail="Lot not found")
-    crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
-    return ProduceLotResponse(
-        id=lot.id, farmer_id=lot.farmer_id, crop_id=lot.crop_id,
-        crop_name=crop.name if crop else None,
-        quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
-        address=lot.address, harvest_date=lot.harvest_date,
-        storage_available=lot.storage_available, urgency=lot.urgency,
-        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
+    return _lot_to_response(db, lot)
+
+
+@app.post("/lots/{lot_id}/book", response_model=OrderResponse)
+def book_lot(
+    lot_id: int,
+    user: User = Depends(require_role(UserRole.BUYER)),
+    db: Session = Depends(get_db),
+):
+    """Direct book-and-pay purchase of an entire lot at its listed price.
+    The farmer already fixed the price by posting the lot, so there is
+    nothing to negotiate — booking is the buyer's final commitment, and
+    the transaction completes once they pay (POST /payments/{id}/simulate)."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    if lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is not available (status: {lot.status})")
+    if not lot.expected_price_per_q:
+        raise HTTPException(status_code=400, detail="This lot has no listed price")
+    buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.user_id == user.id).first()
+    if not buyer_profile:
+        raise HTTPException(status_code=400, detail="Buyer profile not found")
+
+    seller_user_id = _lot_seller_user_id(db, lot)
+    if not seller_user_id:
+        raise HTTPException(status_code=400, detail="Could not resolve this lot's seller")
+    # A direct booking still gets a lightweight Offer row, already ACCEPTED —
+    # this is bookkeeping only, there is no negotiation. Order.offer_id stays
+    # required this way without needing a schema migration.
+    offer = Offer(
+        lot_id=lot.id, from_user_id=user.id, to_user_id=seller_user_id,
+        price_per_q=lot.expected_price_per_q, quantity_kg=lot.quantity_kg,
+        status=OfferStatus.ACCEPTED,
     )
+    db.add(offer)
+    db.flush()
+
+    order = Order(
+        offer_id=offer.id,
+        farmer_id=lot.farmer_id,
+        fpo_id=lot.fpo_id,
+        buyer_id=buyer_profile.id,
+        crop_id=lot.crop_id,
+        quantity_kg=lot.quantity_kg,
+        price_per_q=lot.expected_price_per_q,
+        total_value=lot.expected_price_per_q * lot.quantity_kg / 100,
+        status=OrderStatus.PAYMENT_PENDING,
+    )
+    db.add(order)
+    lot.status = "booked"
+    db.flush()
+    db.add(OrderEvent(
+        order_id=order.id, event_type="lot_booked", title="Lot booked",
+        description=f"Booked {lot.quantity_kg:,.0f}kg at ₹{lot.expected_price_per_q:,.0f}/q. Awaiting payment.",
+        created_by=user.id,
+    ))
+    notify(
+        db, seller_user_id, "Lot booked",
+        f"Your lot #{lot.id} ({lot.quantity_kg:,.0f}kg) was booked. Awaiting buyer payment.",
+        type="lot_booked", link="/farmer/lots",
+    )
+    db.commit()
+    db.refresh(order)
+    return order
 
 
 # ── Crop Routes ──────────────────────────────────────────────────────
@@ -723,6 +796,83 @@ def list_demand(
             created_at=d.created_at,
         ))
     return results
+
+
+@app.post("/demand/{demand_id}/fulfil", response_model=OrderResponse)
+def fulfil_demand(
+    demand_id: int,
+    data: FulfilDemandRequest,
+    user: User = Depends(require_role(UserRole.FARMER, UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Direct lock-and-fulfil of a buyer's demand using one of the caller's
+    own lots. The buyer already fixed price/quantity/terms when posting the
+    demand, so this commitment is final — no negotiation. The buyer is
+    notified to pay, and the transaction completes once they do."""
+    demand = db.query(DemandRequest).filter(DemandRequest.id == demand_id).first()
+    if not demand:
+        raise HTTPException(status_code=404, detail="Demand not found")
+    if demand.status != "open":
+        raise HTTPException(status_code=400, detail=f"Demand is not open (status: {demand.status})")
+    lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    fpo_profile = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    owns_lot = (
+        (farmer_profile and lot.farmer_id == farmer_profile.id and not lot.fpo_id)
+        or (fpo_profile and lot.fpo_id == fpo_profile.id)
+    )
+    if not owns_lot:
+        raise HTTPException(status_code=403, detail="You do not own this lot")
+    if lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is not available (status: {lot.status})")
+    if lot.quantity_kg < demand.quantity_kg:
+        raise HTTPException(status_code=400, detail="Lot quantity is less than the demand requires")
+    buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == demand.buyer_id).first()
+    if not buyer_profile:
+        raise HTTPException(status_code=400, detail="Could not resolve this demand's buyer")
+
+    # A direct fulfilment still gets a lightweight Offer row, already
+    # ACCEPTED — bookkeeping only, there is no negotiation. Keeps
+    # Order.offer_id required without needing a schema migration.
+    offer = Offer(
+        lot_id=lot.id, demand_id=demand.id, from_user_id=user.id, to_user_id=buyer_profile.user_id,
+        price_per_q=demand.offered_price_per_q, quantity_kg=demand.quantity_kg,
+        status=OfferStatus.ACCEPTED,
+    )
+    db.add(offer)
+    db.flush()
+
+    order = Order(
+        offer_id=offer.id,
+        farmer_id=lot.farmer_id,
+        fpo_id=lot.fpo_id,
+        buyer_id=demand.buyer_id,
+        crop_id=demand.crop_id,
+        quantity_kg=demand.quantity_kg,
+        price_per_q=demand.offered_price_per_q,
+        total_value=demand.offered_price_per_q * demand.quantity_kg / 100,
+        status=OrderStatus.PAYMENT_PENDING,
+    )
+    db.add(order)
+    lot.status = "booked"
+    demand.status = "filled"
+    db.flush()
+    db.add(OrderEvent(
+        order_id=order.id, event_type="demand_fulfilled", title="Demand fulfilled",
+        description=f"Demand #{demand.id} fulfilled with lot #{lot.id}. Awaiting buyer payment.",
+        created_by=user.id,
+    ))
+    notify(
+        db, buyer_profile.user_id, "Your demand has been fulfilled",
+        f"Your demand for {demand.quantity_kg:,.0f}kg has been matched. Please proceed with payment.",
+        type="demand_fulfilled", link="/buyer",
+    )
+    db.commit()
+    db.refresh(order)
+    return order
 
 
 # ── Offer Routes ─────────────────────────────────────────────────────
@@ -1007,12 +1157,20 @@ def list_orders(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if user.role == UserRole.FARMER and user.farmer_profile:
-        orders = db.query(Order).filter(Order.farmer_id == user.farmer_profile.id).all()
+    if user.role == UserRole.FPO and user.fpo_profile:
+        orders = db.query(Order).filter(Order.fpo_id == user.fpo_profile.id).all()
+    elif user.role == UserRole.FARMER and user.farmer_profile:
+        # Exclude orders sold through an FPO — those belong to the FPO's
+        # own view above, not the individual (representative) farmer.
+        orders = db.query(Order).filter(
+            Order.farmer_id == user.farmer_profile.id, Order.fpo_id.is_(None)
+        ).all()
     elif user.role == UserRole.BUYER and user.buyer_profile:
         orders = db.query(Order).filter(Order.buyer_id == user.buyer_profile.id).all()
-    else:
+    elif user.role == UserRole.ADMIN:
         orders = db.query(Order).all()
+    else:
+        orders = []
     return orders[:50]
 
 
@@ -1169,16 +1327,14 @@ def simulate_payment(
     db.add(OrderEvent(order_id=order.id, event_type="payment_initiated", title="Payment initiated", description=f"Payment of ₹{order.total_value:,.0f} initiated", created_by=user.id))
     db.add(OrderEvent(order_id=order.id, event_type="payment_completed", title="Payment completed", description=f"Payment of ₹{order.total_value:,.0f} completed. Ref: {payment.transaction_ref}"))
 
-    # Notify farmer
-    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == order.farmer_id).first()
-    if farmer_profile:
-        notification = Notification(
-            user_id=farmer_profile.user_id,
-            title="Payment Received!",
-            message=f"INR {order.total_value:,.0f} payment received for order #{order.id}",
-            type="payment",
-        )
-        db.add(notification)
+    # Notify the seller (farmer or FPO) — this is the "sold + earning
+    # credited" moment the whole book/fulfil flow is building toward.
+    seller_user_id = _order_seller_user_id(db, order)
+    notify(
+        db, seller_user_id, "Lot sold!",
+        f"₹{order.total_value:,.0f} has been credited to your account for order #{order.id}.",
+        type="payment_received", link="/farmer/earnings",
+    )
     db.commit()
     db.refresh(payment)
     return payment
@@ -1945,6 +2101,7 @@ def fpo_lots(
         items = db.query(LotItem).filter(LotItem.aggregated_lot_id == lot.id).all()
         results.append({
             "id": lot.id,
+            "crop_id": lot.crop_id,
             "crop_name": crop.name if crop else "Unknown",
             "quantity_kg": lot.quantity_kg,
             "quality_grade": lot.quality_grade.value if lot.quality_grade else "unrated",

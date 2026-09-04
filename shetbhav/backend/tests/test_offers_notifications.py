@@ -35,7 +35,7 @@ class TestOfferWindow:
         farmer_token = _register_and_login("win_farmer", "farmer")
         before = datetime.utcnow()
         resp = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 500, "quality_grade": "A", "urgency": "urgent",
+            "crop_id": 1, "quantity_kg": 500, "price_per_q": 2500, "quality_grade": "A", "urgency": "urgent",
         }, headers=_auth(farmer_token))
         assert resp.status_code == 200
         lot = resp.json()
@@ -49,7 +49,7 @@ class TestOfferWindow:
         farmer_token = _register_and_login("win_farmer2", "farmer")
         buyer_token = _register_and_login("win_buyer2", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 500, "quality_grade": "A", "urgency": "flexible",
+            "crop_id": 1, "quantity_kg": 500, "price_per_q": 2500, "quality_grade": "A", "urgency": "flexible",
         }, headers=_auth(farmer_token)).json()
 
         offer_resp = client.post("/offers", json={
@@ -64,7 +64,7 @@ class TestOfferNotifications:
         farmer_token = _register_and_login("notif_farmer", "farmer")
         buyer_token = _register_and_login("notif_buyer", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 200, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
 
         client.post("/offers", json={
@@ -78,7 +78,7 @@ class TestOfferNotifications:
         farmer_token = _register_and_login("notif_farmer2", "farmer")
         buyer_token = _register_and_login("notif_buyer2", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 200, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "price_per_q": 2400, "quantity_kg": 200,
@@ -98,7 +98,7 @@ class TestOfferNotifications:
         farmer_token = _register_and_login("notif_farmer3", "farmer")
         buyer_token = _register_and_login("notif_buyer3", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 200, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "price_per_q": 2400, "quantity_kg": 200,
@@ -112,7 +112,7 @@ class TestOfferNotifications:
         farmer_token = _register_and_login("notif_farmer4", "farmer")
         buyer_token = _register_and_login("notif_buyer4", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 200, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "price_per_q": 2400, "quantity_kg": 200,
@@ -128,7 +128,7 @@ class TestOfferNotifications:
         farmer_token = _register_and_login("notif_farmer5", "farmer")
         buyer_token = _register_and_login("notif_buyer5", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 200, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "price_per_q": 2400, "quantity_kg": 200,
@@ -151,7 +151,7 @@ class TestLotOffersEndpoint:
         buyer_a = _register_and_login("rank_buyer_a", "buyer")
         buyer_b = _register_and_login("rank_buyer_b", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 500, "quality_grade": "A", "urgency": "flexible",
+            "crop_id": 1, "quantity_kg": 500, "price_per_q": 2500, "quality_grade": "A", "urgency": "flexible",
         }, headers=_auth(farmer_token)).json()
 
         client.post("/offers", json={"lot_id": lot["id"], "price_per_q": 2200, "quantity_kg": 500}, headers=_auth(buyer_a))
@@ -172,7 +172,7 @@ class TestLotOffersEndpoint:
         farmer_token = _register_and_login("expire_farmer", "farmer")
         buyer_token = _register_and_login("expire_buyer", "buyer")
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 500, "quality_grade": "A", "urgency": "urgent",
+            "crop_id": 1, "quantity_kg": 500, "price_per_q": 2500, "quality_grade": "A", "urgency": "urgent",
         }, headers=_auth(farmer_token)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "price_per_q": 2200, "quantity_kg": 500,
@@ -207,7 +207,7 @@ class TestDemandFulfilment:
         }, headers=_auth(buyer_token)).json()
 
         lot = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 800, "quality_grade": "A", "urgency": "soon",
+            "crop_id": 1, "quantity_kg": 800, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
         }, headers=_auth(farmer_token)).json()
 
         offer_resp = client.post("/offers", json={

@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import { Skeleton } from "@/components/ui";
+import { Skeleton, NotificationsPanel } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -147,6 +147,12 @@ export default function FarmerProfile() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Notifications */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>🔔 Notifications</h3>
+        <NotificationsPanel />
       </div>
 
       {/* Language */}

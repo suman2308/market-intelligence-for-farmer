@@ -63,7 +63,7 @@ class TestFarmerWorkflow:
 
         # 5. Create lot
         resp = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 3000, "quality_grade": "A",
+            "crop_id": 1, "quantity_kg": 3000, "price_per_q": 2500, "quality_grade": "A",
             "urgency": "soon", "location_lat": 20.0, "location_lng": 73.7,
         }, headers=_auth(farmer_token))
         assert resp.status_code == 200
@@ -210,7 +210,7 @@ class TestBuyerWorkflow:
         farmer_me = client.get("/auth/me", headers=_auth(farmer_token)).json()
 
         resp = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 5000, "quality_grade": "A",
+            "crop_id": 1, "quantity_kg": 5000, "price_per_q": 2500, "quality_grade": "A",
         }, headers=_auth(farmer_token))
         assert resp.status_code == 200
         lot = resp.json()
@@ -385,7 +385,7 @@ class TestTransactionStateMachine:
         bt = client.post("/auth/login", json={"username": "sm_buyer", "password": "test123456"}).json()["access_token"]
         farmer_id = client.get("/auth/me", headers=_auth(ft)).json()["id"]
 
-        lot = client.post("/lots", json={"crop_id": 1, "quantity_kg": 2000}, headers=_auth(ft)).json()
+        lot = client.post("/lots", json={"crop_id": 1, "quantity_kg": 2000, "price_per_q": 2500}, headers=_auth(ft)).json()
         offer = client.post("/offers", json={
             "lot_id": lot["id"], "to_user_id": farmer_id,
             "price_per_q": 2500, "quantity_kg": 2000,

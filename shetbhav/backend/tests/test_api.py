@@ -222,6 +222,7 @@ class TestLotOperations:
         resp = client.post("/lots", json={
             "crop_id": 1,
             "quantity_kg": 1000,
+            "price_per_q": 2500,
             "quality_grade": "A",
             "urgency": "soon",
         }, headers=auth_header(farmer_token))
@@ -234,6 +235,7 @@ class TestLotOperations:
         resp = client.post("/lots", json={
             "crop_id": 99999,
             "quantity_kg": 1000,
+            "price_per_q": 2500,
         }, headers=auth_header(farmer_token))
         assert resp.status_code == 400
 
@@ -242,6 +244,7 @@ class TestLotOperations:
         resp = client.post("/lots", json={
             "crop_id": 1,
             "quantity_kg": 0,
+            "price_per_q": 2500,
         }, headers=auth_header(farmer_token))
         assert resp.status_code == 422
 
@@ -308,6 +311,7 @@ class TestOfferLifecycle:
         resp = client.post("/lots", json={
             "crop_id": 1,
             "quantity_kg": 1000,
+            "price_per_q": 2500,
             "quality_grade": "A",
         }, headers=auth_header(farmer_token))
         return resp.json()["id"] if resp.status_code == 200 else None

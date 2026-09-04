@@ -31,7 +31,7 @@ export default function SmartSellPage() {
   const [step, setStep] = useState(0);
   const [crops, setCrops] = useState<any[]>([]);
   const [form, setForm] = useState({
-    crop_id: 0, crop_name: "", quantity_kg: 2000, quality_grade: "A",
+    crop_id: 0, crop_name: "", quantity_kg: 2000, price_per_q: 2000, quality_grade: "A",
     location_lat: 20.0057, location_lng: 73.7229,
     harvest_date: "", storage_available: true, urgency: "soon",
   });
@@ -74,7 +74,7 @@ export default function SmartSellPage() {
     setError("");
     try {
       await api.post("/lots", {
-        crop_id: form.crop_id, quantity_kg: form.quantity_kg,
+        crop_id: form.crop_id, quantity_kg: form.quantity_kg, price_per_q: form.price_per_q,
         quality_grade: form.quality_grade, location_lat: form.location_lat,
         location_lng: form.location_lng, storage_available: form.storage_available,
         urgency: form.urgency,
@@ -183,9 +183,33 @@ export default function SmartSellPage() {
               </button>
             ))}
           </div>
+
+          <h2 className="heading-lg" style={{ margin: "32px 0 4px" }}>Your asking price</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)", marginBottom: 20 }}>
+            Per quintal — this is the price buyers will see and can book at directly
+          </p>
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
+            <input
+              className="input"
+              type="number"
+              value={form.price_per_q}
+              onChange={e => setForm({ ...form, price_per_q: Number(e.target.value) })}
+              min={1} step={50}
+              style={{
+                textAlign: "center", fontSize: 32, fontWeight: 800,
+                padding: "16px", maxWidth: 280, margin: "0 auto",
+                color: "var(--color-primary)",
+              }}
+              aria-label="Asking price per quintal in rupees"
+            />
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)", marginTop: 8 }}>
+              ₹{form.price_per_q}/q
+            </p>
+          </div>
+
           <div style={{ marginTop: 24, textAlign: "center" }}>
             <button className="btn-primary" style={{ maxWidth: 300, margin: "0 auto" }}
-              onClick={() => setStep(2)} disabled={form.quantity_kg <= 0}>
+              onClick={() => setStep(2)} disabled={form.quantity_kg <= 0 || form.price_per_q <= 0}>
               {t("next")} →
             </button>
           </div>
@@ -299,6 +323,7 @@ export default function SmartSellPage() {
               {[
                 ["Crop", `${cropEmoji(form.crop_name)} ${form.crop_name}`],
                 ["Quantity", `${form.quantity_kg.toLocaleString("en-IN")} kg (${(form.quantity_kg / 100).toFixed(1)} q)`],
+                ["Asking price", `₹${form.price_per_q.toLocaleString("en-IN")}/q`],
                 ["Quality", `Grade ${form.quality_grade}`],
                 ["Urgency", form.urgency === "urgent" ? "Within 2 days" : form.urgency === "soon" ? "Within 3-5 days" : "Flexible timing"],
                 ["Storage", form.storage_available ? "Available" : "Not available"],

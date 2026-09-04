@@ -681,8 +681,17 @@ class Order(Base):
     """Separate from offers. Created when an offer is accepted."""
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
+    # A direct Book / Lock & Fulfil transaction still gets a lightweight,
+    # already-ACCEPTED Offer row created under the hood (see app.main
+    # book_lot / fulfil_demand) purely so this stays required — relaxing
+    # NOT NULL on an existing SQLite column needs a full table rebuild,
+    # which the additive-only auto-migration in config/database.py can't do.
     offer_id = Column(Integer, ForeignKey("offers.id"), nullable=False)
     farmer_id = Column(Integer, ForeignKey("farmer_profiles.id"), nullable=False)
+    # Set when an FPO (rather than an individual farmer) is the seller —
+    # farmer_id still holds the FPO's representative contact farmer, same
+    # convention services/fpo_aggregation.py already uses for ProduceLot.
+    fpo_id = Column(Integer, ForeignKey("fpo_profiles.id"), nullable=True)
     buyer_id = Column(Integer, ForeignKey("buyer_profiles.id"), nullable=False)
     crop_id = Column(Integer, ForeignKey("crops.id"), nullable=False)
     quantity_kg = Column(Float, nullable=False)

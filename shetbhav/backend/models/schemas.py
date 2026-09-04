@@ -152,6 +152,7 @@ class MarketPriceOverview(BaseModel):
 class ProduceLotCreate(BaseModel):
     crop_id: int
     quantity_kg: float = Field(gt=0)
+    price_per_q: float = Field(gt=0)
     quality_grade: QualityGrade = QualityGrade.UNRATED
     location_lat: Optional[float] = None
     location_lng: Optional[float] = None
@@ -163,9 +164,11 @@ class ProduceLotCreate(BaseModel):
 class ProduceLotResponse(BaseModel):
     id: int
     farmer_id: int
+    fpo_id: Optional[int] = None
     crop_id: int
     crop_name: Optional[str] = None
     quantity_kg: float
+    price_per_q: Optional[float] = None
     quality_grade: QualityGrade
     address: Optional[str] = None
     harvest_date: Optional[datetime] = None
@@ -177,6 +180,9 @@ class ProduceLotResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class FulfilDemandRequest(BaseModel):
+    lot_id: int
 
 # ── Demand ───────────────────────────────────────────────────────────
 class DemandRequestCreate(BaseModel):
@@ -241,8 +247,9 @@ class OfferResponse(BaseModel):
 # ── Orders ───────────────────────────────────────────────────────────
 class OrderResponse(BaseModel):
     id: int
-    offer_id: int
+    offer_id: Optional[int] = None
     farmer_id: int
+    fpo_id: Optional[int] = None
     buyer_id: int
     crop_id: int
     quantity_kg: float

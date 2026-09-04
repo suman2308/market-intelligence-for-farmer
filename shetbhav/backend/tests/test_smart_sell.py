@@ -290,7 +290,7 @@ class TestSmartSellFullWorkflow:
 
         # Step 2: Create lot based on recommendation
         resp = client.post("/lots", json={
-            "crop_id": 1, "quantity_kg": 3000, "quality_grade": "A",
+            "crop_id": 1, "quantity_kg": 3000, "price_per_q": 2500, "quality_grade": "A",
             "urgency": "soon",
         }, headers=_auth(token))
         assert resp.status_code == 200

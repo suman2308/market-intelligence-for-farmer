@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { EmptyState, Skeleton, NotificationBell } from "@/components/ui";
+import { EmptyState, Skeleton, NotificationBell, NotificationsPanel } from "@/components/ui";
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -22,12 +22,14 @@ export default function BuyerDashboard() {
     crop_id: 0, quantity_kg: 5000, quality_grade: "A",
     required_by_date: "", district: "Pune", offered_price_per_q: 2500,
   });
-  const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders">("lots");
+  const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders" | "notifications">("lots");
   const [loading, setLoading] = useState(true);
   const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
   const [counterOfferId, setCounterOfferId] = useState<number | null>(null);
   const [counterPrice, setCounterPrice] = useState("");
   const [actionError, setActionError] = useState("");
+  const [bookingLotId, setBookingLotId] = useState<number | null>(null);
+  const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const contentRef = useRef<HTMLElement | null>(null);
 
   const refreshOffersAndOrders = () => {
@@ -87,11 +89,12 @@ export default function BuyerDashboard() {
     { icon: "📋", label: "My Demands", tab: "demands" as const },
     { icon: "📨", label: "My Offers", tab: "offers" as const },
     { icon: "🚚", label: "My Orders", tab: "orders" as const },
+    { icon: "🔔", label: "Notifications", tab: "notifications" as const },
   ];
 
   const goLogout = () => { logout(); router.push("/login"); };
 
-  const openTab = (tab: "lots" | "demands" | "offers" | "orders") => {
+  const openTab = (tab: "lots" | "demands" | "offers" | "orders" | "notifications") => {
     setActiveTab(tab);
     contentRef.current?.scrollTo({ top: 0 });
   };
@@ -109,6 +112,36 @@ export default function BuyerDashboard() {
       setDemand(data);
     } catch (e: any) {
       setActionError(e.response?.data?.detail || "Could not post the demand. Please try again.");
+    }
+  };
+
+  const bookLot = async (lot: any) => {
+    setActionError("");
+    setBookingLotId(lot.id);
+    try {
+      await api.post(`/lots/${lot.id}/book`);
+      const [lotsResp, ordersResp] = await Promise.all([api.get("/lots?status=active"), api.get("/orders")]);
+      setLots(lotsResp.data);
+      setOrders(ordersResp.data);
+      setActiveTab("orders");
+    } catch (e: any) {
+      setActionError(e.response?.data?.detail || "Could not book this lot. Please try again.");
+    } finally {
+      setBookingLotId(null);
+    }
+  };
+
+  const payOrder = async (orderId: number) => {
+    setActionError("");
+    setPayingOrderId(orderId);
+    try {
+      await api.post(`/payments/${orderId}/simulate`);
+      const { data } = await api.get("/orders");
+      setOrders(data);
+    } catch (e: any) {
+      setActionError(e.response?.data?.detail || "Payment failed. Please try again.");
+    } finally {
+      setPayingOrderId(null);
     }
   };
 
@@ -229,12 +262,24 @@ export default function BuyerDashboard() {
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lot.crop_name} — {lot.quantity_kg}kg</p>
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {lot.quality_grade || "Any"} · {lot.address}</p>
                   </div>
-                  <span className={`badge badge-${lot.status === "active" ? "active" : "pending"}`}>{lot.status}</span>
+                  <div style={{ textAlign: "right" }}>
+                    {lot.price_per_q && (
+                      <p className="price-highlight" style={{ margin: 0 }}>₹{lot.price_per_q.toLocaleString("en-IN")}/q</p>
+                    )}
+                    <span className={`badge badge-${lot.status === "active" ? "active" : "pending"}`}>{lot.status}</span>
+                  </div>
                 </div>
-                <button className="btn-primary btn-sm" style={{ marginTop: 10 }}
-                  onClick={() => { setOfferForm({ price_per_q: 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setOfferModal(lot); }}>
-                  📩 Make Offer
-                </button>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button className="btn-primary btn-sm" style={{ flex: 1 }}
+                    disabled={!lot.price_per_q || bookingLotId === lot.id}
+                    onClick={() => bookLot(lot)}>
+                    {bookingLotId === lot.id ? "Booking…" : `📦 Book at ₹${lot.price_per_q?.toLocaleString("en-IN") ?? "—"}/q`}
+                  </button>
+                  <button className="btn-secondary btn-sm"
+                    onClick={() => { setOfferForm({ price_per_q: lot.price_per_q || 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setOfferModal(lot); }}>
+                    Propose price
+                  </button>
+                </div>
               </div>
             ))}
           </>
@@ -359,8 +404,23 @@ export default function BuyerDashboard() {
                     <span className={`badge badge-${o.status === "paid" || o.status === "completed" ? "completed" : "active"}`}>{o.status}</span>
                   </div>
                 </div>
+                {(o.status === "payment_pending" || o.status === "accepted") && (
+                  <button className="btn-primary btn-sm" style={{ marginTop: 10, width: "100%" }}
+                    disabled={payingOrderId === o.id}
+                    onClick={() => payOrder(o.id)}>
+                    {payingOrderId === o.id ? "Processing…" : `💳 Pay ₹${o.total_value?.toLocaleString("en-IN")}`}
+                  </button>
+                )}
               </div>
             ))}
+          </>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === "notifications" && (
+          <>
+            <h3 className="heading-sm" style={{ marginBottom: 8 }}>Notifications</h3>
+            <NotificationsPanel />
           </>
         )}
           </div>

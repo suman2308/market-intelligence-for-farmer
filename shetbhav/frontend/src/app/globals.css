@@ -352,6 +352,24 @@ body {
 .notif-bell-item-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .notif-bell-item-msg { font-size: 12px; color: var(--text-secondary); }
 
+/* ── Notifications Panel (inline, for Profile pages) ─────────────── */
+.notif-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--stone-200, #e7e5e4);
+  border-radius: 10px;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+}
+.notif-panel-item:hover { border-color: var(--green-300); }
+.notif-panel-item.unread { background: var(--green-50); border-color: var(--green-300); }
+.notif-panel-item-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.notif-panel-item-msg { font-size: 12px; color: var(--text-secondary); }
+
 .select {
   width: 100%;
   padding: 14px 16px;

@@ -749,6 +749,45 @@ export function NotificationBell() {
   );
 }
 
+/** Full inline notification list (not a dropdown) — for embedding in a
+ * Profile page's own "Notifications" section, alongside the header bell. */
+export function NotificationsPanel() {
+  const router = useRouter();
+  const [notifs, setNotifs] = React.useState<NotificationItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    api.get<NotificationItem[]>("/notifications")
+      .then(r => setNotifs(r.data))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleClick = (n: NotificationItem) => {
+    if (!n.is_read) {
+      api.post(`/notifications/${n.id}/read`).catch(() => {});
+      setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    if (n.link) router.push(n.link);
+  };
+
+  if (loading) return <Skeleton height={56} count={2} />;
+  if (notifs.length === 0) {
+    return <p className="text-sm" style={{ color: "var(--text-muted)", margin: 0 }}>No notifications yet</p>;
+  }
+
+  return (
+    <div className="flex-col gap-2">
+      {notifs.map(n => (
+        <button key={n.id} type="button" onClick={() => handleClick(n)}
+          className={`notif-panel-item ${n.is_read ? "" : "unread"}`}>
+          <span className="notif-panel-item-title">{n.title}</span>
+          <span className="notif-panel-item-msg">{n.message}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Skeleton ────────────────────────────────────────────────────────
 
 export function Skeleton({ height = 60, count = 1 }: { height?: number; count?: number }) {
