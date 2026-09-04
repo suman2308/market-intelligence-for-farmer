@@ -19,7 +19,7 @@ const TABS = [
 const CHILDREN: Record<string, string[]> = {
   "/farmer": ["/farmer/lots"],
   "/farmer/prices": ["/farmer/buyers"],
-  "/farmer/sell": ["/farmer/quality"],
+  "/farmer/sell": ["/farmer/quality", "/farmer/offers", "/farmer/demands"],
   "/farmer/orders": [],
   "/farmer/profile": ["/farmer/earnings", "/farmer/grievance"],
 };

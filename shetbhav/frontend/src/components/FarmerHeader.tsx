@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
+import { NotificationBell } from "@/components/ui";
 
 const LANGS: { code: Lang; label: string }[] = [
   { code: "en", label: "EN" },
@@ -23,7 +24,7 @@ export default function FarmerHeader() {
         <span className="farmer-header-logo">🌾</span>
         <span className="farmer-header-title">{t("app_name")}</span>
       </div>
-      <div className="farmer-header-right">
+      <div className="farmer-header-right" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div className="lang-toggle" role="group" aria-label="Language">
           {LANGS.map(l => (
             <button
@@ -36,6 +37,7 @@ export default function FarmerHeader() {
             </button>
           ))}
         </div>
+        <NotificationBell />
       </div>
     </div>
   );

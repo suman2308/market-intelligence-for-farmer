@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/store";
+import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import type { Lang } from "@/lib/i18n";
+import { PasswordInput } from "@/components/ui";
 
 const ROLES = [
   { value: "farmer", icon: "👨‍🌾", labelKey: "i_am_farmer", descKey: "role_farmer_desc" },
@@ -18,6 +19,9 @@ const LANGS: { code: Lang; label: string }[] = [
   { code: "mr", label: "मरा" },
 ];
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type DetailField = "full_name" | "username" | "email" | "phone" | "password";
+
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
@@ -29,7 +33,55 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [availability, setAvailability] = useState<{ username?: boolean; email?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<DetailField, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<DetailField, boolean>>>({});
+  const [toast, setToast] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const validateField = useCallback((field: DetailField, value: string): string => {
+    switch (field) {
+      case "full_name":
+        return value.trim() ? "" : t("full_name_required");
+      case "username":
+        if (!value) return t("username_required");
+        if (value.length < 3) return t("username_min_length");
+        return "";
+      case "email":
+        if (!value) return t("email_required");
+        if (!EMAIL_RE.test(value)) return t("email_invalid");
+        return "";
+      case "phone":
+        if (!value) return "";
+        return /^\d{10}$/.test(value) ? "" : t("phone_invalid");
+      case "password":
+        if (!value) return t("password_required");
+        if (value.length < 6) return t("password_min_length");
+        return "";
+      default:
+        return "";
+    }
+  }, [t]);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(""), 3500);
+  }, []);
+
+  useEffect(() => { return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current as ReturnType<typeof setTimeout>); }; }, []);
+
+  const handleFieldChange = (field: DetailField, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (touched[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: validateField(field, value) }));
+    }
+  };
+
+  const handleFieldBlur = (field: DetailField) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    setFieldErrors(prev => ({ ...prev, [field]: validateField(field, form[field]) }));
+  };
 
   const checkAvailability = useCallback(async (field: "username" | "email", value: string) => {
     if (!value || value.length < 3) { setAvailability(prev => ({ ...prev, [field]: undefined })); return; }
@@ -49,7 +101,22 @@ export default function RegisterPage() {
 
   const handleDetails = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.username || !form.email || !form.password || !form.full_name) return;
+    const fields: DetailField[] = ["full_name", "username", "email", "phone", "password"];
+    const errors: Partial<Record<DetailField, string>> = {};
+    fields.forEach(f => {
+      const msg = validateField(f, form[f]);
+      if (msg) errors[f] = msg;
+    });
+    if (!errors.username && availability.username === false) errors.username = t("username_taken");
+    if (!errors.email && availability.email === false) errors.email = t("email_taken");
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setTouched({ full_name: true, username: true, email: true, phone: true, password: true });
+      showToast(t("fix_highlighted_fields"));
+      return;
+    }
+    setFieldErrors({});
     setStep("role");
   };
 
@@ -59,9 +126,10 @@ export default function RegisterPage() {
     setError("");
     try {
       await register(form);
-      router.push(form.role === "buyer" ? "/buyer" : form.role === "fpo" ? "/fpo" : "/farmer");
+      router.push(roleHomePath(form.role));
     } catch {
       setError(t("registration_failed"));
+      showToast(t("registration_failed"));
       setStep("details");
     } finally {
       setLoading(false);
@@ -70,6 +138,12 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page" key={lang}>
+      {toast && (
+        <div className="toast-popup" role="alert">
+          <span className="toast-popup-icon">⚠️</span>
+          <span>{toast}</span>
+        </div>
+      )}
       {/* Mobile green header */}
       <header className="auth-mobile-header">
         <div className="auth-mobile-header-left">
@@ -142,37 +216,58 @@ export default function RegisterPage() {
               <h2 className="auth-title">{t("create_account_title")}</h2>
               <p className="auth-subtitle">{t("create_account_subtitle")}</p>
 
-              <form onSubmit={handleDetails} className="auth-form">
+              <form onSubmit={handleDetails} className="auth-form" noValidate>
                 <div className="auth-field">
                   <label className="auth-label">{t("full_name")}</label>
-                  <input className="input" placeholder={t("full_name")} value={form.full_name}
-                    onChange={e => setForm({ ...form, full_name: e.target.value })} required maxLength={200} />
+                  <input className={`input ${touched.full_name && fieldErrors.full_name ? "input-error" : ""}`}
+                    placeholder={t("full_name")} value={form.full_name}
+                    onChange={e => handleFieldChange("full_name", e.target.value)}
+                    onBlur={() => handleFieldBlur("full_name")}
+                    maxLength={200} />
+                  {touched.full_name && fieldErrors.full_name && (
+                    <div className="field-popup">{fieldErrors.full_name}</div>
+                  )}
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("username")}</label>
-                  <input className="input" style={availability.username === false ? { borderColor: '#dc2626' } : availability.username === true ? { borderColor: '#16a34a' } : {}}
+                  <input className={`input ${touched.username && (fieldErrors.username || availability.username === false) ? "input-error" : availability.username === true ? "input-success" : ""}`}
                     placeholder={t("username")} value={form.username}
-                    onChange={e => { setForm({ ...form, username: e.target.value }); debouncedCheck("username", e.target.value); }}
-                    required minLength={3} maxLength={100} />
-                  {availability.username === false && <span style={{ fontSize: 12, color: '#dc2626' }}>{t("username_taken")}</span>}
+                    onChange={e => { handleFieldChange("username", e.target.value); debouncedCheck("username", e.target.value); }}
+                    onBlur={() => handleFieldBlur("username")}
+                    maxLength={100} />
+                  {touched.username && (fieldErrors.username || availability.username === false) && (
+                    <div className="field-popup">{fieldErrors.username || t("username_taken")}</div>
+                  )}
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("email")}</label>
-                  <input className="input" type="email" style={availability.email === false ? { borderColor: '#dc2626' } : availability.email === true ? { borderColor: '#16a34a' } : {}}
-                    placeholder={t("email")} value={form.email}
-                    onChange={e => { setForm({ ...form, email: e.target.value }); debouncedCheck("email", e.target.value); }} required />
-                  {availability.email === false && <span style={{ fontSize: 12, color: '#dc2626' }}>{t("email_taken")}</span>}
+                  <input className={`input ${touched.email && (fieldErrors.email || availability.email === false) ? "input-error" : availability.email === true ? "input-success" : ""}`}
+                    type="email" placeholder={t("email")} value={form.email}
+                    onChange={e => { handleFieldChange("email", e.target.value); debouncedCheck("email", e.target.value); }}
+                    onBlur={() => handleFieldBlur("email")} />
+                  {touched.email && (fieldErrors.email || availability.email === false) && (
+                    <div className="field-popup">{fieldErrors.email || t("email_taken")}</div>
+                  )}
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("phone")}</label>
-                  <input className="input" type="tel" placeholder="9876543210" value={form.phone}
-                    onChange={e => setForm({ ...form, phone: e.target.value })}
-                    pattern="\d{10}" title={t("phone")} />
+                  <input className={`input ${touched.phone && fieldErrors.phone ? "input-error" : ""}`}
+                    type="tel" placeholder="9876543210" value={form.phone}
+                    onChange={e => handleFieldChange("phone", e.target.value)}
+                    onBlur={() => handleFieldBlur("phone")} />
+                  {touched.phone && fieldErrors.phone && (
+                    <div className="field-popup">{fieldErrors.phone}</div>
+                  )}
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("password")}</label>
-                  <input className="input" type="password" placeholder={t("password")} value={form.password}
-                    onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
+                  <PasswordInput className={`input ${touched.password && fieldErrors.password ? "input-error" : ""}`}
+                    placeholder={t("password")} value={form.password}
+                    onChange={e => handleFieldChange("password", e.target.value)}
+                    onBlur={() => handleFieldBlur("password")} />
+                  {touched.password && fieldErrors.password && (
+                    <div className="field-popup">{fieldErrors.password}</div>
+                  )}
                 </div>
                 <button className="btn-primary auth-submit" type="submit" disabled={availability.username === false || availability.email === false}>
                   {t("continue")}
