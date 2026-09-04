@@ -11,7 +11,7 @@ const api = axios.create({
 // Attach token automatically
 if (typeof window !== "undefined") {
   api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("shetbhav_token");
+    const token = sessionStorage.getItem("shetbhav_token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   });
@@ -22,7 +22,7 @@ if (typeof window !== "undefined") {
       const isAuthPage = typeof window !== "undefined" &&
         (window.location.pathname === "/login" || window.location.pathname === "/register");
       if (err.response?.status === 401 && !isAuthPage) {
-        localStorage.removeItem("shetbhav_token");
+        sessionStorage.removeItem("shetbhav_token");
         window.location.href = "/login";
       }
       return Promise.reject(err);

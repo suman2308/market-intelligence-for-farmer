@@ -27,6 +27,7 @@ export default function BuyerDashboard() {
   const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
   const [counterOfferId, setCounterOfferId] = useState<number | null>(null);
   const [counterPrice, setCounterPrice] = useState("");
+  const [actionError, setActionError] = useState("");
   const contentRef = useRef<HTMLElement | null>(null);
 
   const refreshOffersAndOrders = () => {
@@ -96,6 +97,7 @@ export default function BuyerDashboard() {
   };
 
   const createDemand = async () => {
+    setActionError("");
     try {
       await api.post("/demand", {
         ...demandForm,
@@ -105,10 +107,13 @@ export default function BuyerDashboard() {
       setShowCreateDemand(false);
       const { data } = await api.get("/demand");
       setDemand(data);
-    } catch {}
+    } catch (e: any) {
+      setActionError(e.response?.data?.detail || "Could not post the demand. Please try again.");
+    }
   };
 
   const createOffer = async (lot: any) => {
+    setActionError("");
     try {
       await api.post("/offers", {
         lot_id: lot.id,
@@ -119,7 +124,9 @@ export default function BuyerDashboard() {
       setOfferModal(null);
       const { data } = await api.get("/offers");
       setOffers(data);
-    } catch {}
+    } catch (e: any) {
+      setActionError(e.response?.data?.detail || "Could not send the offer. Please try again.");
+    }
   };
 
   return (
@@ -158,6 +165,12 @@ export default function BuyerDashboard() {
 
         <main className="role-content" ref={contentRef}>
           <div className="role-inner">
+
+        {actionError && (
+          <div className="auth-error" style={{ marginBottom: 16 }}>
+            <span>⚠️</span><p>{actionError}</p>
+          </div>
+        )}
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
