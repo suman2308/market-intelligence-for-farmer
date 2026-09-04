@@ -3,7 +3,7 @@ Pydantic schemas for API request/response validation.
 """
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from models.database import (
     UserRole, QualityGrade, OrderStatus, OfferStatus,
     GrievanceStatus, GrievanceCategory, PaymentStatus,
@@ -22,10 +22,10 @@ class TokenResponse(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=100)
-    email: str
+    email: EmailStr
     password: str = Field(min_length=6)
-    full_name: str
-    phone: Optional[str] = None
+    full_name: str = Field(min_length=1, max_length=200)
+    phone: Optional[str] = Field(default=None, pattern=r"^\d{10}$")
     role: UserRole
     language: str = "en"
 
@@ -307,6 +307,17 @@ class GrievanceResolution(BaseModel):
     status: GrievanceStatus
     admin_response: str
     resolution: Optional[str] = None
+
+class GrievanceStatusEventResponse(BaseModel):
+    id: int
+    from_status: Optional[GrievanceStatus] = None
+    to_status: GrievanceStatus
+    note: Optional[str] = None
+    changed_by: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # ── Storage ──────────────────────────────────────────────────────────
 class StorageFacilityResponse(BaseModel):

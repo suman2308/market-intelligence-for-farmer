@@ -101,9 +101,14 @@ def score_sell_option(
     distance_km: float,
     forecast_confidence: float,
     sale_window_days: int,
+    reference_price: Optional[float] = None,
 ) -> SellOption:
     """§17: Calculate Smart Sell Score based on documented factors."""
     net = calculate_net_realization(gross_price, transport_cost, storage_cost, expected_loss)
+    # Baseline for "price advantage" must be the crop's actual current market
+    # price — a fixed constant here would misjudge any crop priced far from it.
+    if reference_price is None:
+        reference_price = gross_price
 
     # Scoring weights (documented in §17)
     W = {
@@ -122,8 +127,8 @@ def score_sell_option(
     # Net realization score (0-100)
     scores["net_realization"] = min(100, max(0, net / 30))
 
-    # Price advantage vs market average
-    scores["price_advantage"] = min(100, max(0, (gross_price - 2000) / 15))
+    # Price advantage vs current market price
+    scores["price_advantage"] = min(100, max(0, 50 + (gross_price - reference_price) / reference_price * 100))
 
     # Transport cost (lower is better)
     scores["transport"] = max(0, 100 - transport_cost * 0.8)
@@ -277,6 +282,7 @@ def get_smart_sell_recommendation(
         distance_km=mandi_cost / TRANSPORT_COST_PER_KM,
         forecast_confidence=forecast.get("confidence", 0.5),
         sale_window_days=1,
+        reference_price=current_modal,
     )
     mandi_option.data_labels["gross_price"] = market_data.get("data_source_label", "Market data")
     options.append(mandi_option)
@@ -317,6 +323,7 @@ def get_smart_sell_recommendation(
             distance_km=transport / TRANSPORT_COST_PER_KM,
             forecast_confidence=forecast.get("confidence", 0.5),
             sale_window_days=3,
+            reference_price=current_modal,
         )
         options.append(buyer_option)
 
@@ -362,6 +369,7 @@ def get_smart_sell_recommendation(
             distance_km=future_transport / TRANSPORT_COST_PER_KM,
             forecast_confidence=forecast_confidence * 0.8,
             sale_window_days=storage_days,
+            reference_price=current_modal,
         )
         storage_option.reasons.append(f"Forecast: ₹{future_price:,.0f}/q in {storage_days} days")
         storage_option.reasons.append(f"Net after all costs: ₹{storage_net:,.0f}/q")
