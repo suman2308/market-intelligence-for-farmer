@@ -905,6 +905,25 @@ class GrievanceMessage(Base):
     sender = relationship("User")
 
 
+class GrievanceStatusEvent(Base):
+    """Audit trail of every status transition a grievance goes through."""
+    __tablename__ = "grievance_status_events"
+    id = Column(Integer, primary_key=True, index=True)
+    grievance_id = Column(Integer, ForeignKey("grievances.id"), nullable=False)
+    from_status = Column(Enum(GrievanceStatus))
+    to_status = Column(Enum(GrievanceStatus), nullable=False)
+    note = Column(Text)
+    changed_by = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    grievance = relationship("Grievance")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_grievance_status_events_grievance", "grievance_id", "created_at"),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # RECOMMENDATIONS
 # ═══════════════════════════════════════════════════════════════════════

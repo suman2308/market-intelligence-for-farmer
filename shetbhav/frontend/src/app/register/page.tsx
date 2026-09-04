@@ -146,13 +146,14 @@ export default function RegisterPage() {
                 <div className="auth-field">
                   <label className="auth-label">{t("full_name")}</label>
                   <input className="input" placeholder={t("full_name")} value={form.full_name}
-                    onChange={e => setForm({ ...form, full_name: e.target.value })} required />
+                    onChange={e => setForm({ ...form, full_name: e.target.value })} required maxLength={200} />
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("username")}</label>
                   <input className="input" style={availability.username === false ? { borderColor: '#dc2626' } : availability.username === true ? { borderColor: '#16a34a' } : {}}
                     placeholder={t("username")} value={form.username}
-                    onChange={e => { setForm({ ...form, username: e.target.value }); debouncedCheck("username", e.target.value); }} required />
+                    onChange={e => { setForm({ ...form, username: e.target.value }); debouncedCheck("username", e.target.value); }}
+                    required minLength={3} maxLength={100} />
                   {availability.username === false && <span style={{ fontSize: 12, color: '#dc2626' }}>{t("username_taken")}</span>}
                 </div>
                 <div className="auth-field">
@@ -165,7 +166,8 @@ export default function RegisterPage() {
                 <div className="auth-field">
                   <label className="auth-label">{t("phone")}</label>
                   <input className="input" type="tel" placeholder="9876543210" value={form.phone}
-                    onChange={e => setForm({ ...form, phone: e.target.value })} />
+                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                    pattern="\d{10}" title={t("phone")} />
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("password")}</label>
