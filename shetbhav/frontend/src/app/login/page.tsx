@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/store";
+import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
+import { PasswordInput } from "@/components/ui";
 
 const LANGS: { code: Lang; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
@@ -29,12 +30,7 @@ export default function LoginPage() {
       await login(username, password);
       // Route by the account's real role so a user can never land on the
       // wrong dashboard (which would surface 403 errors).
-      const actualRole = useAuth.getState().user?.role || "farmer";
-      router.push(
-        actualRole === "buyer" ? "/buyer" :
-        actualRole === "admin" ? "/admin" :
-        actualRole === "fpo" ? "/fpo" : "/farmer"
-      );
+      router.push(roleHomePath(useAuth.getState().user?.role || "farmer"));
     } catch {
       setError(t("invalid_credentials"));
     } finally {
@@ -122,7 +118,7 @@ export default function LoginPage() {
             </div>
             <div className="auth-field">
               <label className="auth-label">{t("password")}</label>
-              <input className="input" type="password" placeholder={t("password")} value={password}
+              <PasswordInput className="input" placeholder={t("password")} value={password}
                 onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
             </div>
             {error && (

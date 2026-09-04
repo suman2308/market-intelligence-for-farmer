@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { useAuth } from "@/lib/store";
+import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { NotificationBell } from "@/components/ui";
 
 export default function FPODashboard() {
   const router = useRouter();
@@ -13,17 +14,19 @@ export default function FPODashboard() {
   const [members, setMembers] = useState<any[]>([]);
   const [lots, setLots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const [tab, setTab] = useState<"overview" | "members" | "lots">("overview");
   const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    loadUser();
+    loadUser().finally(() => setAuthChecked(true));
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!authChecked) return;
+    if (!user) { router.push("/login"); return; }
     if (user.role !== "fpo") {
-      router.push("/login");
+      router.push(roleHomePath(user.role));
       return;
     }
     Promise.all([
@@ -36,9 +39,9 @@ export default function FPODashboard() {
       setLots(l.data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [user]);
+  }, [user, authChecked]);
 
-  if (!user || user.role !== "fpo") return null;
+  if (!authChecked || !user || user.role !== "fpo") return null;
 
   const sidebarItems = [
     { icon: "🌾", label: "Overview", tab: "overview" as const },
@@ -83,6 +86,7 @@ export default function FPODashboard() {
             </p>
           </div>
           <div className="role-topbar-actions">
+            <NotificationBell />
             <button className="logout-btn" onClick={goLogout}>⏻ {t("logout") || "Log out"}</button>
           </div>
         </header>

@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/store";
+import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import { EmptyState, Skeleton } from "@/components/ui";
+import { EmptyState, Skeleton, NotificationBell } from "@/components/ui";
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -24,11 +24,39 @@ export default function BuyerDashboard() {
   });
   const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders">("lots");
   const [loading, setLoading] = useState(true);
+  const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
+  const [counterOfferId, setCounterOfferId] = useState<number | null>(null);
+  const [counterPrice, setCounterPrice] = useState("");
   const contentRef = useRef<HTMLElement | null>(null);
+
+  const refreshOffersAndOrders = () => {
+    Promise.all([api.get("/offers"), api.get("/orders")])
+      .then(([o, or]) => { setOffers(o.data); setOrders(or.data); })
+      .catch(() => {});
+  };
+
+  const actOnOffer = async (offerId: number, action: "accept" | "reject" | "counter", price?: string) => {
+    setBusyOfferId(offerId);
+    try {
+      if (action === "counter") {
+        await api.post(`/offers/${offerId}/counter`, { price_per_q: Number(price) });
+        setCounterOfferId(null);
+        setCounterPrice("");
+      } else {
+        await api.post(`/offers/${offerId}/${action}`);
+        if (action === "accept") setActiveTab("orders");
+      }
+      refreshOffersAndOrders();
+    } catch {
+      // Errors surface via the offer's status staying unchanged; nothing further needed here.
+    } finally {
+      setBusyOfferId(null);
+    }
+  };
 
   useEffect(() => { loadUser().finally(() => setLoading(false)); }, []);
   useEffect(() => {
-    if (user) {
+    if (user && user.role === "buyer") {
       Promise.all([
         api.get("/demand").catch(() => ({ data: [] })),
         api.get("/crops").catch(() => ({ data: [] })),
@@ -50,7 +78,8 @@ export default function BuyerDashboard() {
   }, [user]);
 
   if (loading) return <div style={{ padding: 16 }}><Skeleton height={80} count={4} /></div>;
-  if (!user) return null;
+  if (!user) { router.push("/login"); return null; }
+  if (user.role !== "buyer") { router.push(roleHomePath(user.role)); return null; }
 
   const sidebarItems = [
     { icon: "📦", label: "Browse Lots", tab: "lots" as const },
@@ -122,6 +151,7 @@ export default function BuyerDashboard() {
           </div>
           <div className="role-topbar-actions">
             <span className="badge badge-green hide-mobile">✓ Verified Buyer</span>
+            <NotificationBell />
             <button className="logout-btn" onClick={goLogout}>⏻ {t("logout") || "Log out"}</button>
           </div>
         </header>
@@ -228,26 +258,73 @@ export default function BuyerDashboard() {
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>My Offers</h3>
             {offers.length === 0 ? (
               <EmptyState icon="📩" title="No offers yet" description="Browse lots to make one" />
-            ) : offers.map((o: any) => (
-              <div key={o.id} className="card" style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Offer #{o.id}</p>
-                    <p className="text-sm" style={{ margin: "2px 0 0" }}>{o.quantity_kg}kg @ ₹{o.price_per_q?.toLocaleString("en-IN")}/q</p>
+            ) : offers.map((o: any) => {
+              // Only offers currently addressed to this buyer (a farmer's
+              // fresh offer against a demand, or a farmer's counter on an
+              // offer this buyer sent) can be acted on here.
+              const awaitingMe = o.to_user_id === user.id && (o.status === "pending" || o.status === "countered");
+              return (
+                <div key={o.id} className="card" style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Offer #{o.id}</p>
+                      <p className="text-sm" style={{ margin: "2px 0 0" }}>{o.quantity_kg}kg @ ₹{o.price_per_q?.toLocaleString("en-IN")}/q</p>
+                    </div>
+                    <span className={`badge badge-${o.status === "accepted" ? "completed" : o.status === "pending" ? "active" : o.status === "countered" ? "pending" : "cancelled"}`}>
+                      {o.status}
+                    </span>
                   </div>
-                  <span className={`badge badge-${o.status === "accepted" ? "completed" : o.status === "pending" ? "active" : o.status === "countered" ? "pending" : "cancelled"}`}>
-                    {o.status}
-                  </span>
+                  {o.status === "countered" && (
+                    <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "var(--saffron-50)" }}>
+                      <p className="text-xs" style={{ color: "var(--saffron-700)", margin: 0 }}>
+                        💬 Counter offer at ₹{o.price_per_q?.toLocaleString("en-IN")}/q
+                      </p>
+                    </div>
+                  )}
+
+                  {awaitingMe && counterOfferId !== o.id && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                      <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                        disabled={busyOfferId === o.id}
+                        onClick={() => actOnOffer(o.id, "accept")}>
+                        {busyOfferId === o.id ? "…" : "Accept"}
+                      </button>
+                      <button className="btn-secondary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                        disabled={busyOfferId === o.id}
+                        onClick={() => setCounterOfferId(o.id)}>
+                        Counter
+                      </button>
+                      <button style={{
+                        flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
+                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                      }} disabled={busyOfferId === o.id}
+                        onClick={() => actOnOffer(o.id, "reject")}>
+                        Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {counterOfferId === o.id && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                      <input className="input" type="number" placeholder="Your price ₹/q"
+                        value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
+                        style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
+                      <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
+                        disabled={!counterPrice || busyOfferId === o.id}
+                        onClick={() => actOnOffer(o.id, "counter", counterPrice)}>
+                        Send
+                      </button>
+                      <button style={{
+                        padding: "8px 10px", fontSize: 13, borderRadius: 8,
+                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                      }} onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {o.status === "countered" && (
-                  <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "var(--saffron-50)" }}>
-                    <p className="text-xs" style={{ color: "var(--saffron-700)", margin: 0 }}>
-                      💬 Counter offer at ₹{o.price_per_q?.toLocaleString("en-IN")}/q
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </>
         )}
 

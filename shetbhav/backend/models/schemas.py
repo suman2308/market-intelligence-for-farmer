@@ -172,6 +172,7 @@ class ProduceLotResponse(BaseModel):
     storage_available: bool
     urgency: UrgencyLevel
     status: str
+    offers_close_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -192,6 +193,8 @@ class DemandRequestResponse(BaseModel):
     id: int
     buyer_id: int
     crop_id: int
+    crop_name: Optional[str] = None
+    buyer_name: Optional[str] = None
     quantity_kg: float
     quality_grade: Optional[QualityGrade] = None
     required_by_date: Optional[datetime] = None
@@ -229,6 +232,7 @@ class OfferResponse(BaseModel):
     status: OfferStatus
     negotiation_round: int
     notes: Optional[str] = None
+    expires_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:

@@ -1,6 +1,10 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
+import api from "@/lib/api";
 
 /* ══════════════════════════════════════════════════════════════════════
    SHETBHAV UI COMPONENT LIBRARY
@@ -490,25 +494,259 @@ export function EmptyState({
 
 // ── Voice Button ─────────────────────────────────────────────────────
 
+const VOICE_LANGS: { code: Lang; bcp47: string; label: string }[] = [
+  { code: "en", bcp47: "en-IN", label: "English" },
+  { code: "hi", bcp47: "hi-IN", label: "हिंदी" },
+  { code: "mr", bcp47: "mr-IN", label: "मराठी" },
+];
+
+function SpeakerIcon({ muted }: { muted?: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      {muted ? (
+        <line x1="23" y1="9" x2="17" y2="15" />
+      ) : (
+        <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      )}
+      {!muted && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
+      {muted && <line x1="17" y1="9" x2="23" y2="15" />}
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
+/** Text-to-speech button with play/pause and a language picker.
+ * Defaults the reading language to the app's current UI language, but the
+ * listener can switch it independently (e.g. read an English page aloud in
+ * Marathi) since speechSynthesis voice availability varies by device. */
 export function VoiceButton({ text, label }: { text: string; label?: string }) {
-  const speak = () => {
-    if ("speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "hi-IN";
-      utterance.rate = 0.9;
-      speechSynthesis.speak(utterance);
+  const { lang: uiLang } = useI18n();
+  const [voiceLang, setVoiceLang] = React.useState<Lang>(uiLang);
+  const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const [isPaused, setIsPaused] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  React.useEffect(() => {
+    // Stop speaking if the component unmounts mid-utterance.
+    return () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); };
+  }, []);
+
+  const reset = () => { setIsSpeaking(false); setIsPaused(false); };
+
+  const speak = (lang: Lang) => {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel(); // stop any other utterance already playing
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = VOICE_LANGS.find(l => l.code === lang)?.bcp47 || "en-IN";
+    utterance.rate = 0.9;
+    utterance.onend = reset;
+    utterance.onerror = reset;
+    speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+    setIsPaused(false);
+  };
+
+  const togglePlayPause = () => {
+    if (!("speechSynthesis" in window)) return;
+    if (isSpeaking) {
+      speechSynthesis.pause();
+      setIsSpeaking(false);
+      setIsPaused(true);
+    } else if (isPaused) {
+      speechSynthesis.resume();
+      setIsSpeaking(true);
+      setIsPaused(false);
+    } else {
+      speak(voiceLang);
     }
   };
+
+  const chooseLang = (lang: Lang) => {
+    setVoiceLang(lang);
+    setMenuOpen(false);
+    if (isSpeaking || isPaused) speak(lang);
+  };
+
   return (
-    <button className="voice-btn" onClick={speak} aria-label="Listen to text">
-      🔊 {label || "Listen"}
-    </button>
+    <div className="voice-btn-group" ref={wrapRef}>
+      <button type="button" className="voice-btn" onClick={togglePlayPause}
+        aria-label={isSpeaking ? "Pause reading" : "Read aloud"}>
+        {isSpeaking ? <PauseIcon /> : <SpeakerIcon />}
+        {label || "Listen"}
+      </button>
+      <button type="button" className="voice-lang-btn" onClick={() => setMenuOpen(o => !o)}
+        aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Choose reading language">
+        {voiceLang.toUpperCase()}
+      </button>
+      {menuOpen && (
+        <div className="voice-lang-menu" role="menu">
+          {VOICE_LANGS.map(l => (
+            <button key={l.code} type="button" role="menuitemradio" aria-checked={voiceLang === l.code}
+              className={`voice-lang-option ${voiceLang === l.code ? "active" : ""}`}
+              onClick={() => chooseLang(l.code)}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 // VoicePlayButton alias
 export function VoicePlayButton({ text, label }: { text: string; label?: string }) {
   return <VoiceButton text={text} label={label} />;
+}
+
+// ── Password Input ───────────────────────────────────────────────────
+
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a17.9 17.9 0 0 1-3.15 4.19M6.5 6.5C3.9 8.13 2 11 2 12s4 8 11 8a9.3 9.3 0 0 0 4.16-.94M9.5 9.5a3 3 0 0 0 4.24 4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+/** Password input with a show/hide toggle (defaults masked). Accepts any
+ * standard <input> prop — swap in wherever a plain password input is used. */
+export function PasswordInput({
+  className, ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = React.useState(false);
+  return (
+    <div className="password-input-wrap">
+      <input
+        {...props}
+        type={visible ? "text" : "password"}
+        className={`${className || ""} password-input`.trim()}
+      />
+      <button
+        type="button"
+        className="password-toggle-btn"
+        onClick={() => setVisible(v => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        tabIndex={-1}
+      >
+        {visible ? <EyeOffIcon /> : <EyeIcon />}
+      </button>
+    </div>
+  );
+}
+
+// ── Notification Bell ────────────────────────────────────────────────
+
+function BellIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+type NotificationItem = {
+  id: number;
+  title: string;
+  message: string;
+  is_read: boolean;
+  link?: string | null;
+  created_at: string;
+};
+
+/** Bell + unread-count dropdown, backed by GET /notifications and
+ * POST /notifications/{id}/read. Drop into any dashboard header. */
+export function NotificationBell() {
+  const router = useRouter();
+  const [notifs, setNotifs] = React.useState<NotificationItem[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+
+  const load = React.useCallback(() => {
+    api.get<NotificationItem[]>("/notifications").then(r => setNotifs(r.data)).catch(() => {});
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  React.useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const unread = notifs.filter(n => !n.is_read).length;
+
+  const handleOpen = () => {
+    setOpen(o => !o);
+    if (!open) load(); // refresh on open so it's never stale
+  };
+
+  const handleSelect = (n: NotificationItem) => {
+    if (!n.is_read) {
+      api.post(`/notifications/${n.id}/read`).catch(() => {});
+      setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    setOpen(false);
+    if (n.link) router.push(n.link);
+  };
+
+  return (
+    <div className="notif-bell-wrap" ref={wrapRef}>
+      <button type="button" className="notif-bell-btn" onClick={handleOpen}
+        aria-label="Notifications" aria-haspopup="menu" aria-expanded={open}>
+        <BellIcon />
+        {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? "9+" : unread}</span>}
+      </button>
+      {open && (
+        <div className="notif-bell-menu" role="menu">
+          <div className="notif-bell-header">Notifications</div>
+          {notifs.length === 0 ? (
+            <div className="notif-bell-empty">No notifications yet</div>
+          ) : (
+            notifs.slice(0, 10).map(n => (
+              <button key={n.id} type="button" role="menuitem"
+                className={`notif-bell-item ${n.is_read ? "" : "unread"}`}
+                onClick={() => handleSelect(n)}>
+                <span className="notif-bell-item-title">{n.title}</span>
+                <span className="notif-bell-item-msg">{n.message}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Skeleton ────────────────────────────────────────────────────────
