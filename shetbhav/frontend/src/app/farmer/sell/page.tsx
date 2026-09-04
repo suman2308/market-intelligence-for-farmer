@@ -38,6 +38,7 @@ export default function SmartSellPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [creatingLot, setCreatingLot] = useState(false);
   const [error, setError] = useState("");
   const [showExplanation, setShowExplanation] = useState(false);
 
@@ -69,6 +70,8 @@ export default function SmartSellPage() {
   };
 
   const createLotAndGoHome = async () => {
+    setCreatingLot(true);
+    setError("");
     try {
       await api.post("/lots", {
         crop_id: form.crop_id, quantity_kg: form.quantity_kg,
@@ -77,7 +80,10 @@ export default function SmartSellPage() {
         urgency: form.urgency,
       });
       router.push("/farmer");
-    } catch {}
+    } catch (e: any) {
+      setError(e.response?.data?.detail || t("error_generic"));
+      setCreatingLot(false);
+    }
   };
 
   const cropEmoji = (name: string) => {
@@ -501,11 +507,11 @@ export default function SmartSellPage() {
           </div>
 
           {/* Actions */}
-          <button className="btn-primary" onClick={createLotAndGoHome}
+          <button className="btn-primary" onClick={createLotAndGoHome} disabled={creatingLot}
             style={{ fontSize: 16, marginBottom: 12 }}>
-            📦 {t("create_lot")} & {t("find_buyers")}
+            {creatingLot ? <><span className="spinner" /> Creating…</> : <>📦 {t("create_lot")} & {t("find_buyers")}</>}
           </button>
-          <button className="btn-secondary" onClick={() => router.push("/farmer")}>
+          <button className="btn-secondary" onClick={() => router.push("/farmer")} disabled={creatingLot}>
             {t("home")}
           </button>
         </div>
