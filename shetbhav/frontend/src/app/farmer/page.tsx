@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/store";
+import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import {
@@ -81,6 +81,7 @@ export default function FarmerHome() {
     </div>
   );
   if (!user) { router.push("/login"); return null; }
+  if (user.role !== "farmer") { router.push(roleHomePath(user.role)); return null; }
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -141,13 +142,13 @@ export default function FarmerHome() {
             <p key={i} style={{ fontSize: 12, margin: "2px 0", opacity: 0.85 }}>✓ {r}</p>
           ))}
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
-            <button className="btn-sm" style={{
+            <button className="btn-sm" onClick={(e) => { e.stopPropagation(); router.push("/farmer/sell"); }} style={{
               background: "white", color: "var(--saffron-700)", border: "none",
               fontWeight: 800, padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
             }}>
               View Details →
             </button>
-            <VoicePlayButton text={recommendation.explanation} label="🔊 Listen" />
+            <VoicePlayButton text={recommendation.explanation} label="Listen" />
           </div>
         </div>
       )}

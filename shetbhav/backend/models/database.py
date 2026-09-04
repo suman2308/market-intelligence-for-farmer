@@ -447,6 +447,9 @@ class ProduceLot(Base):
     is_aggregated = Column(Boolean, default=False)
     quality_status = Column(String(50), default="unrated")  # unrated/pending/verified/rejected
     status = Column(String(50), default="active")
+    # How long this lot collects offers before the farmer is expected to act
+    # on the best one so far — derived from `urgency` at creation time.
+    offers_close_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

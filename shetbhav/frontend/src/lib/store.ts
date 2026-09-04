@@ -11,6 +11,18 @@ interface User {
   language: string;
 }
 
+/** Every role's dashboard route — the single source of truth for post-login
+ * routing and for redirecting a signed-in user away from a dashboard that
+ * isn't theirs. */
+export function roleHomePath(role: string): string {
+  switch (role) {
+    case "buyer": return "/buyer";
+    case "admin": return "/admin";
+    case "fpo": return "/fpo";
+    default: return "/farmer";
+  }
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;

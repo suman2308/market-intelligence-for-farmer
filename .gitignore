@@ -63,6 +63,11 @@ coverage/
 .vercel/
 .turbo/
 
+# === Playwright (E2E test artifacts — regenerated per run) ===
+shetbhav/frontend/test-results/
+shetbhav/frontend/playwright-report/
+shetbhav/frontend/playwright/.cache/
+
 # === Logs ===
 *.log
 *.log.*

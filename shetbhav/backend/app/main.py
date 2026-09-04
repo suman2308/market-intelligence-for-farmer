@@ -51,7 +51,16 @@ from services.auth import (
     get_current_user, require_role
 )
 from services.market_data import MarketDataService
+from services.notifications import notify
 from ml.forecasting import predict_price, get_all_forecast_statuses, train_and_evaluate
+
+# Offer window: how long a lot collects offers before farmer must act on the
+# best one so far, derived from the farmer's own stated urgency.
+OFFER_WINDOW_HOURS = {
+    UrgencyLevel.URGENT: 6,
+    UrgencyLevel.SOON: 24,
+    UrgencyLevel.FLEXIBLE: 48,
+}
 
 app = FastAPI(
     title="ShetBhav API",
@@ -398,6 +407,7 @@ def create_lot(
         harvest_date=data.harvest_date,
         storage_available=data.storage_available,
         urgency=data.urgency,
+        offers_close_at=datetime.utcnow() + timedelta(hours=OFFER_WINDOW_HOURS[data.urgency]),
     )
     db.add(lot)
     db.commit()
@@ -409,7 +419,7 @@ def create_lot(
         quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
         address=lot.address, harvest_date=lot.harvest_date,
         storage_available=lot.storage_available, urgency=lot.urgency,
-        status=lot.status, created_at=lot.created_at,
+        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
     )
 
 
@@ -434,7 +444,7 @@ def list_lots(
             quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
             address=lot.address, harvest_date=lot.harvest_date,
             storage_available=lot.storage_available, urgency=lot.urgency,
-            status=lot.status, created_at=lot.created_at,
+            status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
         ))
     return results
 
@@ -451,7 +461,7 @@ def get_lot(lot_id: int, db: Session = Depends(get_db)):
         quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade,
         address=lot.address, harvest_date=lot.harvest_date,
         storage_available=lot.storage_available, urgency=lot.urgency,
-        status=lot.status, created_at=lot.created_at,
+        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
     )
 
 
@@ -697,7 +707,22 @@ def list_demand(
         query = query.filter(DemandRequest.buyer_id == user.buyer_profile.id)
     if status:
         query = query.filter(DemandRequest.status == status)
-    return query.order_by(DemandRequest.created_at.desc()).limit(50).all()
+    demands = query.order_by(DemandRequest.created_at.desc()).limit(50).all()
+
+    results = []
+    for d in demands:
+        crop = db.query(Crop).filter(Crop.id == d.crop_id).first()
+        buyer = db.query(BuyerProfile).filter(BuyerProfile.id == d.buyer_id).first()
+        results.append(DemandRequestResponse(
+            id=d.id, buyer_id=d.buyer_id, crop_id=d.crop_id,
+            crop_name=crop.name if crop else None,
+            buyer_name=buyer.business_name if buyer else None,
+            quantity_kg=d.quantity_kg, quality_grade=d.quality_grade,
+            required_by_date=d.required_by_date, district=d.district,
+            offered_price_per_q=d.offered_price_per_q, status=d.status,
+            created_at=d.created_at,
+        ))
+    return results
 
 
 # ── Offer Routes ─────────────────────────────────────────────────────
@@ -707,16 +732,24 @@ def create_offer(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Resolve to_user_id from lot's farmer if not provided
+    lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first()
+
+    # Resolve to_user_id if not provided. Direction depends on who's sending:
+    # a buyer offering on a lot addresses the lot's farmer; a farmer
+    # responding to a buyer demand addresses that demand's buyer.
     to_user_id = data.to_user_id
+    if not to_user_id and user.role == UserRole.FARMER and data.demand_id:
+        demand = db.query(DemandRequest).filter(DemandRequest.id == data.demand_id).first()
+        if demand:
+            buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == demand.buyer_id).first()
+            if buyer_profile:
+                to_user_id = buyer_profile.user_id
+    if not to_user_id and lot:
+        farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+        if farmer_profile:
+            to_user_id = farmer_profile.user_id
     if not to_user_id:
-        lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first()
-        if lot:
-            farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
-            if farmer_profile:
-                to_user_id = farmer_profile.user_id
-    if not to_user_id:
-        raise HTTPException(status_code=400, detail="Cannot determine recipient. Provide to_user_id or a valid lot_id.")
+        raise HTTPException(status_code=400, detail="Cannot determine recipient. Provide to_user_id or a valid lot_id/demand_id.")
 
     offer = Offer(
         lot_id=data.lot_id,
@@ -727,6 +760,8 @@ def create_offer(
         quantity_kg=data.quantity_kg,
         delivery_date=data.delivery_date,
         notes=data.notes,
+        # Offer closes with the lot's own offer window, not indefinitely.
+        expires_at=lot.offers_close_at if lot else None,
     )
     db.add(offer)
     db.flush()
@@ -740,6 +775,19 @@ def create_offer(
         created_by=user.id,
     )
     db.add(history)
+    if user.role == UserRole.FARMER:
+        notify(
+            db, to_user_id, "New offer on your demand",
+            f"₹{offer.price_per_q:,.0f}/q for {offer.quantity_kg:,.0f}kg" +
+            (f" on demand #{offer.demand_id}" if offer.demand_id else ""),
+            type="offer_received", link="/buyer",
+        )
+    else:
+        notify(
+            db, to_user_id, "New offer received",
+            f"₹{offer.price_per_q:,.0f}/q for {offer.quantity_kg:,.0f}kg on your lot #{offer.lot_id}",
+            type="offer_received", link="/farmer/offers",
+        )
     db.commit()
     db.refresh(offer)
     return offer
@@ -804,6 +852,11 @@ def accept_offer(
         db.add_all(events)
         # Update lot status
         lot.status = "sold"
+        notify(
+            db, offer.from_user_id, "Offer accepted",
+            f"Your offer of ₹{offer.price_per_q:,.0f}/q on lot #{lot.id} was accepted. Order #{order.id} created.",
+            type="offer_accepted", link=f"/buyer",
+        )
 
     db.commit()
     db.refresh(offer)
@@ -828,6 +881,11 @@ def reject_offer(
         offer_id=offer.id, action="rejected", created_by=user.id,
     )
     db.add(history)
+    notify(
+        db, offer.from_user_id, "Offer rejected",
+        f"Your offer of ₹{offer.price_per_q:,.0f}/q on lot #{offer.lot_id} was rejected.",
+        type="offer_rejected", link=f"/buyer",
+    )
     db.commit()
     db.refresh(offer)
     return offer
@@ -859,6 +917,14 @@ def counter_offer(
         action="countered", notes=data.notes, created_by=user.id,
     )
     db.add(history)
+    lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first() if lot else None
+    recipient_is_farmer = farmer_profile and offer.to_user_id == farmer_profile.user_id
+    notify(
+        db, offer.to_user_id, "Counter-offer received",
+        f"New counter-offer of ₹{data.price_per_q:,.0f}/q on lot #{offer.lot_id}",
+        type="offer_countered", link="/farmer/offers" if recipient_is_farmer else "/buyer",
+    )
     db.commit()
     db.refresh(offer)
     return offer
@@ -976,6 +1042,18 @@ def update_order_status(
         created_by=user.id,
     )
     db.add(evt)
+
+    # Notify whichever party didn't make this change.
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == order.farmer_id).first()
+    buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == order.buyer_id).first()
+    status_label = data.status.value.replace("_", " ")
+    for profile, link in ((farmer_profile, f"/farmer/orders/{order.id}"), (buyer_profile, "/buyer")):
+        if profile and profile.user_id != user.id:
+            notify(
+                db, profile.user_id, "Order status updated",
+                f"Order #{order.id} is now {status_label}",
+                type="order_status", link=link,
+            )
 
     db.commit()
     db.refresh(order)
@@ -1177,6 +1255,11 @@ def resolve_grievance(
         grievance_id=grievance.id, from_status=previous_status, to_status=data.status,
         note=data.admin_response, changed_by=user.id,
     ))
+    notify(
+        db, grievance.user_id, "Grievance update",
+        f"Your grievance #{grievance.id} is now {data.status.value.replace('_', ' ')}",
+        type="grievance_update", link="/farmer/grievance",
+    )
     # Timeline event if linked to order
     if grievance.order_id:
         evt = OrderEvent(
@@ -1293,6 +1376,42 @@ def find_matching_buyers(
 
     matches.sort(key=lambda m: m["score"], reverse=True)
     return {"lot_id": lot_id, "matches": matches}
+
+
+@app.get("/lots/{lot_id}/offers", response_model=List[OfferResponse])
+def list_lot_offers(
+    lot_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Offers received on a lot, ranked best-first (highest price wins —
+    the farmer isn't comparing to a market average here, they're picking
+    the best of the concrete offers actually on the table)."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+    if user.role != UserRole.ADMIN and (not farmer_profile or farmer_profile.user_id != user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Lazily expire offers whose window has passed — no background scheduler.
+    now = datetime.utcnow()
+    stale = db.query(Offer).filter(
+        Offer.lot_id == lot_id,
+        Offer.status.in_([OfferStatus.PENDING, OfferStatus.COUNTERED]),
+        Offer.expires_at.isnot(None),
+        Offer.expires_at < now,
+    ).all()
+    for offer in stale:
+        offer.status = OfferStatus.EXPIRED
+    if stale:
+        db.commit()
+
+    offers = db.query(Offer).filter(Offer.lot_id == lot_id).order_by(
+        Offer.status.in_([OfferStatus.PENDING, OfferStatus.COUNTERED]).desc(),
+        Offer.price_per_q.desc(),
+    ).all()
+    return offers
 
 
 # ── Notification Routes ──────────────────────────────────────────────
