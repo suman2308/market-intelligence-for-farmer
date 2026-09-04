@@ -52,12 +52,31 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }, [user, id]);
 
   if (!user) return null;
-  if (loading) return <div style={{ padding: 16 }}><Skeleton height={80} count={5} /></div>;
+  if (loading) return (
+    <div className="farmer-shell">
+      <FarmerHeader />
+      <div className="page-body">
+        <div style={{ padding: "10px 0 14px" }}>
+          <Skeleton height={26} />
+        </div>
+        <Skeleton height={140} />
+        <div style={{ height: 12 }} />
+        <Skeleton height={100} />
+        <div style={{ height: 12 }} />
+        <Skeleton height={200} />
+      </div>
+      <FarmerBottomNav />
+    </div>
+  );
   if (error) return (
-    <div style={{ padding: 40, textAlign: "center" }}>
-      <p style={{ fontSize: 28 }}>❌</p>
-      <p style={{ color: "var(--color-text-secondary)" }}>{error}</p>
-      <button className="btn-primary" style={{ marginTop: 16 }} onClick={() => router.push("/farmer/orders")}>← Back to Orders</button>
+    <div className="farmer-shell">
+      <FarmerHeader />
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <p style={{ fontSize: 28 }}>❌</p>
+        <p style={{ color: "var(--color-text-secondary)" }}>{error}</p>
+        <button className="btn-primary" style={{ marginTop: 16 }} onClick={() => router.push("/farmer/orders")}>← Back to Orders</button>
+      </div>
+      <FarmerBottomNav />
     </div>
   );
 

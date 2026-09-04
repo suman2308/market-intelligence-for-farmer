@@ -92,8 +92,8 @@ export default function BuyerDashboard() {
       <aside className="role-side hide-mobile" aria-label="Buyer navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
-          <div className="role-brand-title">Buyer</div>
         </div>
+        <div className="role-side-role">Buyer</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}

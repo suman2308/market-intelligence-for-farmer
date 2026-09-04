@@ -106,7 +106,7 @@ export default function SmartSellPage() {
       </div>
 
       {/* Progress */}
-      <ProgressBar current={step + 1} total={7} />
+      <ProgressBar current={step + 1} total={6} />
 
       <div className="page-body">
       {/* ═══ STEP 1: What do you want to sell? ═══ */}

@@ -45,7 +45,28 @@ export default function FarmerHome() {
     }
   }, [user]);
 
-  if (loading) return <div style={{ padding: 16 }}><Skeleton height={60} count={5} /></div>;
+  if (loading) return (
+    <div className="farmer-shell">
+      <FarmerHeader />
+      <div className="page-body">
+        <div style={{ padding: "10px 0 14px" }}>
+          <Skeleton height={14} />
+          <div style={{ height: 6 }} />
+          <Skeleton height={30} />
+        </div>
+        <Skeleton height={150} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, margin: "14px 0" }}>
+          <Skeleton height={72} />
+          <Skeleton height={72} />
+          <Skeleton height={72} />
+        </div>
+        <Skeleton height={130} />
+        <div style={{ height: 12 }} />
+        <Skeleton height={70} count={2} />
+      </div>
+      <FarmerBottomNav />
+    </div>
+  );
   if (!user) { router.push("/login"); return null; }
 
   const greeting = () => {

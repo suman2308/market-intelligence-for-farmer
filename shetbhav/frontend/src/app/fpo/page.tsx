@@ -59,8 +59,8 @@ export default function FPODashboard() {
       <aside className="role-side hide-mobile" aria-label="FPO navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
-          <div className="role-brand-title">FPO</div>
         </div>
+        <div className="role-side-role">FPO</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}

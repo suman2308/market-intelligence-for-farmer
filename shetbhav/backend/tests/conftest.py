@@ -13,6 +13,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # before ml.* modules are imported below.
 os.environ["SHETBHAV_MODELS_DIR"] = tempfile.mkdtemp(prefix="shetbhav_test_models_")
 
+# Force the WHOLE backend onto the test database before any project module is
+# imported (config/settings.py reads these env vars at import time). Several
+# services and tests open their own sessions via ``config.database.SessionLocal``
+# (e.g. app.main, services.data_gov, services.quality_grading) — without this,
+# those sessions hit the production/dev SQLite file, which does not exist on CI
+# and therefore has no tables ("no such table: crops").
+os.environ["DATABASE_URL"] = "sqlite:///./test_shared.db"
+# The data.gov.in tests assert a key is configured; CI has no real key, so use a
+# clearly-fake one. Real keys are never needed: HTTP calls are patched/mocked.
+os.environ.setdefault("DATA_GOV_API_KEY", "shetbhav-ci-test-key-12345")
+
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker

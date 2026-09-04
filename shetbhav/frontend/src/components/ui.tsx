@@ -75,7 +75,7 @@ export function ProgressBar({
         <div
           key={i}
           className={`progress-dot ${
-            i < current ? "completed" : i === current ? "active" : ""
+            i < current - 1 ? "completed" : i === current - 1 ? "active" : ""
           }`}
         />
       ))}

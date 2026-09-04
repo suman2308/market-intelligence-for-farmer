@@ -17,6 +17,8 @@ export default function PricesPage() {
   const [markets, setMarkets] = useState<any[]>([]);
   const [selectedMarket, setSelectedMarket] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
@@ -29,16 +31,24 @@ export default function PricesPage() {
 
   useEffect(() => {
     if (!selectedCrop) return;
+    let cancelled = false;
     setLoading(true);
+    setError(false);
     Promise.all([
       api.get(`/markets/prices?crop_id=${selectedCrop}${selectedMarket ? `&market_id=${selectedMarket}` : ""}`),
       api.get(`/markets/overview?crop_id=${selectedCrop}`),
     ]).then(([p, o]) => {
+      if (cancelled) return;
       setPrices(p.data);
       setForecast(o.data?.forecast);
       setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [selectedCrop, selectedMarket]);
+    }).catch(() => {
+      if (cancelled) return;
+      setError(true);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedCrop, selectedMarket, retry]);
 
   const cropEmojis: Record<string, string> = { tomato: "🍅", onion: "🧅", soybean: "🫘" };
 
@@ -120,6 +130,16 @@ export default function PricesPage() {
           <div className="skeleton" style={{ height: 140, marginBottom: 12 }} />
           <div className="skeleton" style={{ height: 100 }} />
         </div>
+      ) : error ? (
+        <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
+          <p style={{ fontSize: 30, margin: "0 0 6px 0" }}>⚠️</p>
+          <p className="text-body" style={{ color: "var(--color-text-secondary)", margin: "0 0 14px 0" }}>
+            Couldn't load market prices. Check your connection and try again.
+          </p>
+          <button className="btn-primary" onClick={() => setRetry(r => r + 1)}>
+            ↻ Retry
+          </button>
+        </div>
       ) : prices ? (
         <>
           {/* Current Price Card */}
@@ -196,7 +216,10 @@ export default function PricesPage() {
         </>
       ) : (
         <div className="card" style={{ textAlign: "center", padding: 40 }}>
-          <p className="text-body" style={{ color: "var(--color-text-secondary)" }}>{t("loading")}</p>
+          <p style={{ fontSize: 30, margin: "0 0 6px 0" }}>📭</p>
+          <p className="text-body" style={{ color: "var(--color-text-secondary)", margin: 0 }}>
+            No market price data available for this crop yet.
+          </p>
         </div>
       )}
 

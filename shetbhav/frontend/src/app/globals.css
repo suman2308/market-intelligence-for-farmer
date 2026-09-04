@@ -357,6 +357,16 @@ body {
   transition: color 0.2s;
 }
 .nav-item.active { color: var(--green-600); font-weight: 600; }
+/* Keep tab labels on one line so nav heights/alignment stay identical on
+   every page and narrow screens (labels like “Sell My Produce” would
+   otherwise wrap to two lines and make the bar look uneven). */
+.nav-item > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2;
+}
 
 /* ── Page Layout ──────────────────────────────────────────────────── */
 .page-header {
@@ -425,18 +435,14 @@ body {
   color: white;
 }
 /* Brand block shares the same 76px band as the white top bar so the two
-   columns read as one continuous header strip. */
+   columns read as one continuous header strip. The white “ShetBhav” text
+   stays on the deep green so it always keeps full contrast. */
 .role-side-brand {
   min-height: 88px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  align-items: center;
   padding: 12px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  /* Width of the emoji slot + gap, so .role-brand-title can start exactly
-     below the “ShetBhav” text (not below the 🌾 glyph). */
-  --brand-indent: 36px;
 }
 .role-brand-name {
   display: flex;
@@ -455,19 +461,22 @@ body {
   width: 28px;
   line-height: 1;
 }
-/* Role title: light-green pill so it reads clearly on the deep green panel.
-   Indented to align under the brand TEXT, like a subtitle under the title. */
-.role-brand-title {
-  align-self: flex-start;
-  margin-left: var(--brand-indent);
-  font-size: 11px;
+/* Role strip: light-green band directly below the wordmark, so the
+   logged-in role (BUYER / FPO / ADMIN) pops against the deep green sidebar.
+   Its text starts at the same x as the “ShetBhav” text: 20px side padding
+   + 28px emoji slot + 8px gap = 56px → 44px inside the 12px-margined band. */
+.role-side-role {
+  flex-shrink: 0;
+  margin: 2px 12px 14px;
+  padding: 10px 16px 10px 44px;
+  background: var(--green-50);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
-  background: var(--green-100);
   color: var(--green-900);
-  padding: 3px 10px;
-  border-radius: 999px;
   line-height: 1.3;
 }
 .role-side-nav {
@@ -505,8 +514,7 @@ body {
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--saffron-400);
 }
-/* Red logout — lives in the white top bar (desktop + mobile), one place only.
-   Sized to sit level with the small “✓ Verified Buyer” badge beside it. */
+/* Red logout — lives in the white top bar (desktop + mobile), one place only */
 .logout-btn {
   display: inline-flex;
   align-items: center;
@@ -514,14 +522,13 @@ body {
   border: none;
   background: #dc2626;
   color: white;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  padding: 5px 14px;
-  border-radius: 999px;
-  min-height: 26px;
-  line-height: 1.3;
+  padding: 9px 16px;
+  border-radius: 10px;
+  min-height: 38px;
   transition: background 0.15s;
 }
 .logout-btn:hover { background: #b91c1c; }
@@ -769,6 +776,11 @@ button.nav-item {
   background: var(--bg-cream);
   min-height: 100dvh;
   position: relative;
+  /* Column flex so the content area can grow and keep the in-flow bottom
+     nav (footer) pinned to the bottom edge of the shell on every page —
+     otherwise on short pages the nav floats mid-screen after the content. */
+  display: flex;
+  flex-direction: column;
 }
 @media (min-width: 768px) {
   .farmer-shell {
@@ -777,6 +789,15 @@ button.nav-item {
     border-right: 1px solid var(--border);
     box-shadow: 0 0 40px rgba(0,0,0,0.06);
   }
+}
+/* Grow the content column so the sticky/fixed bottom nav always rests on the
+   bottom edge of the viewport, regardless of how much content a page has. */
+.farmer-shell > .page-body,
+.farmer-shell > .farmer-page {
+  flex: 1 0 auto;
+}
+.farmer-shell .bottom-nav {
+  flex-shrink: 0;
 }
 
 

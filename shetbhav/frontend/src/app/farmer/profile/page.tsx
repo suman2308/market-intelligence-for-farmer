@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import api from "@/lib/api";
+import { Skeleton } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -32,12 +34,17 @@ export default function FarmerProfile() {
   }, []);
 
   if (loading) return (
-    <div>
+    <div className="farmer-shell">
       <FarmerHeader />
-      <div style={{ padding: 16 }}>
-        <div className="skeleton" style={{ height: 100, marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 200 }} />
+      <div className="farmer-page">
+        <div style={{ padding: "16px 0" }}>
+          <Skeleton height={26} />
+        </div>
+        <div className="skeleton" style={{ height: 190, borderRadius: 14, marginBottom: 16 }} />
+        <div className="skeleton" style={{ height: 120, borderRadius: 14, marginBottom: 16 }} />
+        <div className="skeleton" style={{ height: 150, borderRadius: 14 }} />
       </div>
+      <FarmerBottomNav />
     </div>
   );
 
@@ -169,14 +176,15 @@ export default function FarmerProfile() {
           { label: "💰 My Earnings", path: "/farmer/earnings" },
           { label: "🚨 Help & Grievance", path: "/farmer/grievance" },
         ].map(link => (
-          <button key={link.path} onClick={() => router.push(link.path)}
+          <Link key={link.path} href={link.path}
             style={{
               display: "block", width: "100%", padding: "10px 0", background: "none",
               border: "none", borderBottom: "1px solid #f3f4f6", cursor: "pointer",
-              fontSize: 14, fontWeight: 500, textAlign: "left",
+              fontSize: 14, fontWeight: 500, textAlign: "left", textDecoration: "none",
+              color: "inherit",
             }}>
             {link.label}
-          </button>
+          </Link>
         ))}
       </div>
 

@@ -103,8 +103,8 @@ export default function AdminDashboard() {
       <aside className="role-side hide-mobile" aria-label="Admin navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
-          <div className="role-brand-title">Admin</div>
         </div>
+        <div className="role-side-role">Admin</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}
