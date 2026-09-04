@@ -123,7 +123,7 @@ export default function SmartSellPage() {
                 onClick={() => { setForm({ ...form, crop_id: crop.id, crop_name: crop.name }); setStep(1); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 16, padding: "16px 18px",
-                  textAlign: "left", borderRadius: 14, fontSize: 16, minHeight: 60,
+                  justifyContent: "flex-start", textAlign: "left", borderRadius: 14, fontSize: 16, minHeight: 60,
                   border: form.crop_id === crop.id ? "2px solid var(--color-primary)" : "2px solid var(--color-border)",
                 }}>
                 <span style={{ fontSize: 32 }}>{cropEmoji(crop.name)}</span>
@@ -204,7 +204,7 @@ export default function SmartSellPage() {
                 onClick={() => { setForm({ ...form, quality_grade: g.v }); setStep(3); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 16, padding: "16px 18px",
-                  textAlign: "left", borderRadius: 14, minHeight: 64,
+                  justifyContent: "flex-start", textAlign: "left", borderRadius: 14, minHeight: 64,
                   border: form.quality_grade === g.v ? `2px solid ${g.color}` : "2px solid var(--color-border)",
                 }}>
                 <span style={{ fontSize: 28 }}>{g.emoji}</span>
@@ -236,7 +236,7 @@ export default function SmartSellPage() {
                 onClick={() => { setForm({ ...form, urgency: u.v }); setStep(4); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 16, padding: "16px 18px",
-                  textAlign: "left", borderRadius: 14, minHeight: 64,
+                  justifyContent: "flex-start", textAlign: "left", borderRadius: 14, minHeight: 64,
                   border: form.urgency === u.v ? "2px solid var(--color-primary)" : "2px solid var(--color-border)",
                 }}>
                 <span style={{ fontSize: 28 }}>{u.emoji}</span>
@@ -267,7 +267,7 @@ export default function SmartSellPage() {
                 onClick={() => { setForm({ ...form, storage_available: s.v }); setStep(5); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 16, padding: "16px 18px",
-                  textAlign: "left", borderRadius: 14, minHeight: 64,
+                  justifyContent: "flex-start", textAlign: "left", borderRadius: 14, minHeight: 64,
                   border: form.storage_available === s.v ? "2px solid var(--color-primary)" : "2px solid var(--color-border)",
                 }}>
                 <span style={{ fontSize: 28 }}>{s.emoji}</span>

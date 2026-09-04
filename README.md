@@ -2,268 +2,340 @@
 
 **Know the market. Choose better. Earn more.**
 
-A market intelligence platform that helps Indian farmers decide where, when, and to whom to sell their produce. Built for [Smart India Hackathon 2026 — SIH26132](https://www.sih.gov.in/).
+A market-intelligence platform that helps Indian farmers decide **where, when, and to whom** to sell their produce — with real mandi prices, buyer demand, and a Smart Sell engine that ranks every selling option by net income. Built for [Smart India Hackathon 2026 — SIH26132](https://www.sih.gov.in/).
 
 [![SIH 2026](https://img.shields.io/badge/SIH-2026-blue)](https://www.sih.gov.in/)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-green)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-2e7d32)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
-[![Tests](https://img.shields.io/badge/Tests-175%2F175-brightgreen)](#testing)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/tests-175%2F175-brightgreen)](#testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
+
+---
 
 <details>
 <summary>📑 Table of contents</summary>
 
+- [What is ShetBhav?](#what-is-shetbhav)
 - [Live demo](#live-demo)
-- [What this does](#what-this-does)
-- [A quick look](#a-quick-look)
+- [Screenshots](#screenshots)
+- [Key features](#key-features)
+- [Architecture](#architecture)
+- [How a sale flows end-to-end](#how-a-sale-flows-end-to-end)
 - [Tech stack](#tech-stack)
 - [Running locally](#running-locally)
+- [Environment variables](#environment-variables)
 - [Project structure](#project-structure)
-- [How Smart Sell works](#how-smart-sell-works)
-- [Where the market data comes from](#where-the-market-data-comes-from)
-- [Testing](#testing)
+- [Testing & CI](#testing--ci)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
 - [What's real vs. what's simulated](#whats-real-vs-whats-simulated)
-- [Limitations](#limitations)
 - [License](#license)
 
 </details>
 
 ---
 
+## What is ShetBhav?
+
+Farmers in Maharashtra often sell at whichever mandi is nearest, without knowing whether another market or a buyer would pay more. ShetBhav changes that:
+
+1. It pulls **official daily mandi prices** from the government's data.gov.in AGMARKNET feed.
+2. The farmer lists a **crop lot** (crop, quantity, grade, storage, urgency).
+3. The **Smart Sell engine** scores every option — sell at the mandi, to a verified buyer, after storage, or via an FPO — by *net* income after transport, storage, and handling.
+4. Buyers see matching lots and make offers; farmers negotiate, accept, and the platform manages the order, transport estimate, and payment tracking.
+
+Everything works in **English, Hindi (हिन्दी), and Marathi (मराठी)**, with distinct experiences for each role:
+
+| Role | Experience |
+|---|---|
+| 👨‍🌾 Farmer | Mobile-first app: prices, Smart Sell wizard, lots, orders, earnings, AI-grade photos, grievances |
+| 🏭 Buyer | Desktop dashboard: browse lots, post demands, make/counter offers, orders |
+| 🌾 FPO | Collective dashboard: members, aggregated lots, volumes |
+| ⚙️ Admin | Platform dashboard: users, grievances, ML model status, analytics |
+
+---
+
 ## Live Demo
 
-🔗 **[market-intelligence-for-farmer.vercel.app](https://market-intelligence-for-farmer.vercel.app/)**
+🔗 **[market-intelligence-for-farmer.vercel.app](https://market-intelligence-for-farmer.vercel.app/)** — backend: [shetbhav-backend.onrender.com](https://shetbhav-backend.onrender.com/)
 
 | Role | Username | Password |
 |------|----------|----------|
 | 👨‍🌾 Farmer | `ramesh` | `demo123` |
 | 🏭 Buyer | `abc_foods` | `demo123` |
-| ⚙️ Admin | `admin` | `demo123` |
 | 🌾 FPO | `nashik_fpo` | `demo123` |
+| ⚙️ Admin | `admin` | `demo123` |
+
+> Sign in, keep the pre-selected role, and click **Sign In**. All demo accounts are seeded automatically on first boot.
 
 ---
 
-## What This Does
+## Screenshots
 
-Farmers in Maharashtra often sell their produce at whichever mandi is nearest, without knowing if there's a better price at another market or a buyer willing to pay more. ShetBhav changes that.
+Fresh captures from the running app (Sept 2026). Farmers get a phone-first flow; buyers, FPOs, and admins get desktop dashboards.
 
-The platform pulls **real daily mandi prices** from the official data.gov.in API (AGMARKNET data), compares them against buyer demand and transport costs, and gives farmers a clear recommendation on the best way to sell their specific crop lot.
-
-The full flow works end-to-end:
-
-```
-Farmer creates crop lot
-  → views mandi prices and buyer demand
-  → Smart Sell engine compares selling options
-  → buyer makes an offer
-  → farmer negotiates or accepts
-  → order is created
-  → transport is assigned
-  → delivery is tracked
-  → simulated payment is shown
-  → farmer can raise a grievance if something goes wrong
-```
-
----
-
-## A Quick Look
-
-Farmers use the app on their phones — one screen at a time, in their own language. Below are real screenshots from the running app:
-
-| 👨‍🌾 Farmer home | 📊 Market prices | 💰 Smart Sell wizard | 🧺 My crop lots |
+**📱 Farmer — mobile**
+| Home & Smart Sell | Market prices | Sell wizard | My lots |
 |---|---|---|---|
-| <img src="screenshots/farmer-home.png" alt="Farmer dashboard on mobile" width="200"> | <img src="screenshots/farmer-prices.png" alt="Market prices page on mobile" width="200"> | <img src="screenshots/farmer-sell.png" alt="Smart Sell wizard on mobile" width="200"> | <img src="screenshots/farmer-lots.png" alt="Crop lots list on mobile" width="200"> |
+| <img src="screenshots/farmer-home.png" alt="Farmer home with Smart Sell recommendation card" width="200"> | <img src="screenshots/farmer-prices.png" alt="Today's price with orange TODAY heading, forecast and confidence" width="200"> | <img src="screenshots/farmer-sell.png" alt="Smart Sell wizard crop picker" width="200"> | <img src="screenshots/farmer-lots.png" alt="Active crop lots" width="200"> |
 
-- **Farmer home** — greeting, a Smart Sell card with estimated income, nearby mandi prices, and active crop lots.
-- **Smart Sell** — a guided step-by-step wizard that compares selling at the mandi, to a verified buyer, after storage, or through an FPO.
-- **Market prices** — official daily mandi data with source and freshness badges, in cards sized for a phone.
+**🖥️ Role dashboards — desktop**
 
-Buyers, FPOs, and admins work on desktop — dashboards with stats, tables, and charts:
-
-| 🔐 Login | 🏭 Buyer dashboard | 🌾 FPO dashboard | ⚙️ Admin dashboard |
+| Login | Buyer | FPO | Admin |
 |---|---|---|---|
-| <img src="screenshots/login-desktop.png" alt="Login page on desktop" width="200"> | <img src="screenshots/buyer-home.png" alt="Buyer dashboard on desktop" width="200"> | <img src="screenshots/fpo-home.png" alt="FPO dashboard on desktop" width="200"> | <img src="screenshots/admin-home.png" alt="Admin dashboard on desktop" width="200"> |
-
-Everything on the platform works in **English, Hindi (हिन्दी), and Marathi (मराठी)** — farmers can switch languages at any time.
+| <img src="screenshots/login-desktop.png" alt="ShetBhav login screen" width="200"> | <img src="screenshots/buyer-home.png" alt="Buyer dashboard with stats and lots" width="200"> | <img src="screenshots/fpo-home.png" alt="FPO dashboard" width="200"> | <img src="screenshots/admin-home.png" alt="Admin platform dashboard" width="200"> |
 
 ---
 
-## Tech Stack
+## Key features
 
-| Layer | What |
-|-------|------|
-| Frontend | Next.js 16, TypeScript, Tailwind CSS, Zustand, Recharts, Leaflet |
-| Backend | FastAPI, Python 3.11, SQLAlchemy ORM |
-| Database | SQLite (local dev), PostgreSQL (production) |
-| ML | XGBoost, scikit-learn, pandas, joblib |
-| Market Data | data.gov.in AGMARKNET API |
-| Maps | Leaflet + OpenStreetMap |
-| Auth | JWT + bcrypt, 4 roles |
-| Deploy | Vercel (frontend), Render (backend + database) |
+- **Smart Sell engine** — ranks mandi sale, buyer offer, storage-and-sell-later, and FPO aggregation by net ₹/quintal (after transport, storage, handling), with reasons and a confidence score.
+- **Real mandi prices** — official AGMARKNET data with freshness/source badges on every price card, plus a 7-day XGBoost price forecast (with automatic baseline fallback when history is thin).
+- **Full marketplace flow** — lots → offers → counter-offers → orders → delivery timeline → (simulated, clearly labeled) payments.
+- **FPO aggregation** — combine member lots into bulk volumes for better buyer terms.
+- **AI quality grading (prototype)** — photo-based grade assessment with manual override.
+- **3 languages** — English, हिन्दी, मराठी switchable live.
+- **JWT auth with 4 roles** — farmer, buyer, FPO, admin; role-based API access enforced on every endpoint.
+- **Leaflet map of mandis** — pick markets visually on a Maharashtra map.
+- **Voice read-out** — farmers can listen to recommendations (Web Speech API).
 
 ---
 
-## Running Locally
+## Architecture
 
-**Prerequisites:** Node.js 18+, Python 3.11+
+```mermaid
+flowchart TB
+    subgraph C["Clients"]
+        F["👨‍🌾 Farmer — mobile-first app<br/>Next.js 16 · i18n · voice"]
+        D["🏭 Buyer · 🌾 FPO · ⚙️ Admin —<br/>desktop dashboards"]
+    end
+
+    subgraph V["Vercel"]
+        WEB["Next.js frontend<br/>/api/* rewritten to backend"]
+    end
+
+    subgraph B["Render — FastAPI · Python 3.11"]
+        API["REST API<br/>69 endpoints · JWT + role guard"]
+        SE["🧠 Smart Sell engine"]
+        MD["📈 Market data service<br/>data.gov.in AGMARKNET"]
+        ML["🔮 XGBoost forecast<br/>auto-fallback to baselines"]
+        QG["🧪 Quality grading"]
+    end
+
+    subgraph DATA["Data layer"]
+        DB[("PostgreSQL (prod)<br/>SQLite (dev)")]
+        CACHE["CSV / JSON market caches"]
+        MODELS["Trained .joblib models"]
+    end
+
+    F --> WEB
+    D --> WEB
+    WEB --> API
+    API --> SE
+    API --> MD
+    API --> ML
+    API --> QG
+    SE --> DB
+    MD --> DB
+    MD --> CACHE
+    ML --> MODELS
+    ML --> DB
+    QG --> DB
+```
+
+The frontend calls the FastAPI backend through a Vercel `/api/*` rewrite in production, or `http://localhost:8000` in development. All business logic (recommendations, scoring, normalization, forecasts) lives server-side so numbers shown to farmers are computed once, consistently.
+
+---
+
+## How a sale flows end-to-end
+
+```mermaid
+sequenceDiagram
+    actor Farmer
+    participant App as ShetBhav (mobile / web)
+    participant API as FastAPI backend
+    participant DB as Database
+
+    Farmer->>App: Opens "Sell My Produce" wizard
+    App->>API: Creates crop lot (crop, qty, grade, urgency, storage)
+    API->>DB: Store lot
+
+    Farmer->>App: Runs Smart Sell
+    App->>API: POST /smart-sell
+    API->>DB: Read prices, demand, transport, forecast history
+    API-->>App: Ranked options + net ₹ per quintal + reasons
+
+    actor Buyer
+    Buyer->>App: Makes an offer on the lot
+    App->>API: POST /offers
+    API->>DB: Pending offer
+
+    Farmer->>App: Accepts (or counters)
+    App->>API: Accept offer
+    API->>DB: Create order
+
+    Note over App, DB: Order lifecycle → transport estimate →<br/>delivery timeline → demo payment record
+
+    Farmer->>App: Raise grievance if something went wrong
+    API->>DB: Grievance → admin resolution
+```
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind, Zustand, Leaflet, Recharts |
+| Backend | FastAPI, Python 3.11, SQLAlchemy 2.0 (43 tables) |
+| Database | SQLite (local) / PostgreSQL (production) |
+| ML | XGBoost, scikit-learn, pandas, joblib (forecasting + quality grading) |
+| Market data | data.gov.in AGMARKNET API + bundled historical sample |
+| Auth | JWT (HS256) + bcrypt; 4 roles |
+| Deploy | Vercel (frontend), Render (backend + DB), GitHub Actions (CI) |
+
+---
+
+## Running locally
+
+**Prerequisites:** Node.js 18+ and Python 3.11+.
 
 ```bash
-# Backend
+# 1) Backend — http://localhost:8000
 cd shetbhav/backend
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
+```
 
-# Frontend (new terminal)
+```bash
+# 2) Frontend — http://localhost:3000
 cd shetbhav/frontend
 npm install
 npm run dev
 ```
 
-Open **http://localhost:3000**, go to **/login**, and sign in with any demo account listed in the table above (username + password `demo123`, then select the matching role).
+Open **http://localhost:3000** → **/login** → use any demo account above.
+
+On first boot the backend **creates the schema, seeds the four demo accounts, and fills crops/markets/demo records automatically** (every startup also idempotently adds any missing reference data — crops, markets, coordinates). No database setup needed for the demo. To import the real AGMARKNET history and train forecast models on it, set `IMPORT_HISTORICAL_CSV=true` and `TRAIN_ON_STARTUP=true` on a fresh database (see [ML.md](shetbhav/ML.md)).
 
 ---
 
-## Project Structure
+## Environment variables
+
+Backend — copy [`shetbhav/backend/.env.example`](shetbhav/backend/.env.example) to `.env`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./data/shetbhav.db` | SQLite local; Postgres URL in production |
+| `SECRET_KEY` | dev value | JWT signing — **change in production** |
+| `FRONTEND_URL` / `BACKEND_URL` | localhost | CORS allow-list |
+| `DEMO_MODE` | `true` | disables rate limiting & strict headers; **set `false` in prod** |
+| `DATA_GOV_API_KEY` | — | data.gov.in key (empty → labelled synthetic fallback) |
+| `IMPORT_HISTORICAL_CSV` | `false` | bootstrap real AGMARKNET history once |
+| `TRAIN_ON_STARTUP` | `false` | train/evaluate XGBoost models on startup |
+
+Frontend — optional `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`; the deployed app uses the Vercel `/api` rewrite).
+
+---
+
+## Project structure
 
 ```
-shetbhav/
-├── backend/          FastAPI + Python 3.11 (73 API paths)
-│   ├── app/          Entry point and route mounting
-│   ├── services/     Smart Sell, auth, market data, logistics, quality
-│   ├── ml/           XGBoost forecast pipeline + evaluation
-│   ├── models/       43 SQLAlchemy tables + Pydantic schemas
-│   ├── tests/        175 pytest tests
-│   └── data/         Imported AGMARKNET dataset sample
-└── frontend/         Next.js 16 + TypeScript (19 routes)
-    └── src/
-        ├── app/      Pages: farmer, buyer, fpo, admin, auth
-        ├── components/  Shared UI components
-        └── lib/      API client, auth store, i18n
+market-intelligence-for-farmer/
+├── README.md                 ← this file
+├── LICENSE                   MIT
+├── render.yaml               Render Blueprint (backend + PostgreSQL)
+├── screenshots/              Real UI captures used above
+├── .github/workflows/ci.yml  Runs the full 175-test backend suite
+└── shetbhav/
+    ├── backend/
+    │   ├── app/main.py           FastAPI app (69 endpoints, startup seeding)
+    │   ├── app/scripts/          Market-data CSV import tool
+    │   ├── config/               Settings + DB engine
+    │   ├── services/             Smart Sell · market data · auth · logistics · quality
+    │   ├── ml/                   XGBoost pipeline, baselines, evaluation
+    │   ├── models/               SQLAlchemy models + Pydantic schemas
+    │   ├── tests/                7 files · 175 tests
+    │   ├── data/                 Sample AGMARKNET CSV (20 KB)
+    │   └── .env.example
+    └── frontend/
+        ├── src/app/             17 routes: farmer/*, buyer, fpo, admin, login, register
+        ├── src/components/       Shared UI (headers, nav, map, voice)
+        ├── src/lib/              API client · auth store · i18n (EN/HI/MR)
+        ├── public/
+        ├── vercel.json          /api rewrite → Render backend
+        └── package.json
 ```
 
-Jump straight in: [`shetbhav/backend`](shetbhav/backend) · [`shetbhav/frontend`](shetbhav/frontend) · [ARCHITECTURE.md](shetbhav/ARCHITECTURE.md) · [API.md](shetbhav/API.md) · [`render.yaml`](render.yaml) (backend blueprint) · [`vercel.json`](shetbhav/frontend/vercel.json) (frontend config)
-
 ---
 
-## How Smart Sell Works
-
-The core feature. It scores 8 factors to recommend the best selling option:
-
-| Factor | Weight | What it measures |
-|--------|--------|-----------------|
-| Net realisation | 30% | Income after transport, storage, handling, and spoilage costs |
-| Price advantage | 15% | How the offer compares to mandi modal price |
-| Transport cost | 10% | Distance and vehicle type |
-| Buyer demand | 10% | Active buyer interest for this crop |
-| Quality match | 10% | Whether lot quality meets buyer requirements |
-| Payment reliability | 10% | Buyer's track record on the platform |
-| Timing | 10% | How urgently the farmer needs to sell |
-| Distance | 5% | Physical distance to buyer or mandi |
-
-The 7-day price forecast (XGBoost) is used as one input — it never alone decides the recommendation.
-
----
-
-## Where the Market Data Comes From
-
-The app connects to the **official data.gov.in AGMARKNET API** for daily mandi prices in Maharashtra (Onion, Tomato, Soybean).
-
-Every price card in the UI shows where the data came from:
-
-| Badge | Meaning |
-|-------|---------|
-| 🟢 Official daily data | Fetched from data.gov.in API |
-| 🟡 Cached official data | Previously fetched, still fresh |
-| 🔴 Demo data | Synthetic fallback, clearly labeled |
-
----
-
-## Testing
+## Testing & CI
 
 ```bash
 cd shetbhav/backend
-python -m pytest tests/ -v    # 175 tests across 6 files
+python -m pytest tests/ -q        # 175 passed
 ```
 
-Test categories:
-- **test_api.py** — Auth, CRUD, role-based access (47 tests)
-- **test_smart_sell.py** — Smart Sell scoring engine (15 tests)
-- **test_workflows.py** — End-to-end transaction flows (27 tests)
-- **test_forecasting.py** — XGBoost pipeline, baselines, chronological validation (47 tests)
-- **test_data_gov.py** — data.gov.in API integration (15 tests)
-- **test_quality_grading.py** — AI quality assessment (24 tests)
+| File | Covers |
+|---|---|
+| `test_api.py` | Auth, CRUD, role-based access control |
+| `test_smart_sell.py` | Smart Sell scoring engine |
+| `test_workflows.py` | End-to-end marketplace transactions |
+| `test_forecasting.py` | XGBoost pipeline, baselines, validation |
+| `test_data_gov.py` | AGMARKNET integration, key handling, normalization |
+| `test_quality_grading.py` | AI quality assessment |
+| `test_data_gov.py` etc. | (see per-file docstrings) |
 
-Frontend:
-```bash
-cd shetbhav/frontend
-npm run build    # 19 routes, 0 errors
-```
+Frontend: `npm run build` compiles all 17 routes cleanly. CI runs the backend suite on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 
 ## Deployment
 
-| Service | Platform | URL |
-|---------|----------|-----|
-| Frontend | [Vercel](https://vercel.com) | [market-intelligence-for-farmer.vercel.app](https://market-intelligence-for-farmer.vercel.app/) |
-| Backend | [Render](https://render.com) | [shetbhav-backend.onrender.com](https://shetbhav-backend.onrender.com/) |
-| Database | Render PostgreSQL | Auto-wired by Blueprint |
+| Service | Platform | Notes |
+|---|---|---|
+| Frontend | [Vercel](https://vercel.com) | `market-intelligence-for-farmer.vercel.app` |
+| Backend | [Render](https://render.com) | `shetbhav-backend.onrender.com` (+ PostgreSQL) |
 
-Both services auto-deploy on every push to `main`.
-
-> **Vercel monorepo note:** the Next.js app lives in `shetbhav/frontend`, so the Vercel project's **Root Directory must be set to `shetbhav/frontend`** (Project Settings → General → Root Directory). If it points at the repo root, deploys fail with “no package.json” and the last good build stays live.
+Both auto-deploy from `main`. **Vercel monorepo note:** the app lives at `shetbhav/frontend`, so the Vercel project's **Root Directory must be set to `shetbhav/frontend`** (Project Settings → General). If it points at the repo root, deploys fail and the last good build stays live.
 
 ---
 
 ## Documentation
 
-| File | What's in it |
-|------|-------------|
-| [ARCHITECTURE.md](./shetbhav/ARCHITECTURE.md) | System design and data flow |
-| [DESIGN.md](./shetbhav/DESIGN.md) | Design system: colors, typography, spacing, components, accessibility |
-| [SECURITY.md](./shetbhav/SECURITY.md) | Secret handling, auth, and security notes |
-| [API.md](./shetbhav/API.md) | Full API reference |
-| [ML.md](./shetbhav/ML.md) | Forecasting pipeline and model details |
-| [DATA_SOURCES.md](./shetbhav/DATA_SOURCES.md) | data.gov.in integration and AGMARKNET dataset |
-| [TESTING.md](./shetbhav/TESTING.md) | Test results and categories |
-| [LIMITATIONS.md](./shetbhav/LIMITATIONS.md) | Honest scope assessment |
-| [DEMO.md](./shetbhav/DEMO.md) | Presentation walkthrough |
-| [PROJECT_STATUS.md](./shetbhav/PROJECT_STATUS.md) | Current status |
-| [LICENSE](./LICENSE) | MIT license |
+| File | Contents |
+|---|---|
+| [ARCHITECTURE.md](shetbhav/ARCHITECTURE.md) | System design, data flow, security model |
+| [API.md](shetbhav/API.md) | REST API reference |
+| [ML.md](shetbhav/ML.md) | Forecasting pipeline & model evaluation |
+| [DESIGN.md](shetbhav/DESIGN.md) | Design system & accessibility |
+| [DATA_SOURCES.md](shetbhav/DATA_SOURCES.md) | AGMARKNET integration |
+| [SECURITY.md](shetbhav/SECURITY.md) | Secrets, auth, threat notes |
+| [TESTING.md](shetbhav/TESTING.md) | Test matrix & results |
+| [DEMO.md](shetbhav/DEMO.md) | Presentation walkthrough |
+| [PROJECT_STATUS.md](shetbhav/PROJECT_STATUS.md) | Status & roadmap |
+| [LIMITATIONS.md](shetbhav/LIMITATIONS.md) | Honest scope assessment |
 
 ---
 
-## What's Real vs. What's Simulated
+## What's real vs. what's simulated
 
 | Feature | Status |
-|---------|--------|
-| Mandi prices | ✅ Real data from data.gov.in API |
-| Smart Sell recommendations | ✅ Working with real calculations |
-| Price forecasting | ✅ Real-data evaluation — XGBoost vs naive baseline, auto-fallback |
-| Lot creation and matching | ✅ Full CRUD with buyer matching |
-| Offer negotiation | ✅ Counter-offer history preserved |
-| Order tracking | ✅ Event timeline |
+|---|---|
+| Mandi prices | ✅ Real data via data.gov.in API (labelled fallback without a key) |
+| Smart Sell recommendations | ✅ Real calculations on real inputs |
+| Price forecasting | ✅ XGBoost vs baseline, auto-fallback when history is thin |
+| Marketplace (lots → offers → orders) | ✅ Full flow with negotiation history |
+| FPO aggregation | ✅ Member lots combined for bulk demand |
 | Quality grading | ⚠️ Rule-based prototype, not lab-certified |
 | Payments | 🔴 Simulated — labeled "Demo payment tracking" |
 | Transport tracking | ⚠️ Estimated quotes, not live GPS |
-| Buyer verification | ⚠️ Based on platform history only |
-
----
-
-## Limitations
-
-- Maharashtra only, 3 crops (Onion, Tomato, Soybean)
-- Daily mandi data, not real-time second-by-second
-- Forecasts are estimates, not guaranteed prices
-- No real money moves — payments are clearly labeled as demo
-- AI grading is a prototype, not certified lab testing
-- Buyer reliability is based on observed platform behavior
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](./LICENSE).
-
-Built for Smart India Hackathon 2026 (problem SIH26132).
+MIT — see [LICENSE](./LICENSE). Built for Smart India Hackathon 2026 (problem SIH26132).

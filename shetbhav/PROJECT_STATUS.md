@@ -14,7 +14,7 @@
 | Database Tables | 43 |
 | pytest Tests | 175/175 PASS |
 | E2E Demo Steps | 22/22 PASS |
-| Frontend Build | 19 routes, 0 errors |
+| Frontend Build | 17 routes, 0 errors |
 | Languages | English, Hindi, Marathi |
 | Demo Accounts | 4 (Farmer, Buyer, Admin, FPO) |
 | Market Price Records | 863 (770 historical + 93 live) |

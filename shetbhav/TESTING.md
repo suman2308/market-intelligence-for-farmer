@@ -71,7 +71,7 @@ Route                          Type├ ○ / (landing)              Static
 ├ ○ /login                     Static
 └ ○ /register                  Static
 
-19 routes, 0 errors
+17 routes, 0 errors
 ```
 
 ---

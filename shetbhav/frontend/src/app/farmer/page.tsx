@@ -24,26 +24,39 @@ export default function FarmerHome() {
   const [prices, setPrices] = useState<any>(null);
   const [lots, setLots] = useState<any[]>([]);
   const [recommendation, setRecommendation] = useState<any>(null);
+  const [cropId, setCropId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
+
+  // Crop ids differ between databases (dev seeds id 2=Onion, prod seeds a different id),
+  // so never hardcode — resolve a real id from /crops, preferring Onion like the demo.
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    api.get("/crops").then(r => {
+      const list: any[] = r.data || [];
+      const onion = list.find((c: any) => (c.name || "").toLowerCase() === "onion");
+      setCropId((onion || list[0])?.id ?? null);
+    }).catch(() => setCropId(null));
+  }, [user]);
+
+  useEffect(() => {
+    if (user && cropId) {
       Promise.all([
         api.get("/farmers/dashboard").catch(() => ({ data: null })),
-        api.get("/markets/prices?crop_id=1").catch(() => ({ data: null })),
+        api.get(`/markets/prices?crop_id=${cropId}`).catch(() => ({ data: null })),
         api.get("/lots").catch(() => ({ data: [] })),
       ]).then(([d, p, l]) => {
         setDashboard(d.data); setPrices(p.data); setLots(l.data);
       }).catch(() => {});
       // Get Smart Sell recommendation
       api.post("/smart-sell", {
-        crop_id: 2, quantity_kg: 1000, quality_grade: "A",
+        crop_id: cropId, quantity_kg: 1000, quality_grade: "A",
         location_lat: 20.0057, location_lng: 73.7229,
         storage_available: true, urgency: "soon",
       }).then(r => setRecommendation(r.data)).catch(() => {});
     }
-  }, [user]);
+  }, [user, cropId]);
 
   if (loading) return (
     <div className="farmer-shell">
@@ -100,9 +113,16 @@ export default function FarmerHome() {
         }} onClick={() => router.push("/farmer/sell")}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, opacity: 0.85, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <p style={{ fontSize: 13, fontWeight: 800, margin: 0, color: "#fff", opacity: 1, textTransform: "uppercase", letterSpacing: "0.8px", textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
                 🧠 Smart Sell Recommendation
               </p>
+              {(recommendation?.lot_summary?.crop || best.crop_name) && (
+                <p style={{ fontSize: 13, fontWeight: 700, margin: "2px 0 0", opacity: 0.95 }}>
+                  {recommendation?.lot_summary?.crop || best.crop_name}
+                  {recommendation?.lot_summary?.quantity_kg ? ` · ${recommendation.lot_summary.quantity_kg} kg` : ""}
+                  {recommendation?.lot_summary?.quality ? ` · Grade ${recommendation.lot_summary.quality}` : ""}
+                </p>
+              )}
               <p style={{ fontSize: 20, fontWeight: 800, margin: "4px 0 0" }}>
                 ₹{best.net_realization_per_q.toLocaleString("en-IN")}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.75 }}> /q net</span>
               </p>

@@ -10,7 +10,7 @@ import FarmerBottomNav from "@/components/FarmerBottomNav";
 export default function PricesPage() {
   const router = useRouter();
   const { t } = useI18n();
-  const [selectedCrop, setSelectedCrop] = useState(1);
+  const [selectedCrop, setSelectedCrop] = useState(0);
   const [crops, setCrops] = useState<any[]>([]);
   const [prices, setPrices] = useState<any>(null);
   const [forecast, setForecast] = useState<any>(null);
@@ -22,12 +22,17 @@ export default function PricesPage() {
   const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
+    // Crop ids differ per database — default to the first real crop from /crops
     Promise.all([api.get("/crops"), api.get("/markets")]).then(([c, m]) => {
-      setCrops(c.data);
-      setMarkets(m.data);
-      if (m.data.length > 0) setSelectedMarket(m.data[0].id);
-    }).catch(() => {});
-  }, []);
+      const cropList = c.data || [];
+      const marketList = m.data || [];
+      setCrops(cropList);
+      setMarkets(marketList);
+      if (cropList.length) setSelectedCrop(prev => prev || cropList[0].id);
+      else { setError(true); setLoading(false); }
+      if (marketList.length) setSelectedMarket(marketList[0].id);
+    }).catch(() => { setError(true); setLoading(false); });
+  }, [retry]);
 
   useEffect(() => {
     if (!selectedCrop) return;
@@ -144,12 +149,15 @@ export default function PricesPage() {
         <>
           {/* Current Price Card */}
           <div className="card section-gap" style={{ textAlign: "center", padding: "20px 16px" }}>
-            <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: 0 }}>TODAY</p>
-            <div className="price-big" style={{ margin: "8px 0" }}>
+            <p style={{ margin: 0, color: "var(--saffron-600)", fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase" }}>TODAY</p>
+            <div className="price-big" style={{ margin: "6px 0 2px" }}>
               ₹{prices.prices?.modal_price?.toLocaleString("en-IN") || "---"}
+              <span style={{ fontSize: 15, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+                {t("per_quintal")}
+              </span>
             </div>
             <p className="text-sm" style={{ color: "var(--color-text-secondary)", margin: 0 }}>
-              {t("per_quintal")} · Range: ₹{prices.prices?.min_price?.toLocaleString("en-IN")} — ₹{prices.prices?.max_price?.toLocaleString("en-IN")}
+              Range: ₹{prices.prices?.min_price?.toLocaleString("en-IN")} — ₹{prices.prices?.max_price?.toLocaleString("en-IN")}
             </p>
             <div className="data-source" style={{ marginTop: 8 }}>{prices.data_source_label}</div>
           </div>

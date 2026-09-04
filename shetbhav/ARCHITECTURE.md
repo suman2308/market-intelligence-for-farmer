@@ -15,14 +15,14 @@ ShetBhav is a full-stack web app with a Python backend and a Next.js frontend.
 │                   Frontend                     │
 │  Next.js 16 · TypeScript · Tailwind CSS        │
 │  Zustand state · Axios API client              │
-│  19 routes · EN/HI/MR i18n                     │
+│  17 routes · EN/HI/MR i18n                     │
 │  Mobile-first (farmer) + desktop (business)    │
 └───────────────────┬────────────────────────────┘
                     │ REST API (JSON + JWT)
 ┌───────────────────▼────────────────────────────┐
 │                   Backend                      │
 │  FastAPI · Python 3.11 · Pydantic              │
-│  73 API paths (78 methods) · JWT auth · RBAC   │
+│  69 API endpoints) · JWT auth · RBAC   │
 │  7 service modules · 1 ML pipeline             │
 └───────────────────┬────────────────────────────┘
                     │

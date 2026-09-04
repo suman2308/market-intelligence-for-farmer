@@ -103,8 +103,8 @@ export default function AdminDashboard() {
       <aside className="role-side hide-mobile" aria-label="Admin navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
+          <div className="role-side-role">Admin</div>
         </div>
-        <div className="role-side-role">Admin</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}
@@ -139,43 +139,37 @@ export default function AdminDashboard() {
           {activeTab === "overview" && stats && (
             <>
               <div className="grid-2 section-gap">
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-success)", fontSize: "clamp(22px, 5vw, 28px)" }}>{stats.total_farmers}</div>
-                  <div className="stat-label">Farmers</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-accent)", fontSize: "clamp(22px, 5vw, 28px)" }}>{stats.total_fpos}</div>
-                  <div className="stat-label">FPOs</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-info)", fontSize: "clamp(22px, 5vw, 28px)" }}>{stats.total_buyers}</div>
-                  <div className="stat-label">Buyers</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-primary)", fontSize: "clamp(22px, 5vw, 28px)" }}>{stats.verified_buyers}</div>
-                  <div className="stat-label">Verified</div>
-                </div>
+                {[
+                  { label: "Farmers", value: stats.total_farmers, icon: "👨‍🌾", color: "#16a34a", tint: "rgba(34, 197, 94, 0.12)" },
+                  { label: "FPOs", value: stats.total_fpos, icon: "🤝", color: "#d97706", tint: "rgba(217, 119, 6, 0.12)" },
+                  { label: "Buyers", value: stats.total_buyers, icon: "🏭", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)" },
+                  { label: "Verified", value: stats.verified_buyers, icon: "✅", color: "#15803d", tint: "rgba(21, 128, 61, 0.12)" },
+                ].map((s, i) => (
+                  <div key={i} className="stat-card" style={{ textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <span className="stat-value" style={{ color: s.color, fontSize: "clamp(22px, 5vw, 28px)", lineHeight: 1 }}>{s.value}</span>
+                      <span className="role-stat-ico" style={{ background: s.tint }}>{s.icon}</span>
+                    </div>
+                    <div className="stat-label" style={{ marginTop: 10, textAlign: "left", fontSize: 12, fontWeight: 600 }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
 
               <div className="grid-2 section-gap">
-                <div className="stat-card">
-                  <div className="stat-value" style={{ fontSize: "clamp(20px, 5vw, 24px)" }}>{stats.active_lots}</div>
-                  <div className="stat-label">Active Lots</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ fontSize: "clamp(20px, 5vw, 24px)" }}>{stats.active_demand}</div>
-                  <div className="stat-label">Active Demand</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-success)", fontSize: "clamp(20px, 5vw, 24px)" }}>{stats.completed_transactions}</div>
-                  <div className="stat-label">Completed</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value" style={{ color: "var(--color-success)", fontSize: "clamp(20px, 5vw, 24px)" }}>
-                    {stats.total_volume_kg ? `${(stats.total_volume_kg / 1000).toFixed(1)}T` : "0T"}
+                {[
+                  { label: "Active Lots", value: stats.active_lots, icon: "📦", color: "#1e293b", tint: "rgba(100, 116, 139, 0.12)" },
+                  { label: "Active Demand", value: stats.active_demand, icon: "📋", color: "#7c3aed", tint: "rgba(124, 58, 237, 0.12)" },
+                  { label: "Completed", value: stats.completed_transactions, icon: "✅", color: "#16a34a", tint: "rgba(34, 197, 94, 0.12)" },
+                  { label: "Volume", value: stats.total_volume_kg ? `${(stats.total_volume_kg / 1000).toFixed(1)}T` : "0T", icon: "⚖️", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)" },
+                ].map((s, i) => (
+                  <div key={i} className="stat-card" style={{ textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <span className="stat-value" style={{ color: s.color, fontSize: "clamp(20px, 5vw, 24px)", lineHeight: 1 }}>{s.value}</span>
+                      <span className="role-stat-ico" style={{ background: s.tint }}>{s.icon}</span>
+                    </div>
+                    <div className="stat-label" style={{ marginTop: 10, textAlign: "left", fontSize: 12, fontWeight: 600 }}>{s.label}</div>
                   </div>
-                  <div className="stat-label">Volume</div>
-                </div>
+                ))}
               </div>
 
               {/* Key Metrics */}

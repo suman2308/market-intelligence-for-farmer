@@ -59,8 +59,8 @@ export default function FPODashboard() {
       <aside className="role-side hide-mobile" aria-label="FPO navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
+          <div className="role-side-role">FPO</div>
         </div>
-        <div className="role-side-role">FPO</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}
@@ -94,17 +94,19 @@ export default function FPODashboard() {
       {dashboard && (
         <div className="grid-2 section-gap">
           {[
-            { label: "Members", value: dashboard.member_count, icon: "👥", color: "var(--color-primary)" },
-            { label: "Active Lots", value: dashboard.active_lots, icon: "📦", color: "var(--color-accent)" },
-            { label: "Total Volume", value: `${(dashboard.total_volume_kg / 1000).toFixed(1)}t`, icon: "⚖️", color: "var(--color-info)" },
-            { label: "Completed", value: dashboard.completed_orders, icon: "✅", color: "var(--color-success)" },
+            { label: "Members", value: dashboard.member_count, icon: "👥", color: "#15803d", tint: "rgba(21, 128, 61, 0.12)" },
+            { label: "Active Lots", value: dashboard.active_lots, icon: "📦", color: "#d97706", tint: "rgba(217, 119, 6, 0.12)" },
+            { label: "Total Volume", value: `${(dashboard.total_volume_kg / 1000).toFixed(1)}t`, icon: "⚖️", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)" },
+            { label: "Completed", value: dashboard.completed_orders, icon: "✅", color: "#16a34a", tint: "rgba(34, 197, 94, 0.14)" },
           ].map((stat) => (
-            <div key={stat.label} className="stat-card">
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{stat.icon}</div>
-              <div className="stat-value" style={{ color: stat.color, fontSize: "clamp(20px, 5vw, 26px)" }}>
-                {stat.value}
+            <div key={stat.label} className="stat-card" style={{ textAlign: "left" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <span className="stat-value" style={{ color: stat.color, fontSize: "clamp(22px, 5vw, 28px)", lineHeight: 1 }}>
+                  {stat.value}
+                </span>
+                <span className="role-stat-ico" style={{ background: stat.tint }}>{stat.icon}</span>
               </div>
-              <div className="stat-label">{stat.label}</div>
+              <div className="stat-label" style={{ marginTop: 10, textAlign: "left", fontSize: 12, fontWeight: 600 }}>{stat.label}</div>
             </div>
           ))}
         </div>

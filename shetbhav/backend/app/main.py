@@ -150,6 +150,59 @@ def _maybe_import_historical_csv():
         db.close()
 
 
+def _seed_reference_data():
+    """Idempotently ensure core crops & markets exist on every startup.
+
+    The demo-data seed only runs on a brand-new (userless) database, so on an
+    already-seeded DB (e.g. production) missing reference rows like the Rice
+    crop would never appear. This runs unconditionally and only adds/backfills
+    what is missing.
+    """
+    db = SessionLocal()
+    try:
+        existing_crops = {c.name: c for c in db.query(Crop).all()}
+        crop_data = [
+            ("Tomato", "टमाटर", "टोमॅटो", "vegetable", 5, True),
+            ("Onion", "प्याज़", "कांदा", "vegetable", 14, False),
+            ("Soybean", "सोयाबीन", "सोयाबीन", "grain", 90, False),
+            ("Rice", "चावल", "तांदूळ", "grain", None, False),
+        ]
+        for name, hi, mr, cat, shelf, ai in crop_data:
+            crop = existing_crops.get(name)
+            if crop is None:
+                db.add(Crop(name=name, name_hi=hi, name_mr=mr, category=cat, unit="kg",
+                            shelf_life_days=shelf, supports_ai_grading=ai))
+            else:
+                # Backfill missing localised names (rows created by market-data import lack them)
+                if crop.name_hi is None and hi:
+                    crop.name_hi = hi
+                if crop.name_mr is None and mr:
+                    crop.name_mr = mr
+
+        existing_markets = {m.name: m for m in db.query(Market).all()}
+        market_data = [
+            ("Nashik APMC", "MH_NSK_001", "Nashik", 19.9975, 73.7898),
+            ("Pune APMC", "MH_PUN_001", "Pune", 18.5204, 73.8567),
+            ("Mumbai APMC", "MH_MUM_001", "Mumbai", 19.0760, 72.8777),
+            ("Nagpur APMC", "MH_NGP_001", "Nagpur", 21.1458, 79.0882),
+            ("Nashik Lasalgaon", "MH_NSK_002", "Nashik", 20.1487, 73.8936),
+        ]
+        for name, code, dist, lat, lng in market_data:
+            market = existing_markets.get(name)
+            if market is None:
+                db.add(Market(name=name, code=code, district=dist, state="Maharashtra",
+                              location_lat=lat, location_lng=lng, market_type="APMC"))
+            else:
+                # Backfill missing coordinates so the map can place every core market
+                if market.location_lat is None:
+                    market.location_lat = lat
+                if market.location_lng is None:
+                    market.location_lng = lng
+        db.commit()
+    finally:
+        db.close()
+
+
 def _maybe_train_models_on_startup():
     """Train forecast models on the real daily series at boot (env-gated)."""
     if os.getenv("TRAIN_ON_STARTUP", "false").lower() != "true":
@@ -191,6 +244,7 @@ def _maybe_train_models_on_startup():
 @app.on_event("startup")
 def startup():
     init_db()
+    _seed_reference_data()
     _maybe_import_historical_csv()
     _seed_demo_data()
     _maybe_train_models_on_startup()
@@ -449,7 +503,24 @@ def market_overview(
 
     svc = MarketDataService()
     current = svc.get_current_prices(db, crop_id)
-    forecast = predict_price(crop.name.lower(), current.get("prices", {}).get("modal_price", 2400))
+    current_price = current.get("prices", {}).get("modal_price", 2400)
+
+    # Feed the model with real history from the DB (oldest → newest). Without this,
+    # predict_price can only fall back to the naive 40%-confidence forecast even
+    # when plenty of price records exist.
+    history = db.query(MarketPrice).filter(
+        MarketPrice.crop_id == crop_id,
+        MarketPrice.modal_price.isnot(None),
+        MarketPrice.date.isnot(None),
+    ).order_by(MarketPrice.date.desc()).limit(400).all()
+    price_records = [
+        {"date": r.date.strftime("%Y-%m-%d"), "modal_price": float(r.modal_price)}
+        for r in reversed(history)
+    ]
+    forecast = predict_price(
+        crop.name.lower(), current_price,
+        price_records=price_records or None,
+    )
 
     modal = current.get("prices", {}).get("modal_price", 2400)
     prev_day = svc.get_current_prices(db, crop_id)

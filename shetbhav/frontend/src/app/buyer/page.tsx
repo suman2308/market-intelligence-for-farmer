@@ -19,7 +19,7 @@ export default function BuyerDashboard() {
   const [offerModal, setOfferModal] = useState<any>(null);
   const [offerForm, setOfferForm] = useState({ price_per_q: 2500, quantity_kg: 1000, delivery_date: "" });
   const [demandForm, setDemandForm] = useState({
-    crop_id: 1, quantity_kg: 5000, quality_grade: "A",
+    crop_id: 0, quantity_kg: 5000, quality_grade: "A",
     required_by_date: "", district: "Pune", offered_price_per_q: 2500,
   });
   const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders">("lots");
@@ -36,8 +36,15 @@ export default function BuyerDashboard() {
         api.get("/offers").catch(() => ({ data: [] })),
         api.get("/orders").catch(() => ({ data: [] })),
       ]).then(([d, c, l, o, or]) => {
-        setDemand(d.data); setCrops(c.data); setLots(l.data);
-        setOffers(o.data); setOrders(or.data);
+        setDemand(d.data);
+        // Crop ids differ per database — default the demand form to the first real crop
+        if (c.data?.length) {
+          setCrops(c.data);
+          setDemandForm(f => (f.crop_id ? f : { ...f, crop_id: c.data[0].id }));
+        } else {
+          setCrops([]);
+        }
+        setLots(l.data); setOffers(o.data); setOrders(or.data);
       }).catch(() => {});
     }
   }, [user]);
@@ -92,8 +99,8 @@ export default function BuyerDashboard() {
       <aside className="role-side hide-mobile" aria-label="Buyer navigation">
         <div className="role-side-brand">
           <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
+          <div className="role-side-role">Buyer</div>
         </div>
-        <div className="role-side-role">Buyer</div>
         <nav className="role-side-nav">
           {sidebarItems.map(item => (
             <button key={item.tab}
@@ -123,16 +130,19 @@ export default function BuyerDashboard() {
           <div className="role-inner">
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
           {[
-            { value: demand.length, label: "Demands", color: "var(--sky-500)" },
-            { value: lots.length, label: "Lots", color: "var(--green-600)" },
-            { value: offers.length, label: "Offers", color: "var(--saffron-500)" },
-            { value: orders.length, label: "Orders", color: "var(--stone-600)" },
+            { value: demand.length, label: "Demands", icon: "📋", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)" },
+            { value: lots.length, label: "Lots", icon: "📦", color: "#15803d", tint: "rgba(21, 128, 61, 0.12)" },
+            { value: offers.length, label: "Offers", icon: "📨", color: "#d97706", tint: "rgba(217, 119, 6, 0.12)" },
+            { value: orders.length, label: "Orders", icon: "🚚", color: "#64748b", tint: "rgba(100, 116, 139, 0.12)" },
           ].map((s, i) => (
-            <div key={i} className="stat-card" style={{ background: "white", borderRadius: 12, border: "1px solid var(--stone-200)" }}>
-              <div className="stat-value" style={{ color: s.color, fontSize: 22 }}>{s.value}</div>
-              <div className="stat-label">{s.label}</div>
+            <div key={i} className="stat-card" style={{ textAlign: "left" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <span className="stat-value" style={{ color: s.color, fontSize: 30, lineHeight: 1 }}>{s.value}</span>
+                <span className="role-stat-ico" style={{ background: s.tint }}>{s.icon}</span>
+              </div>
+              <div className="stat-label" style={{ marginTop: 10, textAlign: "left", fontSize: 12, fontWeight: 600 }}>{s.label}</div>
             </div>
           ))}
         </div>
