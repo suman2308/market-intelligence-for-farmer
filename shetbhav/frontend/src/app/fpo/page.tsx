@@ -58,7 +58,7 @@ export default function FPODashboard() {
       {/* Left panel — brand, role, navigation (desktop) */}
       <aside className="role-side hide-mobile" aria-label="FPO navigation">
         <div className="role-side-brand">
-          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
           <div className="role-brand-title">FPO</div>
         </div>
         <nav className="role-side-nav">

@@ -9,7 +9,7 @@ const ROLES = [
   { value: "farmer", icon: "👨‍🌾", labelKey: "i_am_farmer", descKey: "role_farmer_desc" },
   { value: "buyer", icon: "🏭", labelKey: "i_am_buyer", descKey: "role_buyer_desc" },
   { value: "fpo", icon: "🤝", labelKey: "i_am_fpo", descKey: "role_fpo_desc" },
-  { value: "admin", icon: "⚙️", labelKey: "role_admin_desc", descKey: "role_admin_desc" },
+  { value: "admin", icon: "⚙️", labelKey: "i_am_admin", descKey: "role_admin_desc" },
 ];
 
 const LANGS: { code: Lang; label: string; flag: string }[] = [
@@ -33,17 +33,32 @@ export default function LoginPage() {
     e.preventDefault();
     if (step === "credentials") {
       if (!username || !password) return;
-      setStep("role");
+      // Validate credentials up-front so the role step can pre-select the
+      // account's real role (and wrong passwords are caught before routing).
+      setLoading(true);
+      setError("");
+      try {
+        await login(username, password);
+        const actualRole = useAuth.getState().user?.role || "farmer";
+        setSelectedRole(actualRole);
+        setStep("role");
+      } catch {
+        setError(t("invalid_credentials"));
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     setLoading(true);
     setError("");
     try {
-      await login(username, password);
+      // Route by the account's real role so a user can never land on the
+      // wrong dashboard (which would surface 403 errors).
+      const actualRole = useAuth.getState().user?.role || selectedRole;
       router.push(
-        selectedRole === "buyer" ? "/buyer" :
-        selectedRole === "admin" ? "/admin" :
-        selectedRole === "fpo" ? "/fpo" : "/farmer"
+        actualRole === "buyer" ? "/buyer" :
+        actualRole === "admin" ? "/admin" :
+        actualRole === "fpo" ? "/fpo" : "/farmer"
       );
     } catch {
       setError(t("invalid_credentials"));

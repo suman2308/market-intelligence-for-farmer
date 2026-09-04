@@ -212,6 +212,8 @@ npm run build    # 19 routes, 0 errors
 
 Both services auto-deploy on every push to `main`.
 
+> **Vercel monorepo note:** the Next.js app lives in `shetbhav/frontend`, so the Vercel project's **Root Directory must be set to `shetbhav/frontend`** (Project Settings → General → Root Directory). If it points at the repo root, deploys fail with “no package.json” and the last good build stays live.
+
 ---
 
 ## Documentation

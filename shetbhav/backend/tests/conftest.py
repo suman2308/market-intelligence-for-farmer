@@ -74,11 +74,21 @@ def create_all_tables():
 
 @pytest.fixture(autouse=True)
 def clean_database():
-    """Clean tables between tests for isolation."""
+    """Clean user-created data between tests for isolation.
+
+    Seed rows (crops, markets) are created once per session by
+    ``create_all_tables`` and must survive across tests, so they are
+    preserved here.
+    """
     yield
-    # Clean in reverse dependency order
-    for table in reversed(Base.metadata.sorted_tables):
-        try:
-            test_engine.execute(table.delete())
-        except Exception:
-            pass
+    from sqlalchemy import text
+    seed_tables = {Crop.__tablename__, Market.__tablename__}
+    with test_engine.begin() as conn:
+        # Clean in reverse dependency order (children before parents)
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name in seed_tables:
+                continue
+            try:
+                conn.execute(text(f"DELETE FROM {table.name}"))
+            except Exception:
+                pass

@@ -140,13 +140,13 @@ export default function PricesPage() {
               <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "0 0 4px 0" }}>{t("forecast")} (7 days)</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                 <span className="heading-lg" style={{ color: "#3b82f6" }}>
-                  ₹{forecast.price_low?.toLocaleString("en-IN")} — ₹{forecast.price_high?.toLocaleString("en-IN")}
+                  ₹{forecast.expected_low?.toLocaleString("en-IN") ?? "—"} — ₹{forecast.expected_high?.toLocaleString("en-IN") ?? "—"}
                 </span>
               </div>
               <p className="text-sm mt-2" style={{ color: "var(--color-text-secondary)", margin: "8px 0 0 0" }}>
                 {t("confidence")}: {(forecast.confidence * 100).toFixed(0)}%
               </p>
-              <p className="data-source">{forecast.source_label}</p>
+              <p className="data-source">{forecast.explanation || forecast.source_label || ""}</p>
               <div style={{
                 marginTop: 12, padding: 12, background: "#eff6ff", borderRadius: 10,
                 borderLeft: "3px solid #3b82f6",
@@ -154,13 +154,17 @@ export default function PricesPage() {
                 <p className="text-sm" style={{ fontWeight: 600, margin: 0, color: "#1e40af" }}>
                   📈 {(forecast.predicted_price || 0) > (prices.prices?.modal_price || 0)
                     ? "Price expected to rise"
-                    : "Price expected to fall"
+                    : (forecast.predicted_price || 0) < (prices.prices?.modal_price || 0)
+                      ? "Price expected to fall"
+                      : "Price expected to stay stable"
                   }
                 </p>
                 <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "4px 0 0 0" }}>
                   {(forecast.predicted_price || 0) > (prices.prices?.modal_price || 0)
                     ? t("store_and_sell")
-                    : t("sell_now")
+                    : (forecast.predicted_price || 0) < (prices.prices?.modal_price || 0)
+                      ? t("sell_now")
+                      : t("sell_now")
                   }
                 </p>
               </div>

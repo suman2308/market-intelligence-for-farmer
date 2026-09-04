@@ -431,20 +431,35 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   padding: 12px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  /* Width of the emoji slot + gap, so .role-brand-title can start exactly
+     below the “ShetBhav” text (not below the 🌾 glyph). */
+  --brand-indent: 36px;
 }
 .role-brand-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 23px;
   font-weight: 800;
   color: white;
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
-/* Role title: light-green pill so it reads clearly on the deep green panel */
+/* Fixed-size slot for the emoji keeps the name text start predictable. */
+.role-brand-logo {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 28px;
+  line-height: 1;
+}
+/* Role title: light-green pill so it reads clearly on the deep green panel.
+   Indented to align under the brand TEXT, like a subtitle under the title. */
 .role-brand-title {
   align-self: flex-start;
+  margin-left: var(--brand-indent);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.4px;
@@ -490,7 +505,8 @@ body {
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--saffron-400);
 }
-/* Red logout — lives in the white top bar (desktop + mobile), one place only */
+/* Red logout — lives in the white top bar (desktop + mobile), one place only.
+   Sized to sit level with the small “✓ Verified Buyer” badge beside it. */
 .logout-btn {
   display: inline-flex;
   align-items: center;
@@ -498,13 +514,14 @@ body {
   border: none;
   background: #dc2626;
   color: white;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  padding: 9px 16px;
-  border-radius: 10px;
-  min-height: 38px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  min-height: 26px;
+  line-height: 1.3;
   transition: background 0.15s;
 }
 .logout-btn:hover { background: #b91c1c; }

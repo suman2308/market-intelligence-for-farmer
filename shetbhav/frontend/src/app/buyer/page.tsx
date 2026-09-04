@@ -61,7 +61,11 @@ export default function BuyerDashboard() {
 
   const createDemand = async () => {
     try {
-      await api.post("/demand", demandForm);
+      await api.post("/demand", {
+        ...demandForm,
+        // Backend expects null (not "") for optional dates
+        required_by_date: demandForm.required_by_date || null,
+      });
       setShowCreateDemand(false);
       const { data } = await api.get("/demand");
       setDemand(data);
@@ -87,7 +91,7 @@ export default function BuyerDashboard() {
       {/* Left panel — brand, role, navigation, logout (desktop) */}
       <aside className="role-side hide-mobile" aria-label="Buyer navigation">
         <div className="role-side-brand">
-          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
           <div className="role-brand-title">Buyer</div>
         </div>
         <nav className="role-side-nav">

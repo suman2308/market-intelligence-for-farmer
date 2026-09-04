@@ -46,9 +46,13 @@ export default function AdminDashboard() {
     );
   }
 
-  const resolveGrievance = async (grievanceId: number, action: string) => {
+  const resolveGrievance = async (grievanceId: number, action: "resolved" | "rejected", message: string) => {
     try {
-      await api.put(`/grievances/${grievanceId}/resolve`, { resolution: action });
+      await api.put(`/grievances/${grievanceId}/resolve`, {
+        status: action,
+        admin_response: message,
+        resolution: action === "resolved" ? message : undefined,
+      });
       const { data } = await api.get("/grievances");
       setGrievances(data);
     } catch {}
@@ -98,7 +102,7 @@ export default function AdminDashboard() {
       {/* Left panel — brand, role, navigation (desktop) */}
       <aside className="role-side hide-mobile" aria-label="Admin navigation">
         <div className="role-side-brand">
-          <div className="role-brand-name">🌾 ShetBhav</div>
+          <div className="role-brand-name"><span className="role-brand-logo">🌾</span>ShetBhav</div>
           <div className="role-brand-title">Admin</div>
         </div>
         <nav className="role-side-nav">
@@ -311,11 +315,11 @@ export default function AdminDashboard() {
                   {g.status === "open" && (
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       <button className="btn-primary" style={{ flex: 1, fontSize: 13, padding: "8px 12px" }}
-                        onClick={() => resolveGrievance(g.id, "Resolved — issue addressed")}>
+                        onClick={() => resolveGrievance(g.id, "resolved", "Resolved — issue addressed")}>
                         ✅ Resolve
                       </button>
                       <button className="btn-secondary" style={{ flex: 1, fontSize: 13, padding: "8px 12px" }}
-                        onClick={() => resolveGrievance(g.id, "Rejected — no action needed")}>
+                        onClick={() => resolveGrievance(g.id, "rejected", "Rejected — no action needed")}>
                         ❌ Reject
                       </button>
                     </div>
