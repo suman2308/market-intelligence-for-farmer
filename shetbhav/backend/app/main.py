@@ -24,7 +24,7 @@ from models.database import (
     User, FarmerProfile, FPOProfile, BuyerProfile, AdminProfile,
     Crop, Market, MarketPrice, ProduceLot, DemandRequest,
     Offer, OfferHistory, Order, Logistics, Payment,
-    Grievance, Forecast, Recommendation, Notification,
+    Grievance, GrievanceStatusEvent, Forecast, Recommendation, Notification,
     StorageFacility, TransportProvider, FPOMembership,
     DataSource, Farm, LotItem, OrderEvent,
     UserRole, QualityGrade, OrderStatus, OfferStatus, GrievanceStatus,
@@ -41,7 +41,7 @@ from models.schemas import (
     OfferCreate, OfferCounter, OfferResponse,
     OrderResponse, OrderStatusUpdate,
     PaymentResponse,
-    GrievanceCreate, GrievanceResponse, GrievanceResolution,
+    GrievanceCreate, GrievanceResponse, GrievanceResolution, GrievanceStatusEventResponse,
     StorageFacilityResponse,
     SmartSellRequest, SmartSellResponse,
     NotificationResponse, AdminDashboardStats,
@@ -1130,6 +1130,11 @@ def create_grievance(
     )
     db.add(grievance)
     db.flush()
+    # Audit trail: record the opening transition
+    db.add(GrievanceStatusEvent(
+        grievance_id=grievance.id, from_status=None, to_status=GrievanceStatus.OPEN,
+        note=data.description[:200], changed_by=user.id,
+    ))
     # Add timeline event if linked to an order
     if data.order_id:
         evt = OrderEvent(
@@ -1163,9 +1168,15 @@ def resolve_grievance(
     grievance = db.query(Grievance).filter(Grievance.id == grievance_id).first()
     if not grievance:
         raise HTTPException(status_code=404, detail="Grievance not found")
+    previous_status = grievance.status
     grievance.status = data.status
     grievance.admin_response = data.admin_response
     grievance.resolution = data.resolution
+    # Audit trail: record every status transition, not just the final one
+    db.add(GrievanceStatusEvent(
+        grievance_id=grievance.id, from_status=previous_status, to_status=data.status,
+        note=data.admin_response, changed_by=user.id,
+    ))
     # Timeline event if linked to order
     if grievance.order_id:
         evt = OrderEvent(
@@ -1178,6 +1189,25 @@ def resolve_grievance(
     db.commit()
     db.refresh(grievance)
     return grievance
+
+
+@app.get("/grievances/{grievance_id}/history", response_model=List[GrievanceStatusEventResponse])
+def get_grievance_history(
+    grievance_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    grievance = db.query(Grievance).filter(Grievance.id == grievance_id).first()
+    if not grievance:
+        raise HTTPException(status_code=404, detail="Grievance not found")
+    if user.role != UserRole.ADMIN and grievance.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this grievance")
+    return (
+        db.query(GrievanceStatusEvent)
+        .filter(GrievanceStatusEvent.grievance_id == grievance_id)
+        .order_by(GrievanceStatusEvent.created_at.asc())
+        .all()
+    )
 
 
 # ── Storage Routes ───────────────────────────────────────────────────
@@ -1223,6 +1253,13 @@ def find_matching_buyers(
     crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
     crop_name = crop.name.lower() if crop else ""
 
+    # Reference price for scoring offers: the crop's actual current market
+    # price, not a fixed constant (a fixed baseline breaks scoring for any
+    # crop whose real price differs from it).
+    market_svc = MarketDataService()
+    market_data = market_svc.get_current_prices(db, lot.crop_id)
+    reference_price = market_data.get("prices", {}).get("modal_price") or 2400
+
     # Find matching demands
     demands = db.query(DemandRequest).filter(
         DemandRequest.crop_id == lot.crop_id,
@@ -1239,7 +1276,7 @@ def find_matching_buyers(
             score += 10
         if demand.quantity_kg >= lot.quantity_kg:
             score += 5
-        price_diff = abs(demand.offered_price_per_q - 2400) / 2400
+        price_diff = abs(demand.offered_price_per_q - reference_price) / reference_price
         score += max(0, 15 - price_diff * 100)
 
         matches.append({

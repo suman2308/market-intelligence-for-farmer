@@ -5,13 +5,6 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 
-const ROLES = [
-  { value: "farmer", icon: "👨‍🌾", labelKey: "i_am_farmer", descKey: "role_farmer_desc" },
-  { value: "buyer", icon: "🏭", labelKey: "i_am_buyer", descKey: "role_buyer_desc" },
-  { value: "fpo", icon: "🤝", labelKey: "i_am_fpo", descKey: "role_fpo_desc" },
-  { value: "admin", icon: "⚙️", labelKey: "i_am_admin", descKey: "role_admin_desc" },
-];
-
 const LANGS: { code: Lang; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
   { code: "hi", label: "हिं", flag: "🇮🇳" },
@@ -24,37 +17,19 @@ export default function LoginPage() {
   const { t, lang, setLang } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState("farmer");
-  const [step, setStep] = useState<"credentials" | "role">("credentials");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === "credentials") {
-      if (!username || !password) return;
-      // Validate credentials up-front so the role step can pre-select the
-      // account's real role (and wrong passwords are caught before routing).
-      setLoading(true);
-      setError("");
-      try {
-        await login(username, password);
-        const actualRole = useAuth.getState().user?.role || "farmer";
-        setSelectedRole(actualRole);
-        setStep("role");
-      } catch {
-        setError(t("invalid_credentials"));
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+    if (!username || !password) return;
     setLoading(true);
     setError("");
     try {
+      await login(username, password);
       // Route by the account's real role so a user can never land on the
       // wrong dashboard (which would surface 403 errors).
-      const actualRole = useAuth.getState().user?.role || selectedRole;
+      const actualRole = useAuth.getState().user?.role || "farmer";
       router.push(
         actualRole === "buyer" ? "/buyer" :
         actualRole === "admin" ? "/admin" :
@@ -62,7 +37,6 @@ export default function LoginPage() {
       );
     } catch {
       setError(t("invalid_credentials"));
-      setStep("credentials");
     } finally {
       setLoading(false);
     }
@@ -137,67 +111,30 @@ export default function LoginPage() {
             <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "4px 0 0" }}>{t("tagline")}</p>
           </div>
 
-          {step === "credentials" ? (
-            <>
-              <h2 className="auth-title">{t("welcome_back")}</h2>
-              <p className="auth-subtitle">{t("sign_in_subtitle")}</p>
+          <h2 className="auth-title">{t("welcome_back")}</h2>
+          <p className="auth-subtitle">{t("sign_in_subtitle")}</p>
 
-              <form onSubmit={handleSubmit} className="auth-form">
-                <div className="auth-field">
-                  <label className="auth-label">{t("username")}</label>
-                  <input className="input" placeholder={t("username")} value={username}
-                    onChange={e => setUsername(e.target.value)} required autoComplete="username" />
-                </div>
-                <div className="auth-field">
-                  <label className="auth-label">{t("password")}</label>
-                  <input className="input" type="password" placeholder={t("password")} value={password}
-                    onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
-                </div>
-                {error && (
-                  <div className="auth-error">
-                    <span>⚠️</span>
-                    <p>{error}</p>
-                  </div>
-                )}
-                <button className="btn-primary auth-submit" type="submit" disabled={loading}>
-                  {loading ? <><span className="spinner" /> {t("signing_in")}</> : t("continue")}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <button onClick={() => { setStep("credentials"); setError(""); }} className="auth-back">
-                {t("back_to_login")}
-              </button>
-              <h2 className="auth-title">{t("select_role")}</h2>
-              <p className="auth-subtitle">{t("select_role_subtitle")}</p>
-
-              <form onSubmit={handleSubmit} className="auth-form">
-                {ROLES.map(r => (
-                  <button key={r.value} type="button"
-                    onClick={() => setSelectedRole(r.value)}
-                    className={`auth-role-btn ${selectedRole === r.value ? "selected" : ""}`}>
-                    <span className="auth-role-icon">{r.icon}</span>
-                    <div className="auth-role-text">
-                      <div className="auth-role-label">{t(r.labelKey)}</div>
-                      <div className="auth-role-desc">{t(r.descKey)}</div>
-                    </div>
-                    {selectedRole === r.value && <span className="auth-role-check">✓</span>}
-                  </button>
-                ))}
-
-                {error && (
-                  <div className="auth-error">
-                    <p>{error}</p>
-                  </div>
-                )}
-
-                <button className="btn-primary auth-submit" type="submit" disabled={loading}>
-                  {loading ? <><span className="spinner" /> {t("signing_in")}</> : t("sign_in")}
-                </button>
-              </form>
-            </>
-          )}
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label className="auth-label">{t("username")}</label>
+              <input className="input" placeholder={t("username")} value={username}
+                onChange={e => setUsername(e.target.value)} required autoComplete="username" />
+            </div>
+            <div className="auth-field">
+              <label className="auth-label">{t("password")}</label>
+              <input className="input" type="password" placeholder={t("password")} value={password}
+                onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
+            </div>
+            {error && (
+              <div className="auth-error">
+                <span>⚠️</span>
+                <p>{error}</p>
+              </div>
+            )}
+            <button className="btn-primary auth-submit" type="submit" disabled={loading}>
+              {loading ? <><span className="spinner" /> {t("signing_in")}</> : t("sign_in")}
+            </button>
+          </form>
 
           <p className="auth-footer-link">
             {t("dont_have_account")}{" "}
