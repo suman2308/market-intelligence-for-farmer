@@ -281,7 +281,7 @@ export default function BuyerDashboard() {
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lot.crop_name} — {lot.quantity_kg}kg</p>
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {lot.quality_grade || "Any"} · {lot.address}</p>
                     {lot.farmer_name && (
-                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--stone-400)" }}>by {lot.farmer_name}</p>
+                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>by {lot.farmer_name}</p>
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -356,7 +356,7 @@ export default function BuyerDashboard() {
                       <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Offer #{o.id}</p>
                       <p className="text-sm" style={{ margin: "2px 0 0" }}>{o.quantity_kg}kg @ ₹{o.price_per_q?.toLocaleString("en-IN")}/q</p>
                     </div>
-                    <span className={`badge badge-${o.status === "accepted" ? "completed" : o.status === "pending" ? "active" : o.status === "countered" ? "pending" : "cancelled"}`}>
+                    <span className={`badge ${o.status === "accepted" ? "badge-green" : o.status === "pending" ? "badge-amber" : o.status === "countered" ? "badge-blue" : "badge-gray"}`}>
                       {o.status}
                     </span>
                   </div>

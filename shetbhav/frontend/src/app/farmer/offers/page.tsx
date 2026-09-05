@@ -119,7 +119,7 @@ export default function FarmerOffers() {
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
                       {lot.crop_name || "Crop"} · {lot.quantity_kg}kg
                     </p>
-                    <p style={{ fontSize: 12, color: "var(--stone-400)", margin: "2px 0 0" }}>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
                       {offers.length} offer{offers.length !== 1 ? "s" : ""}
                     </p>
                   </div>
@@ -154,7 +154,7 @@ export default function FarmerOffers() {
                           {offer.status}
                         </span>
                       </div>
-                      <p style={{ fontSize: 12, color: "var(--stone-400)", margin: "4px 0 0" }}>
+                      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                         {offer.quantity_kg}kg requested
                       </p>
 
@@ -181,21 +181,28 @@ export default function FarmerOffers() {
                       )}
 
                       {counterOfferId === offer.id && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                          <input className="input" type="number" placeholder="Your price ₹/q"
-                            value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
-                            style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                          <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
-                            disabled={!counterPrice || busyOfferId === offer.id}
-                            onClick={() => act(offer.id, "counter", counterPrice)}>
-                            Send
-                          </button>
-                          <button style={{
-                            padding: "8px 10px", fontSize: 13, borderRadius: 8,
-                            border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                          }} onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
-                            ✕
-                          </button>
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <input className="input" type="number" placeholder="Your price ₹/q"
+                              value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
+                              style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
+                            <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
+                              disabled={!counterPrice || busyOfferId === offer.id}
+                              onClick={() => act(offer.id, "counter", counterPrice)}>
+                              Send
+                            </button>
+                            <button style={{
+                              padding: "8px 10px", fontSize: 13, borderRadius: 8,
+                              border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                            }} onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
+                              ✕
+                            </button>
+                          </div>
+                          {!counterPrice && (
+                            <p className="text-xs" style={{ color: "var(--text-secondary)", margin: "4px 0 0" }}>
+                              Enter a price to enable Send
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

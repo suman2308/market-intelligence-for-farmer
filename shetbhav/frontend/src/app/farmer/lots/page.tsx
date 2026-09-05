@@ -100,7 +100,7 @@ export default function FarmerLots() {
                 {matchLoading[lot.id] ? (
                   <div className="skeleton" style={{ height: 60 }} />
                 ) : (matchesByLot[lot.id] || []).length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--stone-400)", margin: 0 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
                     No buyer demand currently matches this lot.
                   </p>
                 ) : (
@@ -111,7 +111,7 @@ export default function FarmerLots() {
                     }}>
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{m.buyer_name}</p>
-                        <p style={{ fontSize: 12, color: "var(--stone-400)", margin: "2px 0 0" }}>
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
                           Wants {m.quantity_needed}kg · {m.district || "—"}
                         </p>
                       </div>

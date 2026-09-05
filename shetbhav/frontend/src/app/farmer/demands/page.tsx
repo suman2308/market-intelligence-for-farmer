@@ -101,7 +101,7 @@ export default function FarmerDemands() {
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
                       {demand.crop_name || "Crop"} · {demand.quantity_kg}kg
                     </p>
-                    <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "4px 0 0" }}>
+                    <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                       {demand.buyer_name || "Buyer"} · {demand.district || "—"}
                       {demand.quality_grade ? ` · Grade ${demand.quality_grade}` : ""}
                     </p>
@@ -118,13 +118,13 @@ export default function FarmerDemands() {
                 ) : respondingTo === demand.id ? (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--stone-100, #f5f5f4)" }}>
                     {cropLots.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "var(--stone-400)" }}>
+                      <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                         You have no active lot with enough quantity for this demand.{" "}
                         <a href="/farmer/sell" style={{ color: "var(--green-600)" }}>Create one</a>.
                       </p>
                     ) : (
                       <>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--stone-400)" }}>Fulfil with which lot?</label>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Fulfil with which lot?</label>
                         <select className="select" value={selectedLotId}
                           onChange={e => setSelectedLotId(e.target.value)}
                           style={{ width: "100%", marginBottom: 8 }}>
@@ -132,7 +132,7 @@ export default function FarmerDemands() {
                             <option key={l.id} value={l.id}>Lot #{l.id} · {l.quantity_kg}kg</option>
                           ))}
                         </select>
-                        <p style={{ fontSize: 12, color: "var(--stone-400)", marginBottom: 8 }}>
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
                           You'll supply {demand.quantity_kg}kg at the buyer's price of ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q — no negotiation, this locks the deal.
                         </p>
                         <div style={{ display: "flex", gap: 8 }}>

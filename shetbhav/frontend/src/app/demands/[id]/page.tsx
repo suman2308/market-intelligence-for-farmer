@@ -51,7 +51,7 @@ export default function DemandDetailPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
                 <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{demand.crop_name || "Crop"}</h2>
-                <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "2px 0 0" }}>Demand #{demand.id}</p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 0" }}>Demand #{demand.id}</p>
               </div>
               <span className={`badge badge-${demand.status === "open" ? "active" : "pending"}`}>{demand.status}</span>
             </div>
@@ -82,7 +82,7 @@ export default function DemandDetailPage() {
               <div>
                 <p style={{ fontWeight: 700, margin: 0 }}>{demand.buyer_name || "Buyer"}</p>
                 {demand.buyer_username && (
-                  <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "2px 0 0" }}>@{demand.buyer_username}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 0" }}>@{demand.buyer_username}</p>
                 )}
               </div>
               {demand.buyer_user_id && (

@@ -63,7 +63,7 @@ export default function CounterpartyProfilePage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
             {profile.fpo_name || profile.business_name || profile.full_name}
           </h2>
-          <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "4px 0 0" }}>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 0" }}>
             @{profile.username} · {ROLE_LABEL[profile.role] || profile.role}
           </p>
 

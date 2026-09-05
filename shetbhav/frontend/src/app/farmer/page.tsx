@@ -116,7 +116,7 @@ export default function FarmerHome() {
         <h1 className="heading-xl" style={{ background: "linear-gradient(135deg, var(--green-700), var(--green-600))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", margin: "2px 0 0" }}>
           {user.full_name.split(" ")[0]}
         </h1>
-        <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--stone-400)" }}>📍 Nashik, Maharashtra</p>
+        <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>📍 Nashik, Maharashtra</p>
       </div>
 
       {/* ── Smart Sell Recommendation Card ── */}

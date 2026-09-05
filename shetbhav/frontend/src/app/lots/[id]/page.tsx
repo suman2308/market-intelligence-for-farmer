@@ -56,7 +56,7 @@ export default function LotDetailPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
                 <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{lot.crop_name || "Crop"}</h2>
-                <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "2px 0 0" }}>Lot #{lot.id}</p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 0" }}>Lot #{lot.id}</p>
               </div>
               <span className={`badge badge-${lot.status === "active" ? "active" : "pending"}`}>{lot.status}</span>
             </div>
@@ -92,7 +92,7 @@ export default function LotDetailPage() {
               <div>
                 <p style={{ fontWeight: 700, margin: 0 }}>{posterLabel}</p>
                 {lot.farmer_username && (
-                  <p style={{ fontSize: 13, color: "var(--stone-400)", margin: "2px 0 0" }}>@{lot.farmer_username}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 0" }}>@{lot.farmer_username}</p>
                 )}
               </div>
               {posterUserId && (
