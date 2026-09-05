@@ -6,6 +6,9 @@ import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { EmptyState, Skeleton, NotificationBell, NotificationsPanel } from "@/components/ui";
 import { totalAmount, formatINR } from "@/lib/money";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -306,7 +309,7 @@ export default function BuyerDashboard() {
               <EmptyState icon="📦" title="No lots available"
                 description={sellerTypeFilter === "all" ? "Post a demand to find farmers" : `No ${sellerTypeFilter === "fpo" ? "FPO" : "individual farmer"} lots right now`} />
             ) : visibleLots.map((lot: any) => (
-              <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
+              <Card key={lot.id} style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                   onClick={() => router.push(`/lots/${lot.id}`)}>
                   <div>
@@ -332,18 +335,18 @@ export default function BuyerDashboard() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
                   {lot.price_per_q ? (
-                    <button className="btn-primary btn-sm" style={{ width: "100%" }}
+                    <Button size="sm" className="w-full"
                       disabled={bookingLotId === lot.id}
                       onClick={() => bookLot(lot)}>
                       {bookingLotId === lot.id ? "Booking…" : `📦 Book at ₹${lot.price_per_q.toLocaleString("en-IN")}/q`}
-                    </button>
+                    </Button>
                   ) : null}
-                  <button className="btn-secondary btn-sm" style={{ width: "100%" }}
+                  <Button variant="secondary" size="sm" className="w-full"
                     onClick={() => { setOfferForm({ price_per_q: lot.price_per_q || 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setQuantityCapped(false); setOfferModal(lot); }}>
                     {lot.price_per_q ? "Propose a different price" : "Propose a price"}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             ));
             })()}
           </>
@@ -352,11 +355,11 @@ export default function BuyerDashboard() {
         {/* Demands Tab */}
         {activeTab === "demands" && (
           <>
-            <button className="btn-accent section-gap" onClick={() => setShowCreateDemand(!showCreateDemand)}>
+            <Button className="section-gap" onClick={() => setShowCreateDemand(!showCreateDemand)}>
               {showCreateDemand ? "✕ Cancel" : `➕ ${t("create_demand")}`}
-            </button>
+            </Button>
             {showCreateDemand && (
-              <div className="card section-gap">
+              <Card className="card section-gap">
                 <h3 className="heading-sm" style={{ marginBottom: 12 }}>Post a Demand</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
@@ -369,12 +372,12 @@ export default function BuyerDashboard() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity (kg)</label>
-                      <input className="input" type="number" value={demandForm.quantity_kg}
+                      <Input type="number" value={demandForm.quantity_kg}
                         onChange={e => setDemandForm({ ...demandForm, quantity_kg: Number(e.target.value) })} min={1} />
                     </div>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Price (₹/quintal)</label>
-                      <input className="input" type="number" value={demandForm.offered_price_per_q}
+                      <Input type="number" value={demandForm.offered_price_per_q}
                         onChange={e => setDemandForm({ ...demandForm, offered_price_per_q: Number(e.target.value) })} min={1} />
                     </div>
                   </div>
@@ -390,18 +393,18 @@ export default function BuyerDashboard() {
                     </div>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Required By</label>
-                      <input className="input" type="date" value={demandForm.required_by_date}
-                        onChange={e => setDemandForm({ ...demandForm, required_by_date: e.target.value })} style={{ width: "100%" }} />
+                      <Input type="date" value={demandForm.required_by_date}
+                        onChange={e => setDemandForm({ ...demandForm, required_by_date: e.target.value })} />
                     </div>
                   </div>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>District</label>
-                    <input className="input" type="text" value={demandForm.district}
-                      onChange={e => setDemandForm({ ...demandForm, district: e.target.value })} style={{ width: "100%" }} />
+                    <Input type="text" value={demandForm.district}
+                      onChange={e => setDemandForm({ ...demandForm, district: e.target.value })} />
                   </div>
-                  <button className="btn-primary" onClick={createDemand}>Post Demand</button>
+                  <Button onClick={createDemand}>Post Demand</Button>
                 </div>
-              </div>
+              </Card>
             )}
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>My Demands</h3>
             {demandsError ? (
@@ -409,7 +412,7 @@ export default function BuyerDashboard() {
             ) : demand.length === 0 ? (
               <EmptyState icon="📋" title="No demands yet" description="Create one to find farmers" />
             ) : demand.map((d: any) => (
-              <div key={d.id} className="card" style={{ marginBottom: 8 }}>
+              <Card key={d.id} style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
@@ -427,7 +430,7 @@ export default function BuyerDashboard() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </>
         )}
@@ -446,7 +449,7 @@ export default function BuyerDashboard() {
               // offer this buyer sent) can be acted on here.
               const awaitingMe = o.to_user_id === user.id && (o.status === "pending" || o.status === "countered");
               return (
-                <div key={o.id} className="card" style={{ marginBottom: 8 }}>
+                <Card key={o.id} style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
@@ -478,45 +481,39 @@ export default function BuyerDashboard() {
 
                   {awaitingMe && counterOfferId !== o.id && (
                     <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                      <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                      <Button className="flex-1"
                         disabled={busyOfferId === o.id}
                         onClick={() => actOnOffer(o.id, "accept")}>
                         {busyOfferId === o.id ? "…" : "Accept"}
-                      </button>
-                      <button className="btn-secondary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                      </Button>
+                      <Button variant="secondary" className="flex-1"
                         disabled={busyOfferId === o.id}
                         onClick={() => setCounterOfferId(o.id)}>
                         Counter
-                      </button>
-                      <button style={{
-                        flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
-                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                      }} disabled={busyOfferId === o.id}
+                      </Button>
+                      <Button variant="outline" className="flex-1"
+                        disabled={busyOfferId === o.id}
                         onClick={() => actOnOffer(o.id, "reject")}>
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   )}
 
                   {counterOfferId === o.id && (
                     <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                      <input className="input" type="number" placeholder="Your price ₹/q"
+                      <Input type="number" placeholder="Your price ₹/q"
                         value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
-                        style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                      <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
-                        disabled={!counterPrice || busyOfferId === o.id}
+                        className="flex-1 h-9 text-[13px]" />
+                      <Button disabled={!counterPrice || busyOfferId === o.id}
                         onClick={() => actOnOffer(o.id, "counter", counterPrice)}>
                         Send
-                      </button>
-                      <button style={{
-                        padding: "8px 10px", fontSize: 13, borderRadius: 8,
-                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                      }} onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
+                      </Button>
+                      <Button variant="outline" onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   )}
-                </div>
+                </Card>
               );
             })}
           </>
@@ -531,7 +528,7 @@ export default function BuyerDashboard() {
             ) : orders.length === 0 ? (
               <EmptyState icon="🚚" title="No orders yet" description="Accepted offers will appear here" />
             ) : orders.map((o: any) => (
-              <div key={o.id} className="card" style={{ marginBottom: 8 }}>
+              <Card key={o.id} style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
@@ -560,13 +557,13 @@ export default function BuyerDashboard() {
                   </p>
                 )}
                 {(o.status === "payment_pending" || o.status === "accepted") && (
-                  <button className="btn-primary btn-sm" style={{ marginTop: 10, width: "100%" }}
+                  <Button size="sm" className="w-full" style={{ marginTop: 10 }}
                     disabled={payingOrderId === o.id}
                     onClick={() => payOrder(o.id)}>
                     {payingOrderId === o.id ? "Processing…" : `💳 Pay ₹${o.total_value?.toLocaleString("en-IN")}`}
-                  </button>
+                  </Button>
                 )}
-              </div>
+              </Card>
             ))}
           </>
         )}
@@ -598,7 +595,7 @@ export default function BuyerDashboard() {
           return (
             <>
               {/* Profile Card */}
-              <div className="card section-gap" style={{ textAlign: "center", padding: 24 }}>
+              <Card className="section-gap" style={{ textAlign: "center", padding: 24 }}>
                 <div style={{
                   width: 72, height: 72, borderRadius: "50%",
                   background: "linear-gradient(135deg, var(--green-100), var(--green-200))",
@@ -616,42 +613,41 @@ export default function BuyerDashboard() {
                     Trust score: {buyerProfile.trust_score?.toFixed(0) ?? 0}
                   </span>
                 )}
-              </div>
+              </Card>
 
               {/* Business Details */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Business Details</h3>
-                  <button onClick={() => setEditingProfile(!editingProfile)}
-                    style={{ fontSize: 13, color: "var(--green-600)", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -10px", minHeight: 36, minWidth: 44 }}>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingProfile(!editingProfile)}>
                     {editingProfile ? "Cancel" : "Edit"}
-                  </button>
+                  </Button>
                 </div>
 
                 {editingProfile ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>Business Name</label>
-                      <input className="input" value={profileForm.business_name}
+                      <Input value={profileForm.business_name}
                         onChange={e => setProfileForm({ ...profileForm, business_name: e.target.value })} />
                     </div>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>Business Type</label>
-                      <input className="input" value={profileForm.business_type}
+                      <Input value={profileForm.business_type}
                         onChange={e => setProfileForm({ ...profileForm, business_type: e.target.value })}
                         placeholder="e.g. Wholesaler, Retailer, Processor" />
                     </div>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>District</label>
-                      <input className="input" value={profileForm.district}
+                      <Input value={profileForm.district}
                         onChange={e => setProfileForm({ ...profileForm, district: e.target.value })} />
                     </div>
                     {profileError && (
                       <p style={{ fontSize: 13, color: "var(--danger)", margin: 0 }}>⚠️ {profileError}</p>
                     )}
-                    <button className="btn-primary" onClick={saveBuyerProfile} disabled={savingProfile}>
+                    <Button onClick={saveBuyerProfile} disabled={savingProfile}>
                       {savingProfile ? "Saving…" : "Save Changes"}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -669,10 +665,10 @@ export default function BuyerDashboard() {
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
 
               {/* Transaction History */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>📋 Transaction History</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                   {[
@@ -720,11 +716,11 @@ export default function BuyerDashboard() {
                     ))}
                   </>
                 )}
-              </div>
+              </Card>
 
-              <button className="btn-primary" onClick={goLogout} style={{ background: "var(--danger, #ef4444)", width: "100%" }}>
+              <Button className="w-full" onClick={goLogout} style={{ background: "var(--danger, #ef4444)" }}>
                 {t("logout") || "Log out"}
-              </button>
+              </Button>
             </>
           );
         })()}
@@ -736,30 +732,30 @@ export default function BuyerDashboard() {
       {offerModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000 }}
           onClick={() => setOfferModal(null)}>
-          <div className="card" role="dialog" aria-modal="true" aria-labelledby="offer-modal-title"
+          <Card role="dialog" aria-modal="true" aria-labelledby="offer-modal-title"
             style={{ width: "100%", maxWidth: 480, borderRadius: "16px 16px 0 0", padding: 20, maxHeight: "80vh", overflow: "auto" }}
             onClick={e => e.stopPropagation()}>
             <div className="grabber" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "8px 0 12px" }}>
               <h3 id="offer-modal-title" className="heading-md" style={{ margin: 0 }}>Make Offer</h3>
-              <button onClick={() => setOfferModal(null)} aria-label="Close" autoFocus
-                style={{ background: "var(--stone-100, #f3f4f6)", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>
+              <Button variant="ghost" size="icon" onClick={() => setOfferModal(null)} aria-label="Close" autoFocus
+                className="rounded-full">
                 ✕
-              </button>
+              </Button>
             </div>
-            <div className="card" style={{ marginBottom: 12, background: "var(--green-50)" }}>
+            <Card style={{ marginBottom: 12, background: "var(--green-50)" }}>
               <p style={{ fontWeight: 600, margin: 0 }}>{offerModal.crop_name} — {offerModal.quantity_kg}kg</p>
               <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {offerModal.quality_grade} · {offerModal.address}</p>
-            </div>
+            </Card>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>Price per Quintal (₹)</label>
-                <input className="input" type="number" value={offerForm.price_per_q}
+                <Input type="number" value={offerForm.price_per_q}
                   onChange={e => setOfferForm({ ...offerForm, price_per_q: Number(e.target.value) })} min={1000} step={50} />
               </div>
               <div>
                 <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>Quantity (max {offerModal.quantity_kg}kg)</label>
-                <input className="input" type="number" value={offerForm.quantity_kg}
+                <Input type="number" value={offerForm.quantity_kg}
                   onChange={e => {
                     const raw = Number(e.target.value);
                     const capped = raw > offerModal.quantity_kg;
@@ -774,7 +770,7 @@ export default function BuyerDashboard() {
               </div>
               <div>
                 <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>Delivery Date</label>
-                <input className="input" type="date" value={offerForm.delivery_date}
+                <Input type="date" value={offerForm.delivery_date}
                   onChange={e => setOfferForm({ ...offerForm, delivery_date: e.target.value })} />
               </div>
               <div style={{ background: "var(--stone-50)", borderRadius: 10, padding: 12 }}>
@@ -783,9 +779,9 @@ export default function BuyerDashboard() {
                   <span className="price-highlight">₹{((offerForm.price_per_q * offerForm.quantity_kg) / 100).toLocaleString("en-IN")}</span>
                 </div>
               </div>
-              <button className="btn-primary" onClick={() => createOffer(offerModal)}>📩 Send Offer</button>
+              <Button onClick={() => createOffer(offerModal)}>📩 Send Offer</Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
