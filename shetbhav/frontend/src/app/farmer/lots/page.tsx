@@ -64,13 +64,15 @@ export default function FarmerLots() {
       ) : (
         lots.map(lot => (
           <div key={lot.id} className="card" style={{ marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
+              onClick={() => router.push(`/lots/${lot.id}`)}>
               <div>
                 <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
                   {lot.crop_name || "Crop"} - {lot.quantity_kg}kg
                 </p>
                 <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0 0" }}>
                   Grade {lot.quality_grade} · {lot.urgency}
+                  {lot.price_per_q ? ` · ₹${lot.price_per_q.toLocaleString("en-IN")}/q` : ""}
                 </p>
                 {lot.address && <p style={{ fontSize: 12, color: "#9ca3af", margin: "4px 0 0 0" }}>{lot.address}</p>}
               </div>

@@ -255,7 +255,8 @@ export default function FPODashboard() {
               ) : (
                 lots.map((lot) => (
                   <div key={lot.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
+                      onClick={() => router.push(`/lots/${lot.id}`)}>
                       <div>
                         <h3 className="heading-sm" style={{ margin: 0 }}>
                           {lot.crop_name === "tomato" ? "🍅" : lot.crop_name === "onion" ? "🧅" : "🫘"} {lot.crop_name}
@@ -305,7 +306,8 @@ export default function FPODashboard() {
                   const fulfilled = fulfilledIds.has(demand.id);
                   return (
                     <div key={demand.id} className="card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
+                        onClick={() => router.push(`/demands/${demand.id}`)}>
                         <div>
                           <h3 className="heading-sm" style={{ margin: 0 }}>
                             {demand.crop_name || "Crop"} · {demand.quantity_kg}kg

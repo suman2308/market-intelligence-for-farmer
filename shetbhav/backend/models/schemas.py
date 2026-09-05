@@ -44,6 +44,31 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class CounterpartyProfileResponse(BaseModel):
+    """What a user sees when viewing someone they're transacting with —
+    name/role/contact plus whatever role-specific business info applies.
+    Never includes email or credentials."""
+    id: int
+    username: str
+    full_name: str
+    role: UserRole
+    phone: Optional[str] = None
+    # Buyer
+    business_name: Optional[str] = None
+    business_type: Optional[str] = None
+    trust_score: Optional[float] = None
+    verification_status: Optional[str] = None
+    completed_transactions: Optional[int] = None
+    # FPO
+    fpo_name: Optional[str] = None
+    member_count: Optional[int] = None
+    # Shared location fields (farmer/buyer/FPO)
+    district: Optional[str] = None
+    address: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class FarmerProfileCreate(BaseModel):
     farm_location_lat: Optional[float] = None
     farm_location_lng: Optional[float] = None
@@ -164,7 +189,12 @@ class ProduceLotCreate(BaseModel):
 class ProduceLotResponse(BaseModel):
     id: int
     farmer_id: int
+    farmer_user_id: Optional[int] = None
+    farmer_username: Optional[str] = None
+    farmer_name: Optional[str] = None
     fpo_id: Optional[int] = None
+    fpo_user_id: Optional[int] = None
+    fpo_name: Optional[str] = None
     crop_id: int
     crop_name: Optional[str] = None
     quantity_kg: float
@@ -198,6 +228,8 @@ class DemandRequestCreate(BaseModel):
 class DemandRequestResponse(BaseModel):
     id: int
     buyer_id: int
+    buyer_user_id: Optional[int] = None
+    buyer_username: Optional[str] = None
     crop_id: int
     crop_name: Optional[str] = None
     buyer_name: Optional[str] = None

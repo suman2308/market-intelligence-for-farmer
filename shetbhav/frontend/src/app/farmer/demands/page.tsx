@@ -95,7 +95,8 @@ export default function FarmerDemands() {
             const fulfilled = fulfilledIds.has(demand.id);
             return (
               <div key={demand.id} className="card" style={{ marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
+                  onClick={() => router.push(`/demands/${demand.id}`)}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
                       {demand.crop_name || "Crop"} · {demand.quantity_kg}kg

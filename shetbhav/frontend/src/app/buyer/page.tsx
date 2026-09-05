@@ -257,10 +257,14 @@ export default function BuyerDashboard() {
               <EmptyState icon="📦" title="No lots available" description="Post a demand to find farmers" />
             ) : lots.map((lot: any) => (
               <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
+                  onClick={() => router.push(`/lots/${lot.id}`)}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lot.crop_name} — {lot.quantity_kg}kg</p>
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {lot.quality_grade || "Any"} · {lot.address}</p>
+                    {lot.farmer_name && (
+                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--stone-400)" }}>by {lot.farmer_name}</p>
+                    )}
                   </div>
                   <div style={{ textAlign: "right" }}>
                     {lot.price_per_q && (

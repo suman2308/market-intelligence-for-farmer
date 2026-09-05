@@ -18,8 +18,11 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [grievances, setGrievances] = useState<any[]>([]);
+  const [lots, setLots] = useState<any[]>([]);
+  const [demands, setDemands] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "grievances" | "ml" | "analytics">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "grievances" | "ml" | "analytics" | "lots" | "demands" | "orders">("overview");
   const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => { loadUser(); }, []);
@@ -29,8 +32,12 @@ export default function AdminDashboard() {
         api.get("/admin/stats").catch(() => ({ data: null })),
         api.get("/admin/users").catch(() => ({ data: [] })),
         api.get("/grievances").catch(() => ({ data: [] })),
-      ]).then(([s, u, g]) => {
+        api.get("/admin/lots").catch(() => ({ data: [] })),
+        api.get("/admin/demands").catch(() => ({ data: [] })),
+        api.get("/admin/orders").catch(() => ({ data: [] })),
+      ]).then(([s, u, g, l, d, o]) => {
         setStats(s.data); setUsers(u.data); setGrievances(g.data);
+        setLots(l.data); setDemands(d.data); setOrders(o.data);
         setLoading(false);
       }).catch(() => setLoading(false));
     }
@@ -86,13 +93,16 @@ export default function AdminDashboard() {
     { icon: "📊", label: "Overview", tab: "overview" as const },
     { icon: "📈", label: "Analytics", tab: "analytics" as const },
     { icon: "👥", label: "Users", tab: "users" as const },
+    { icon: "📦", label: "Lots", tab: "lots" as const },
+    { icon: "📋", label: "Demands", tab: "demands" as const },
+    { icon: "🚚", label: "Orders", tab: "orders" as const },
     { icon: "⚠️", label: "Grievances", tab: "grievances" as const },
     { icon: "🤖", label: "ML Models", tab: "ml" as const },
   ];
 
   const goLogout = () => { logout(); router.push("/login"); };
 
-  const openTab = (tab: "overview" | "analytics" | "users" | "grievances" | "ml") => {
+  const openTab = (tab: "overview" | "analytics" | "users" | "grievances" | "ml" | "lots" | "demands" | "orders") => {
     setActiveTab(tab);
     contentRef.current?.scrollTo({ top: 0 });
   };
@@ -323,6 +333,75 @@ export default function AdminDashboard() {
                       Resolution: {g.resolution}
                     </p>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Lots Tab */}
+          {activeTab === "lots" && (
+            <div>
+              <h2 className="heading-sm" style={{ marginBottom: 12 }}>Lots ({lots.length})</h2>
+              {lots.map((lot: any) => (
+                <div key={lot.id} className="card" style={{ marginBottom: 8, cursor: "pointer" }}
+                  onClick={() => router.push(`/lots/${lot.id}`)}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+                        {lot.crop_name || "Crop"} · {lot.quantity_kg?.toLocaleString("en-IN")}kg
+                      </p>
+                      <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                        by {lot.fpo_name || lot.farmer_name || "Unknown"}
+                        {lot.price_per_q ? ` · ₹${lot.price_per_q.toLocaleString("en-IN")}/q` : ""}
+                      </p>
+                    </div>
+                    <span className={`badge ${lot.status === "active" ? "badge-active" : "badge-completed"}`}>{lot.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Demands Tab */}
+          {activeTab === "demands" && (
+            <div>
+              <h2 className="heading-sm" style={{ marginBottom: 12 }}>Demands ({demands.length})</h2>
+              {demands.map((d: any) => (
+                <div key={d.id} className="card" style={{ marginBottom: 8, cursor: "pointer" }}
+                  onClick={() => router.push(`/demands/${d.id}`)}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+                        {d.crop_name || "Crop"} · {d.quantity_kg?.toLocaleString("en-IN")}kg
+                      </p>
+                      <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                        by {d.buyer_name || "Buyer"} · ₹{d.offered_price_per_q?.toLocaleString("en-IN")}/q
+                      </p>
+                    </div>
+                    <span className={`badge ${d.status === "open" ? "badge-active" : "badge-completed"}`}>{d.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Orders Tab */}
+          {activeTab === "orders" && (
+            <div>
+              <h2 className="heading-sm" style={{ marginBottom: 12 }}>Orders ({orders.length})</h2>
+              {orders.map((o: any) => (
+                <div key={o.id} className="card" style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+                        Order #{o.id} — {o.crop_name || "Crop"} · {o.quantity_kg?.toLocaleString("en-IN")}kg
+                      </p>
+                      <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                        {o.seller_name || "Seller"} ({o.seller_type}) → {o.buyer_name || "Buyer"} · ₹{o.total_value?.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <span className="badge badge-active">{o.status}</span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -33,7 +33,7 @@ from models.database import (
 )
 from models.schemas import (
     LoginRequest, TokenResponse, RegisterRequest,
-    UserResponse, FarmerProfileCreate, FarmerProfileResponse,
+    UserResponse, CounterpartyProfileResponse, FarmerProfileCreate, FarmerProfileResponse,
     BuyerProfileResponse,
     CropResponse, MarketResponse,
     ProduceLotCreate, ProduceLotResponse,
@@ -330,6 +330,47 @@ def get_me(user: User = Depends(get_current_user)):
     return UserResponse.model_validate(user)
 
 
+@app.get("/users/{user_id}/profile", response_model=CounterpartyProfileResponse)
+def get_counterparty_profile(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Counterparty profile view — reached from a notification or a lot/
+    demand detail page, so a farmer/buyer/FPO can see who they're actually
+    dealing with. Any authenticated user can view any other user's basic
+    profile; this is a B2B marketplace where knowing your counterparty's
+    contact details is expected, not a privacy leak."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    data = {
+        "id": target.id, "username": target.username, "full_name": target.full_name,
+        "role": target.role, "phone": target.phone,
+    }
+    if target.role == UserRole.BUYER:
+        buyer = db.query(BuyerProfile).filter(BuyerProfile.user_id == target.id).first()
+        if buyer:
+            data.update({
+                "business_name": buyer.business_name, "business_type": buyer.business_type,
+                "trust_score": buyer.trust_score,
+                "verification_status": buyer.verification_status.value if buyer.verification_status else None,
+                "completed_transactions": buyer.completed_transactions,
+                "district": buyer.district,
+            })
+    elif target.role == UserRole.FPO:
+        fpo = db.query(FPOProfile).filter(FPOProfile.user_id == target.id).first()
+        if fpo:
+            data.update({"fpo_name": fpo.name, "member_count": fpo.member_count, "district": fpo.district})
+    elif target.role == UserRole.FARMER:
+        farmer = db.query(FarmerProfile).filter(FarmerProfile.user_id == target.id).first()
+        if farmer:
+            data.update({"district": farmer.district, "address": farmer.farm_address})
+
+    return CounterpartyProfileResponse(**data)
+
+
 # ── Farmer Routes ────────────────────────────────────────────────────
 @app.get("/farmers/profile", response_model=FarmerProfileResponse)
 def get_farmer_profile(
@@ -436,8 +477,16 @@ def _reject_stale_offers(
 
 def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
     crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+    farmer_user = db.query(User).filter(User.id == farmer_profile.user_id).first() if farmer_profile else None
+    fpo = db.query(FPOProfile).filter(FPOProfile.id == lot.fpo_id).first() if lot.fpo_id else None
     return ProduceLotResponse(
-        id=lot.id, farmer_id=lot.farmer_id, fpo_id=lot.fpo_id, crop_id=lot.crop_id,
+        id=lot.id, farmer_id=lot.farmer_id,
+        farmer_user_id=farmer_user.id if farmer_user else None,
+        farmer_username=farmer_user.username if farmer_user else None,
+        farmer_name=farmer_user.full_name if farmer_user else None,
+        fpo_id=lot.fpo_id, fpo_user_id=fpo.user_id if fpo else None, fpo_name=fpo.name if fpo else None,
+        crop_id=lot.crop_id,
         crop_name=crop.name if crop else None,
         quantity_kg=lot.quantity_kg, price_per_q=lot.expected_price_per_q,
         quality_grade=lot.quality_grade,
@@ -798,7 +847,25 @@ def create_demand(
     db.add(demand)
     db.commit()
     db.refresh(demand)
-    return demand
+    return _demand_to_response(db, demand)
+
+
+def _demand_to_response(db: Session, d: DemandRequest) -> DemandRequestResponse:
+    crop = db.query(Crop).filter(Crop.id == d.crop_id).first()
+    buyer = db.query(BuyerProfile).filter(BuyerProfile.id == d.buyer_id).first()
+    buyer_user = db.query(User).filter(User.id == buyer.user_id).first() if buyer else None
+    return DemandRequestResponse(
+        id=d.id, buyer_id=d.buyer_id,
+        buyer_user_id=buyer_user.id if buyer_user else None,
+        buyer_username=buyer_user.username if buyer_user else None,
+        crop_id=d.crop_id,
+        crop_name=crop.name if crop else None,
+        buyer_name=buyer.business_name if buyer else None,
+        quantity_kg=d.quantity_kg, quality_grade=d.quality_grade,
+        required_by_date=d.required_by_date, district=d.district,
+        offered_price_per_q=d.offered_price_per_q, status=d.status,
+        created_at=d.created_at,
+    )
 
 
 @app.get("/demand", response_model=List[DemandRequestResponse])
@@ -813,21 +880,15 @@ def list_demand(
     if status:
         query = query.filter(DemandRequest.status == status)
     demands = query.order_by(DemandRequest.created_at.desc()).limit(50).all()
+    return [_demand_to_response(db, d) for d in demands]
 
-    results = []
-    for d in demands:
-        crop = db.query(Crop).filter(Crop.id == d.crop_id).first()
-        buyer = db.query(BuyerProfile).filter(BuyerProfile.id == d.buyer_id).first()
-        results.append(DemandRequestResponse(
-            id=d.id, buyer_id=d.buyer_id, crop_id=d.crop_id,
-            crop_name=crop.name if crop else None,
-            buyer_name=buyer.business_name if buyer else None,
-            quantity_kg=d.quantity_kg, quality_grade=d.quality_grade,
-            required_by_date=d.required_by_date, district=d.district,
-            offered_price_per_q=d.offered_price_per_q, status=d.status,
-            created_at=d.created_at,
-        ))
-    return results
+
+@app.get("/demand/{demand_id}", response_model=DemandRequestResponse)
+def get_demand(demand_id: int, db: Session = Depends(get_db)):
+    demand = db.query(DemandRequest).filter(DemandRequest.id == demand_id).first()
+    if not demand:
+        raise HTTPException(status_code=404, detail="Demand not found")
+    return _demand_to_response(db, demand)
 
 
 @app.post("/demand/{demand_id}/fulfil", response_model=OrderResponse)
@@ -1701,6 +1762,62 @@ def verify_buyer(
     buyer.verification_status = status
     db.commit()
     return {"status": "updated"}
+
+
+@app.get("/admin/lots", response_model=List[ProduceLotResponse])
+def admin_list_lots(
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(ProduceLot)
+    if status:
+        query = query.filter(ProduceLot.status == status)
+    lots = query.order_by(ProduceLot.created_at.desc()).limit(100).all()
+    return [_lot_to_response(db, lot) for lot in lots]
+
+
+@app.get("/admin/demands", response_model=List[DemandRequestResponse])
+def admin_list_demands(
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(DemandRequest)
+    if status:
+        query = query.filter(DemandRequest.status == status)
+    demands = query.order_by(DemandRequest.created_at.desc()).limit(100).all()
+    return [_demand_to_response(db, d) for d in demands]
+
+
+@app.get("/admin/orders")
+def admin_list_orders(
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Order)
+    if status:
+        query = query.filter(Order.status == status)
+    orders = query.order_by(Order.created_at.desc()).limit(100).all()
+    results = []
+    for o in orders:
+        crop = db.query(Crop).filter(Crop.id == o.crop_id).first()
+        farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == o.farmer_id).first()
+        farmer_user = db.query(User).filter(User.id == farmer_profile.user_id).first() if farmer_profile else None
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == o.fpo_id).first() if o.fpo_id else None
+        buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == o.buyer_id).first()
+        buyer_user = db.query(User).filter(User.id == buyer_profile.user_id).first() if buyer_profile else None
+        results.append({
+            "id": o.id, "status": o.status.value if o.status else None,
+            "crop_name": crop.name if crop else None,
+            "quantity_kg": o.quantity_kg, "price_per_q": o.price_per_q, "total_value": o.total_value,
+            "seller_name": fpo.name if fpo else (farmer_user.full_name if farmer_user else None),
+            "seller_type": "fpo" if fpo else "farmer",
+            "buyer_name": buyer_profile.business_name if buyer_profile else (buyer_user.full_name if buyer_user else None),
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        })
+    return results
 
 
 # ── Language / i18n Route ────────────────────────────────────────────
