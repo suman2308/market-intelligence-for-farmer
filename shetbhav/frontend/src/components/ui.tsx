@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import api from "@/lib/api";
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -278,7 +279,7 @@ export function NotificationBell() {
                     )}
                     <button type="button" className="notif-bell-profile-btn"
                       onClick={(e) => handleDelete(n, e)} aria-label="Delete notification">
-                      ✕
+                      <X size={14} />
                     </button>
                   </div>
                 </div>
@@ -360,7 +361,7 @@ export function NotificationsPanel() {
               )}
               <button type="button" className="notif-bell-profile-btn"
                 onClick={(e) => handleDelete(n, e)} aria-label="Delete notification">
-                ✕
+                <X size={14} />
               </button>
             </div>
           </div>

@@ -134,12 +134,10 @@ export default function FarmerHome() {
                 const p = cropPrices[crop.id];
                 return (
                   <CarouselItem key={crop.id} className="pl-0">
-                    <div className="card" style={{ cursor: "pointer" }}
+                    <div className="card" style={{ cursor: "pointer", position: "relative" }}
                       onClick={() => router.push("/farmer/prices")}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <p style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
-                        <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>→</span>
-                      </div>
+                      <span style={{ position: "absolute", top: 16, right: 16, fontSize: 14, color: "var(--text-secondary)" }}>→</span>
+                      <p style={{ fontSize: 17, fontWeight: 700, margin: "0 0 8px", textAlign: "center" }}>{cropEmoji(crop.name)} {crop.name}</p>
                       {p ? (
                         <div style={{ textAlign: "center" }}>
                           <div className="price-big" style={{ fontSize: "clamp(24px, 5.5vw, 30px)" }}>

@@ -355,7 +355,9 @@ export default function BuyerDashboard() {
         {/* Demands Tab */}
         {activeTab === "demands" && (
           <>
-            <Button className="section-gap" onClick={() => setShowCreateDemand(!showCreateDemand)}>
+            <Button size="lg" className="section-gap rounded-full"
+              style={{ background: "var(--saffron-500)", color: "white", fontSize: 16, padding: "12px 24px", height: "auto" }}
+              onClick={() => setShowCreateDemand(!showCreateDemand)}>
               {showCreateDemand ? "✕ Cancel" : `➕ ${t("create_demand")}`}
             </Button>
             {showCreateDemand && (
