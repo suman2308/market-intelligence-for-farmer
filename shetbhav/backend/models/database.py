@@ -450,6 +450,10 @@ class ProduceLot(Base):
     # How long this lot collects offers before the farmer is expected to act
     # on the best one so far — derived from `urgency` at creation time.
     offers_close_at = Column(DateTime)
+    # True for a lightweight lot auto-created behind the scenes when a
+    # farmer/FPO accepts or negotiates a buyer demand directly, with no lot
+    # of their own — bookkeeping only, hidden from the farmer's own lot list.
+    is_demand_offer = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -599,6 +603,18 @@ class BuyerDemand(Base):
 # ═══════════════════════════════════════════════════════════════════════
 # LOT MATCHING
 # ═══════════════════════════════════════════════════════════════════════
+
+class DemandDismissal(Base):
+    """A farmer/FPO's personal 'not interested' on a buyer demand — the demand
+    stays open for everyone else, this just hides it from this user's own
+    list going forward."""
+    __tablename__ = "demand_dismissals"
+    __table_args__ = (UniqueConstraint("demand_id", "user_id"),)
+    id = Column(Integer, primary_key=True, index=True)
+    demand_id = Column(Integer, ForeignKey("demand_requests.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class LotMatch(Base):
     """Matches between lots and buyer demands."""

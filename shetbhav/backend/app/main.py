@@ -22,7 +22,7 @@ from config.database import get_db, init_db, SessionLocal
 from config.settings import FRONTEND_URL, DEMO_MODE
 from models.database import (
     User, FarmerProfile, FPOProfile, BuyerProfile, AdminProfile,
-    Crop, Market, MarketPrice, ProduceLot, DemandRequest,
+    Crop, Market, MarketPrice, ProduceLot, DemandRequest, DemandDismissal,
     Offer, OfferHistory, Order, Logistics, Payment,
     Grievance, GrievanceStatusEvent, Forecast, Recommendation, Notification,
     StorageFacility, TransportProvider, FPOMembership,
@@ -436,6 +436,26 @@ def _lot_seller_user_id(db: Session, lot: ProduceLot) -> Optional[int]:
     return farmer_profile.user_id if farmer_profile else None
 
 
+def _resolve_lot_owner(db: Session, user: User) -> tuple[int, Optional[int]]:
+    """Resolve (farmer_id, fpo_id) to stamp on a lightweight, auto-created lot
+    for a farmer/FPO responding directly to a buyer demand with no pre-existing
+    lot of their own. For an FPO, farmer_id is set to one of its active member
+    farmers (the same 'primary contact' convention services/fpo_aggregation.py
+    already uses for real aggregated lots)."""
+    fpo_profile = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if fpo_profile:
+        membership = db.query(FPOMembership).filter(
+            FPOMembership.fpo_id == fpo_profile.id, FPOMembership.is_active == True
+        ).first()
+        if not membership:
+            raise HTTPException(status_code=400, detail="FPO has no active farmer members")
+        return membership.farmer_id, fpo_profile.id
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile:
+        raise HTTPException(status_code=400, detail="Farmer profile not found")
+    return farmer_profile.id, None
+
+
 def _order_seller_user_id(db: Session, order: Order) -> Optional[int]:
     """Same idea as _lot_seller_user_id but for an Order, which carries its
     own farmer_id/fpo_id rather than pointing back at a ProduceLot."""
@@ -534,7 +554,10 @@ def list_lots(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(ProduceLot)
+    # isnot(True) rather than == False: existing rows from before this column
+    # existed have NULL here, and `== False` is NULL-unsafe (would wrongly
+    # exclude every lot created before this migration ran).
+    query = db.query(ProduceLot).filter(ProduceLot.is_demand_offer.isnot(True))
     if user.role == UserRole.FARMER and user.farmer_profile:
         query = query.filter(ProduceLot.farmer_id == user.farmer_profile.id)
     if status:
@@ -877,10 +900,101 @@ def list_demand(
     query = db.query(DemandRequest)
     if user.role == UserRole.BUYER and user.buyer_profile:
         query = query.filter(DemandRequest.buyer_id == user.buyer_profile.id)
+    if user.role in (UserRole.FARMER, UserRole.FPO):
+        dismissed_ids = db.query(DemandDismissal.demand_id).filter(DemandDismissal.user_id == user.id)
+        query = query.filter(~DemandRequest.id.in_(dismissed_ids))
     if status:
         query = query.filter(DemandRequest.status == status)
     demands = query.order_by(DemandRequest.created_at.desc()).limit(50).all()
     return [_demand_to_response(db, d) for d in demands]
+
+
+@app.post("/demand/{demand_id}/accept", response_model=OrderResponse)
+def accept_demand(
+    demand_id: int,
+    user: User = Depends(require_role(UserRole.FARMER, UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Direct accept of a buyer's demand at their stated price/quantity — no
+    pre-existing matching lot required. A lightweight lot is auto-created
+    behind the scenes purely as bookkeeping (mirroring how book_lot/
+    fulfil_demand already auto-create a lightweight Offer), immediately
+    marked sold, so this fits the existing lot-backed Order schema without
+    the farmer needing to have listed anything first."""
+    demand = db.query(DemandRequest).filter(DemandRequest.id == demand_id).first()
+    if not demand:
+        raise HTTPException(status_code=404, detail="Demand not found")
+    if demand.status != "open":
+        raise HTTPException(status_code=400, detail=f"Demand is not open (status: {demand.status})")
+
+    rep_farmer_id, lot_fpo_id = _resolve_lot_owner(db, user)
+    buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == demand.buyer_id).first()
+    if not buyer_profile:
+        raise HTTPException(status_code=400, detail="Could not resolve this demand's buyer")
+
+    lot = ProduceLot(
+        farmer_id=rep_farmer_id, fpo_id=lot_fpo_id, crop_id=demand.crop_id,
+        quantity_kg=demand.quantity_kg, quality_grade=demand.quality_grade or QualityGrade.UNRATED,
+        district=demand.district, expected_price_per_q=demand.offered_price_per_q,
+        status="sold", is_demand_offer=True,
+    )
+    db.add(lot)
+    db.flush()
+
+    offer = Offer(
+        lot_id=lot.id, demand_id=demand.id, from_user_id=user.id, to_user_id=buyer_profile.user_id,
+        price_per_q=demand.offered_price_per_q, quantity_kg=demand.quantity_kg,
+        status=OfferStatus.ACCEPTED,
+    )
+    db.add(offer)
+    db.flush()
+
+    order = Order(
+        offer_id=offer.id, farmer_id=rep_farmer_id, fpo_id=lot_fpo_id, buyer_id=demand.buyer_id,
+        crop_id=demand.crop_id, quantity_kg=demand.quantity_kg, price_per_q=demand.offered_price_per_q,
+        total_value=demand.offered_price_per_q * demand.quantity_kg / 100,
+        status=OrderStatus.PAYMENT_PENDING,
+    )
+    db.add(order)
+    demand.status = "filled"
+    db.flush()
+    db.add(OrderEvent(
+        order_id=order.id, event_type="demand_fulfilled", title="Demand accepted",
+        description=f"Demand #{demand.id} accepted directly for {demand.quantity_kg:,.0f}kg. Awaiting buyer payment.",
+        created_by=user.id,
+    ))
+    notify(
+        db, buyer_profile.user_id, "Your demand has been accepted",
+        f"Your demand for {demand.quantity_kg:,.0f}kg has been accepted. Please proceed with payment.",
+        type="demand_fulfilled", link="/buyer", counterparty_user_id=user.id,
+    )
+    _reject_stale_offers(
+        db, demand_id=demand.id, exclude_offer_id=offer.id,
+        reason=f"Demand #{demand.id} was accepted by another farmer/FPO.", winner_user_id=user.id,
+    )
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@app.post("/demand/{demand_id}/reject")
+def reject_demand(
+    demand_id: int,
+    user: User = Depends(require_role(UserRole.FARMER, UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Personal 'not interested' — hides this demand from the caller's own
+    list from now on. The demand stays open for every other farmer/FPO."""
+    demand = db.query(DemandRequest).filter(DemandRequest.id == demand_id).first()
+    if not demand:
+        raise HTTPException(status_code=404, detail="Demand not found")
+    exists = db.query(DemandDismissal).filter(
+        DemandDismissal.demand_id == demand_id, DemandDismissal.user_id == user.id,
+    ).first()
+    if not exists:
+        db.add(DemandDismissal(demand_id=demand_id, user_id=user.id))
+        db.commit()
+    return {"status": "dismissed"}
 
 
 @app.get("/demand/{demand_id}", response_model=DemandRequestResponse)
@@ -979,18 +1093,33 @@ def create_offer(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first()
+    lot = db.query(ProduceLot).filter(ProduceLot.id == data.lot_id).first() if data.lot_id else None
+    demand = db.query(DemandRequest).filter(DemandRequest.id == data.demand_id).first() if data.demand_id else None
+
+    # A farmer/FPO negotiating directly on a buyer's demand doesn't need a
+    # pre-existing matching lot — auto-create a lightweight one behind the
+    # scenes (bookkeeping only, mirrors the lot book_lot/fulfil_demand already
+    # auto-create) so this still fits the lot-backed Offer/Order schema.
+    if not lot and demand and user.role in (UserRole.FARMER, UserRole.FPO):
+        rep_farmer_id, lot_fpo_id = _resolve_lot_owner(db, user)
+        lot = ProduceLot(
+            farmer_id=rep_farmer_id, fpo_id=lot_fpo_id, crop_id=demand.crop_id,
+            quantity_kg=data.quantity_kg or demand.quantity_kg,
+            quality_grade=demand.quality_grade or QualityGrade.UNRATED,
+            district=demand.district, expected_price_per_q=demand.offered_price_per_q,
+            status="active", is_demand_offer=True,
+        )
+        db.add(lot)
+        db.flush()
 
     # Resolve to_user_id if not provided. Direction depends on who's sending:
     # a buyer offering on a lot addresses the lot's farmer; a farmer
     # responding to a buyer demand addresses that demand's buyer.
     to_user_id = data.to_user_id
-    if not to_user_id and user.role == UserRole.FARMER and data.demand_id:
-        demand = db.query(DemandRequest).filter(DemandRequest.id == data.demand_id).first()
-        if demand:
-            buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == demand.buyer_id).first()
-            if buyer_profile:
-                to_user_id = buyer_profile.user_id
+    if not to_user_id and user.role in (UserRole.FARMER, UserRole.FPO) and demand:
+        buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == demand.buyer_id).first()
+        if buyer_profile:
+            to_user_id = buyer_profile.user_id
     if not to_user_id and lot:
         farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
         if farmer_profile:
@@ -999,7 +1128,7 @@ def create_offer(
         raise HTTPException(status_code=400, detail="Cannot determine recipient. Provide to_user_id or a valid lot_id/demand_id.")
 
     offer = Offer(
-        lot_id=data.lot_id,
+        lot_id=lot.id if lot else None,
         demand_id=data.demand_id,
         from_user_id=user.id,
         to_user_id=to_user_id,
@@ -1022,7 +1151,7 @@ def create_offer(
         created_by=user.id,
     )
     db.add(history)
-    if user.role == UserRole.FARMER:
+    if user.role in (UserRole.FARMER, UserRole.FPO) and demand:
         notify(
             db, to_user_id, "New offer on your demand",
             f"₹{offer.price_per_q:,.0f}/q for {offer.quantity_kg:,.0f}kg" +

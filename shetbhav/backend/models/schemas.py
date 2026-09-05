@@ -246,7 +246,7 @@ class DemandRequestResponse(BaseModel):
 
 # ── Offers ───────────────────────────────────────────────────────────
 class OfferCreate(BaseModel):
-    lot_id: int
+    lot_id: Optional[int] = None
     demand_id: Optional[int] = None
     to_user_id: Optional[int] = None  # Resolved from lot if not provided
     price_per_q: float = Field(gt=0)
