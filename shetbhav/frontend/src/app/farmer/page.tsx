@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
@@ -26,21 +26,18 @@ export default function FarmerHome() {
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
-  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const [priceIndex, setPriceIndex] = useState(0);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
-  // Auto-advance the price carousel — comes and goes horizontally on its
-  // own, while a manual swipe still works via the underlying scroll-x.
+  // Auto-rotate the price carousel one full card at a time, looping back
+  // to the first crop after the last — a smooth CSS transform transition,
+  // not a scroll-snap drag, so exactly one card is ever fully in view.
   useEffect(() => {
     if (!sectionsLoaded || crops.length <= 1) return;
-    const el = carouselRef.current;
-    if (!el) return;
     const timer = setInterval(() => {
-      const cardStep = el.clientWidth * 0.82 + 10;
-      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 5;
-      el.scrollTo({ left: atEnd ? 0 : el.scrollLeft + cardStep, behavior: "smooth" });
-    }, 4000);
+      setPriceIndex(i => (i + 1) % crops.length);
+    }, 3200);
     return () => clearInterval(timer);
   }, [sectionsLoaded, crops.length]);
 
@@ -125,11 +122,18 @@ export default function FarmerHome() {
           <Skeleton height={140} />
         </div>
       ) : (
-        <div ref={carouselRef} className="scroll-x section-gap" style={{ display: "flex", gap: 10, scrollSnapType: "x mandatory" as any }}>
+        <div className="section-gap">
+        <div style={{ overflow: "hidden", borderRadius: 14 }}>
+          <div style={{
+            display: "flex",
+            width: `${crops.length * 100}%`,
+            transform: `translateX(-${priceIndex * (100 / crops.length)}%)`,
+            transition: "transform 0.7s cubic-bezier(0.65, 0, 0.35, 1)",
+          }}>
           {crops.map((crop: any) => {
             const p = cropPrices[crop.id];
             return (
-              <div key={crop.id} className="card" style={{ flex: "0 0 82%", cursor: "pointer", scrollSnapAlign: "start" as any }}
+              <div key={crop.id} className="card" style={{ flex: `0 0 ${100 / crops.length}%`, cursor: "pointer", margin: 0, borderRadius: 0 }}
                 onClick={() => router.push("/farmer/prices")}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
@@ -151,6 +155,19 @@ export default function FarmerHome() {
               </div>
             );
           })}
+          </div>
+        </div>
+        {crops.length > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
+            {crops.map((crop: any, i: number) => (
+              <span key={crop.id} style={{
+                width: i === priceIndex ? 16 : 6, height: 6, borderRadius: 3,
+                background: i === priceIndex ? "var(--green-600)" : "var(--stone-200)",
+                transition: "all 0.3s ease",
+              }} />
+            ))}
+          </div>
+        )}
         </div>
       )}
 
@@ -172,7 +189,7 @@ export default function FarmerHome() {
             { value: dashboard.active_lots, label: t("active_lots") || "Active Lots", icon: "📦", color: "var(--green-600)", route: "/farmer/lots" },
             { value: dashboard.pending_orders, label: t("pending_orders") || "Pending Orders", icon: "🚚", color: "var(--saffron-500)", route: "/farmer/orders" },
             { value: dashboard.total_earnings > 0 ? `₹${(dashboard.total_earnings / 1000).toFixed(1)}K` : "₹0", label: t("my_earnings") || "Earnings", icon: "💰", color: "var(--sky-500)", route: "/farmer/earnings" },
-            { value: "→", label: t("find_buyers") || "Find Buyers", icon: "🔍", color: "var(--stone-500)", route: "/farmer/buyers" },
+            { value: "→", label: "Buyers & FPOs", icon: "🏢", color: "var(--stone-500)", route: "/farmer/buyers" },
           ].map((s, i) => (
             <div key={i} className="stat-card-premium" onClick={() => router.push(s.route)}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>

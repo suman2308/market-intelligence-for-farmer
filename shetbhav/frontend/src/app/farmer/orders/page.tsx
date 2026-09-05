@@ -15,7 +15,7 @@ const STATUS_MAP: Record<string, { label: string; icon: string; color: string }>
   matched: { label: "Matched with buyer", icon: "🤝", color: "var(--info)" },
   offer_received: { label: "Offer received", icon: "📨", color: "var(--warning)" },
   negotiating: { label: "Negotiating", icon: "💬", color: "var(--warning)" },
-  accepted: { label: "Offer accepted", icon: "✅", color: "var(--success)" },
+  accepted: { label: "Offer accepted", icon: "✅", color: "var(--info)" },
   pickup_scheduled: { label: "Pickup scheduled", icon: "🚚", color: "var(--info)" },
   in_transit: { label: "In transit", icon: "🚛", color: "var(--info)" },
   delivered: { label: "Delivered", icon: "📦", color: "var(--success)" },

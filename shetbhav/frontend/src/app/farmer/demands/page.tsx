@@ -103,7 +103,7 @@ export default function FarmerDemands() {
     }
   };
 
-  const visibleDemands = demands.filter(d => !dismissedIds.has(d.id));
+  const visibleDemands = demands.filter(d => !dismissedIds.has(d.id) && !acceptedIds.has(d.id));
 
   return (
     <div className="farmer-shell">
@@ -156,11 +156,7 @@ export default function FarmerDemands() {
                   </div>
                 </div>
 
-                {acceptedIds.has(demand.id) ? (
-                  <p style={{ fontSize: 13, color: "var(--green-600)", fontWeight: 600, marginTop: 10 }}>
-                    ✓ Accepted — buyer notified to pay
-                  </p>
-                ) : pendingOffer ? (
+                {pendingOffer ? (
                   <p style={{ fontSize: 13, color: "var(--info)", fontWeight: 600, marginTop: 10 }}>
                     🤝 Counter-offer sent: ₹{pendingOffer.price_per_q.toLocaleString("en-IN")}/q — awaiting buyer response
                   </p>

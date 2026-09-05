@@ -255,12 +255,12 @@ export default function BuyerDashboard() {
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
           {[
-            { value: demand.length, label: "Demands", icon: "📋", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)" },
-            { value: lots.length, label: "Lots", icon: "📦", color: "#15803d", tint: "rgba(21, 128, 61, 0.12)" },
-            { value: offers.length, label: "Offers", icon: "📨", color: "#d97706", tint: "rgba(217, 119, 6, 0.12)" },
-            { value: orders.length, label: "Orders", icon: "🚚", color: "#64748b", tint: "rgba(100, 116, 139, 0.12)" },
+            { value: demand.length, label: "Demands", icon: "📋", color: "#0ea5e9", tint: "rgba(14, 165, 233, 0.12)", tab: "demands" as const },
+            { value: lots.length, label: "Lots", icon: "📦", color: "#15803d", tint: "rgba(21, 128, 61, 0.12)", tab: "lots" as const },
+            { value: offers.length, label: "Offers", icon: "📨", color: "#d97706", tint: "rgba(217, 119, 6, 0.12)", tab: "offers" as const },
+            { value: orders.length, label: "Orders", icon: "🚚", color: "#64748b", tint: "rgba(100, 116, 139, 0.12)", tab: "orders" as const },
           ].map((s, i) => (
-            <div key={i} className="stat-card" style={{ textAlign: "left" }}>
+            <div key={i} className="stat-card" style={{ textAlign: "left", cursor: "pointer" }} onClick={() => openTab(s.tab)}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                 <span className="stat-value" style={{ color: s.color, fontSize: 30, lineHeight: 1 }}>{s.value}</span>
                 <span className="role-stat-ico" style={{ background: s.tint }}>{s.icon}</span>
@@ -295,8 +295,10 @@ export default function BuyerDashboard() {
             </div>
             {(() => {
               const visibleLots = lots.filter((lot: any) =>
-                sellerTypeFilter === "all" ? true :
-                sellerTypeFilter === "fpo" ? !!lot.fpo_id : !lot.fpo_id
+                !!lot.price_per_q && (
+                  sellerTypeFilter === "all" ? true :
+                  sellerTypeFilter === "fpo" ? !!lot.fpo_id : !lot.fpo_id
+                )
               );
               return lotsError ? (
               <EmptyState icon="⚠️" title="Couldn't load lots" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
@@ -544,7 +546,12 @@ export default function BuyerDashboard() {
                   </div>
                   <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     <p className="price-highlight" style={{ margin: 0 }}>₹{o.total_value?.toLocaleString("en-IN")}</p>
-                    <span className={`badge badge-${o.status === "paid" || o.status === "completed" ? "completed" : "active"}`}>{o.status}</span>
+                    <span className={`badge ${
+                      o.status === "paid" || o.status === "completed" ? "badge-green" :
+                      o.status === "payment_pending" ? "badge-amber" :
+                      o.status === "accepted" ? "badge-blue" :
+                      o.status === "cancelled" || o.status === "disputed" ? "badge-gray" : "badge-amber"
+                    }`}>{o.status}</span>
                   </div>
                 </div>
                 {(o.status === "payment_pending" || o.status === "accepted") && o.payment_deadline && (

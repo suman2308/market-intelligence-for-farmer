@@ -192,7 +192,7 @@ export default function FarmerProfile() {
         {orders.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", margin: 0 }}>No transactions yet</p>
         ) : (
-          orders.slice(0, 5).map((order: any) => (
+          orders.slice(0, 3).map((order: any) => (
             <div key={order.id}
               style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid #f3f4f6", cursor: "pointer" }}
               onClick={() => router.push(`/farmer/orders/${order.id}`)}>

@@ -11,6 +11,7 @@ import FarmerBottomNav from "@/components/FarmerBottomNav";
 const ACTIVE_STATUSES = ["active", "matched", "offered"];
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
+  accepted: "var(--info)", payment_pending: "var(--warning)",
   paid: "var(--success)", completed: "var(--success)",
   cancelled: "var(--text-secondary)", disputed: "var(--danger)",
 };
@@ -32,9 +33,12 @@ function FarmerLotsContent() {
   const [crops, setCrops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [expandedLotId, setExpandedLotId] = useState<number | null>(null);
-  const [matchesByLot, setMatchesByLot] = useState<Record<number, any[]>>({});
-  const [matchLoading, setMatchLoading] = useState<Record<number, boolean>>({});
+  const [editingLotId, setEditingLotId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ quantity_kg: 0, price_per_q: 0, quality_grade: "unrated", urgency: "flexible" });
+  const [savingEditId, setSavingEditId] = useState<number | null>(null);
+  const [editError, setEditError] = useState("");
+  const [deletingLotId, setDeletingLotId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
@@ -78,15 +82,39 @@ function FarmerLotsContent() {
     setShowCreate(true);
   }, [searchParams]);
 
-  const toggleMatches = (lotId: number) => {
-    if (expandedLotId === lotId) { setExpandedLotId(null); return; }
-    setExpandedLotId(lotId);
-    if (!matchesByLot[lotId]) {
-      setMatchLoading(prev => ({ ...prev, [lotId]: true }));
-      api.get(`/matching/${lotId}`)
-        .then(r => setMatchesByLot(prev => ({ ...prev, [lotId]: r.data.matches || [] })))
-        .catch(() => setMatchesByLot(prev => ({ ...prev, [lotId]: [] })))
-        .finally(() => setMatchLoading(prev => ({ ...prev, [lotId]: false })));
+  const startEdit = (lot: any) => {
+    setEditError("");
+    setEditingLotId(lot.id);
+    setEditForm({
+      quantity_kg: lot.quantity_kg, price_per_q: lot.price_per_q || 0,
+      quality_grade: lot.quality_grade || "unrated", urgency: lot.urgency || "flexible",
+    });
+  };
+
+  const saveEdit = async (lotId: number) => {
+    setSavingEditId(lotId);
+    setEditError("");
+    try {
+      const { data } = await api.put(`/lots/${lotId}`, editForm);
+      setLots(prev => prev.map(l => l.id === lotId ? data : l));
+      setEditingLotId(null);
+    } catch (e: any) {
+      setEditError(e.response?.data?.detail || "Couldn't save changes. Please try again.");
+    } finally {
+      setSavingEditId(null);
+    }
+  };
+
+  const deleteLot = async (lotId: number) => {
+    setDeletingLotId(lotId);
+    setDeleteError("");
+    try {
+      await api.delete(`/lots/${lotId}`);
+      setLots(prev => prev.filter(l => l.id !== lotId));
+    } catch (e: any) {
+      setDeleteError(e.response?.data?.detail || "Couldn't withdraw this lot. Please try again.");
+    } finally {
+      setDeletingLotId(null);
     }
   };
 
@@ -113,7 +141,7 @@ function FarmerLotsContent() {
   const inFpoProcessLots = lots.filter(l => l.status === "pending_fpo" || l.status === "fpo_aggregated");
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+    .slice(0, 3);
 
   return (
     <div className="farmer-shell">
@@ -236,46 +264,73 @@ function FarmerLotsContent() {
                 {lot.status}
               </span>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {lot.status === "active" && (
-                <button className="btn-secondary" style={{ flex: 1, padding: "10px", fontSize: 14 }}
-                  onClick={() => toggleMatches(lot.id)}>
-                  🔍 {expandedLotId === lot.id ? "Hide matches" : "Suggested buyers"}
-                </button>
-              )}
-            </div>
-
-            {expandedLotId === lot.id && (
+            {editingLotId === lot.id ? (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--stone-100, #f5f5f4)" }}>
-                {matchLoading[lot.id] ? (
-                  <div className="skeleton" style={{ height: 60 }} />
-                ) : (matchesByLot[lot.id] || []).length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-                    No buyer demand currently matches this lot.
-                  </p>
-                ) : (
-                  matchesByLot[lot.id].slice(0, 3).map(m => (
-                    <div key={m.demand_id} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "8px 0", borderBottom: "1px solid var(--stone-100, #f5f5f4)",
-                    }}>
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{m.buyer_name}</p>
-                        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
-                          Wants {m.quantity_needed}kg · {m.district || "—"}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>₹{m.offered_price?.toLocaleString("en-IN")}/q</p>
-                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "1px 0 0" }}>
-                          Total: {formatINR(totalAmount(m.offered_price, m.quantity_needed))}
-                        </p>
-                        <span className="badge badge-green" style={{ fontSize: 10 }}>{m.score}% match</span>
-                      </div>
-                    </div>
-                  ))
+                {editError && <p style={{ fontSize: 13, color: "var(--danger)", margin: "0 0 8px" }}>⚠️ {editError}</p>}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity (kg)</label>
+                    <input className="input" type="number" value={editForm.quantity_kg}
+                      onChange={e => setEditForm({ ...editForm, quantity_kg: Number(e.target.value) })} min={1} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Price (₹/quintal)</label>
+                    <input className="input" type="number" value={editForm.price_per_q}
+                      onChange={e => setEditForm({ ...editForm, price_per_q: Number(e.target.value) })} min={1} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quality Grade</label>
+                    <select className="select" value={editForm.quality_grade} onChange={e => setEditForm({ ...editForm, quality_grade: e.target.value })} style={{ width: "100%" }}>
+                      <option value="unrated">Unrated</option>
+                      <option value="A">Grade A — Premium</option>
+                      <option value="B">Grade B — Standard</option>
+                      <option value="C">Grade C — Below Standard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Urgency</label>
+                    <select className="select" value={editForm.urgency} onChange={e => setEditForm({ ...editForm, urgency: e.target.value })} style={{ width: "100%" }}>
+                      <option value="urgent">Urgent</option>
+                      <option value="soon">Soon</option>
+                      <option value="flexible">Flexible</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                    disabled={savingEditId === lot.id} onClick={() => saveEdit(lot.id)}>
+                    {savingEditId === lot.id ? "Saving…" : "Save Changes"}
+                  </button>
+                  <button style={{
+                    flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
+                    border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                  }} onClick={() => setEditingLotId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {lot.status === "active" && (
+                  <>
+                    <button className="btn-secondary" style={{ flex: 1, padding: "10px", fontSize: 14 }}
+                      onClick={() => startEdit(lot)}>
+                      ✏️ Edit
+                    </button>
+                    <button style={{
+                      flex: 1, padding: "10px", fontSize: 14, borderRadius: 8,
+                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer", color: "var(--danger)",
+                    }} disabled={deletingLotId === lot.id} onClick={() => deleteLot(lot.id)}>
+                      {deletingLotId === lot.id ? "…" : "🗑️ Delete"}
+                    </button>
+                  </>
                 )}
               </div>
+            )}
+            {deleteError && editingLotId !== lot.id && (
+              <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0" }}>⚠️ {deleteError}</p>
             )}
           </div>
         ))

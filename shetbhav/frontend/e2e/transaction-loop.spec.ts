@@ -176,7 +176,9 @@ test.describe("Two-account book-and-pay transaction loop", () => {
     await expect(demandCard).toBeVisible({ timeout: 10000 });
     await demandCard.getByRole("button", { name: /Accept/ }).click();
 
-    await expect(demandCard.getByText("✓ Accepted")).toBeVisible({ timeout: 10000 });
+    // Accepting removes the card from the list immediately — no page
+    // refresh needed to see it disappear.
+    await expect(demandCard).toHaveCount(0, { timeout: 10000 });
   });
 
   test("buyer is notified to pay, pays, and farmer gets the final sold notification", async ({ page }) => {

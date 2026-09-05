@@ -740,6 +740,12 @@ export function NotificationBell() {
     if (n.counterparty_user_id) router.push(`/profile/${n.counterparty_user_id}`);
   };
 
+  const handleDelete = (n: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifs(prev => prev.filter(x => x.id !== n.id));
+    api.delete(`/notifications/${n.id}`).catch(() => {});
+  };
+
   return (
     <div className="notif-bell-wrap" ref={wrapRef}>
       <button type="button" className="notif-bell-btn" onClick={handleOpen}
@@ -762,12 +768,18 @@ export function NotificationBell() {
                     <span className="notif-bell-item-title">{n.title}</span>
                     <span className="notif-bell-item-msg">{n.message}</span>
                   </div>
-                  {n.counterparty_user_id && (
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    {n.counterparty_user_id && (
+                      <button type="button" className="notif-bell-profile-btn"
+                        onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
+                        👤
+                      </button>
+                    )}
                     <button type="button" className="notif-bell-profile-btn"
-                      onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
-                      👤
+                      onClick={(e) => handleDelete(n, e)} aria-label="Delete notification">
+                      ✕
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             ))
@@ -817,6 +829,12 @@ export function NotificationsPanel() {
     if (n.counterparty_user_id) router.push(`/profile/${n.counterparty_user_id}`);
   };
 
+  const handleDelete = (n: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifs(prev => prev.filter(x => x.id !== n.id));
+    api.delete(`/notifications/${n.id}`).catch(() => {});
+  };
+
   if (loading) return <Skeleton height={56} count={2} />;
   if (notifs.length === 0) {
     return <p className="text-sm" style={{ color: "var(--text-muted)", margin: 0 }}>No notifications yet</p>;
@@ -832,12 +850,18 @@ export function NotificationsPanel() {
               <span className="notif-panel-item-title">{n.title}</span>
               <span className="notif-panel-item-msg">{n.message}</span>
             </div>
-            {n.counterparty_user_id && (
+            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              {n.counterparty_user_id && (
+                <button type="button" className="notif-bell-profile-btn"
+                  onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
+                  👤
+                </button>
+              )}
               <button type="button" className="notif-bell-profile-btn"
-                onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
-                👤
+                onClick={(e) => handleDelete(n, e)} aria-label="Delete notification">
+                ✕
               </button>
-            )}
+            </div>
           </div>
         </div>
       ))}

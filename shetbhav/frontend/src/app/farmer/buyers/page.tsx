@@ -11,12 +11,17 @@ import { cropEmoji } from "@/lib/cropEmoji";
 export default function BuyersPage() {
   const router = useRouter();
   const { t } = useI18n();
+  const [tab, setTab] = useState<"buyers" | "fpos">("buyers");
   const [buyers, setBuyers] = useState<any[]>([]);
+  const [fpos, setFpos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
-    api.get("/buyers").then(r => { setBuyers(r.data); setLoading(false); }).catch(() => setLoading(false));
+    Promise.all([
+      api.get("/buyers"),
+      api.get("/fpo/browse").catch(() => ({ data: [] })),
+    ]).then(([b, f]) => { setBuyers(b.data); setFpos(f.data); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const trustColor = (score: number) => score >= 85 ? "#16a34a" : score >= 70 ? "#f59e0b" : "#ef4444";
@@ -49,10 +54,30 @@ export default function BuyersPage() {
       <div className="page-header">
         <button onClick={() => router.back()} aria-label="Go back"
           style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 12, margin: -4, minWidth: 44, minHeight: 44 }}>←</button>
-        <h1 className="heading-md">{t("buyers_title")}</h1>
+        <h1 className="heading-md">Buyers &amp; FPOs</h1>
       </div>
 
       <div className="page-body">
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setTab("buyers")} className="toggle-btn" style={{
+          flex: 1, padding: "10px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+          background: tab === "buyers" ? "var(--green-600)" : "white",
+          color: tab === "buyers" ? "white" : "var(--text-secondary)",
+        }}>
+          🤝 Buyers ({buyers.length})
+        </button>
+        <button onClick={() => setTab("fpos")} className="toggle-btn" style={{
+          flex: 1, padding: "10px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+          background: tab === "fpos" ? "var(--green-600)" : "white",
+          color: tab === "fpos" ? "white" : "var(--text-secondary)",
+        }}>
+          🏢 FPOs ({fpos.length})
+        </button>
+      </div>
+
+      {tab === "buyers" && (
+        <>
       {/* Map Toggle */}
       <div style={{ marginBottom: 12 }}>
         <button
@@ -81,8 +106,43 @@ export default function BuyersPage() {
           </p>
         </div>
       )}
+      </>
+      )}
 
-      {loading ? (
+      {tab === "fpos" && (
+        loading ? (
+          <div className="flex-col gap-3">{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100 }} />)}</div>
+        ) : fpos.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: 40 }}>
+            <p style={{ fontSize: 32 }}>🏢</p>
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No FPOs registered yet</p>
+          </div>
+        ) : (
+          <div className="flex-col gap-3">
+            {fpos.map((fpo: any) => (
+              <div key={fpo.id} className="card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <h3 className="heading-sm" style={{ margin: 0 }}>{fpo.name}</h3>
+                    <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                      {fpo.district || "—"} · {fpo.member_count} member{fpo.member_count !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  {fpo.verification_status === "verified" && (
+                    <span className="badge badge-verified">✓ Verified</span>
+                  )}
+                </div>
+                <button className="btn-primary btn-sm" style={{ marginTop: 12, width: "100%" }}
+                  onClick={() => router.push("/farmer/fpo")}>
+                  View & Join
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {tab === "buyers" && (loading ? (
         <div className="flex-col gap-3">
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 140 }} />)}
         </div>
@@ -136,7 +196,7 @@ export default function BuyersPage() {
             </div>
           ))}
         </div>
-      )}
+      ))}
 
       </div>
 

@@ -447,21 +447,34 @@ export default function SmartSellPage() {
           {result.alternatives?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <h3 className="heading-sm" style={{ marginBottom: 10 }}>Other options</h3>
-              {result.alternatives.map((alt: any, i: number) => (
-                <div key={i} className="card" style={{ marginBottom: 8, padding: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>{alt.target_name}</p>
-                      <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "4px 0 0 0" }}>
-                        Net: ₹{alt.net_realization_per_q?.toLocaleString("en-IN")}/q
-                      </p>
+              {result.alternatives.map((alt: any, i: number) => {
+                const typeMeta: Record<string, { icon: string; border: string }> = {
+                  market: { icon: "🏛️", border: "var(--info, #2563eb)" },
+                  buyer: { icon: "🤝", border: "var(--green-600)" },
+                  storage_sell_later: { icon: "⏳", border: "var(--warning, #d97706)" },
+                };
+                const meta = typeMeta[alt.option_type] || { icon: "📍", border: "var(--stone-300)" };
+                return (
+                  <div key={i} className="card" style={{ marginBottom: 8, padding: 14, borderLeft: `3px solid ${meta.border}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>{meta.icon} {alt.target_name}</p>
+                        <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "4px 0 0 0" }}>
+                          Net: ₹{alt.net_realization_per_q?.toLocaleString("en-IN")}/q · {alt.sale_window_days}-day window
+                        </p>
+                        {alt.reasons?.[0] && (
+                          <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
+                            {alt.reasons[0]}
+                          </p>
+                        )}
+                      </div>
+                      <span className={`score-badge ${alt.score >= 80 ? "score-high" : alt.score >= 60 ? "score-medium" : "score-low"}`}>
+                        {alt.score}/100
+                      </span>
                     </div>
-                    <span className={`score-badge ${alt.score >= 80 ? "score-high" : alt.score >= 60 ? "score-medium" : "score-low"}`}>
-                      {alt.score}/100
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
