@@ -13,8 +13,8 @@
 | Backend API Endpoints | 104 |
 | Database Tables | 45 |
 | pytest Tests | 246/246 PASS (14 files) |
-| Playwright E2E Tests | 15/15 PASS (4 spec files) |
-| E2E Demo Steps | 22/22 PASS |
+| Playwright E2E Tests | 11/15 PASS (4 spec files, 4 fail due to backend not running during test) |
+| E2E Demo Steps | 22/22 PASS (manual run with backend) |
 | Frontend Build | 24 routes, 0 errors |
 | UI component layer | shadcn/ui (Base UI) — full redesign across all 24 pages |
 | Languages | English, Hindi, Marathi |
