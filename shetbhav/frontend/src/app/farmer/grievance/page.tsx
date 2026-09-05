@@ -28,6 +28,7 @@ export default function GrievancePage() {
   const [grievances, setGrievances] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadUser(); }, []);
@@ -49,6 +50,7 @@ export default function GrievancePage() {
   const submit = async () => {
     if (!category || description.length < 10) return;
     setSubmitting(true);
+    setSubmitError("");
     try {
       await api.post("/grievances", {
         order_id: orderId || null,
@@ -61,7 +63,8 @@ export default function GrievancePage() {
       setCategory("");
       setDescription("");
       setOrderId("");
-    } catch {
+    } catch (e: any) {
+      setSubmitError(e.response?.data?.detail || "Couldn't submit your grievance. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +80,8 @@ export default function GrievancePage() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()}
-            style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4 }}>←</button>
+          <button onClick={() => router.back()} aria-label="Go back"
+            style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Help & Grievance</h1>
             <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>Report an issue or get help</p>
@@ -89,6 +92,14 @@ export default function GrievancePage() {
         <div className="card" style={{ marginBottom: 16, background: "var(--color-success-bg)", borderLeft: "4px solid var(--color-success)" }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-success)", margin: 0 }}>
             ✅ Grievance submitted successfully! Our team will review it.
+          </p>
+        </div>
+      )}
+
+      {submitError && (
+        <div className="card" style={{ marginBottom: 16, background: "var(--color-danger-bg, #fef2f2)", borderLeft: "4px solid var(--color-danger)" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-danger)", margin: 0 }}>
+            ⚠️ {submitError}
           </p>
         </div>
       )}

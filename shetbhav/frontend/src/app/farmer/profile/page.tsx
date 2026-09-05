@@ -18,6 +18,8 @@ export default function FarmerProfile() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ farm_address: "", farm_location_lat: 0, farm_location_lng: 0, phone: "" });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     loadUser().then(() => {
@@ -56,12 +58,18 @@ export default function FarmerProfile() {
   if (!user) return null;
 
   const saveProfile = async () => {
+    setSaving(true);
+    setSaveError("");
     try {
       await api.put("/farmers/profile", editForm);
       const { data } = await api.get("/farmers/profile");
       setProfile(data);
       setEditing(false);
-    } catch {}
+    } catch (e: any) {
+      setSaveError(e.response?.data?.detail || "Couldn't save your changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -132,7 +140,12 @@ export default function FarmerProfile() {
                 onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                 placeholder="+91 XXXXX XXXXX" />
             </div>
-            <button className="btn-primary" onClick={saveProfile}>Save Changes</button>
+            {saveError && (
+              <p style={{ fontSize: 13, color: "var(--color-danger, #ef4444)", margin: 0 }}>⚠️ {saveError}</p>
+            )}
+            <button className="btn-primary" onClick={saveProfile} disabled={saving}>
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

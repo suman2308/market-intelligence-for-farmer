@@ -26,6 +26,9 @@ export default function FarmerHome() {
   const [recommendation, setRecommendation] = useState<any>(null);
   const [cropId, setCropId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState(false);
+  const [lotsError, setLotsError] = useState(false);
+  const [recommendationError, setRecommendationError] = useState(false);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
@@ -40,22 +43,32 @@ export default function FarmerHome() {
     }).catch(() => setCropId(null));
   }, [user]);
 
+  const loadDashboardAndLots = () => {
+    if (!user || !cropId) return;
+    setDashboardError(false);
+    setLotsError(false);
+    Promise.all([
+      api.get("/farmers/dashboard").catch(() => { setDashboardError(true); return { data: null }; }),
+      api.get(`/markets/prices?crop_id=${cropId}`).catch(() => ({ data: null })),
+      api.get("/lots").catch(() => { setLotsError(true); return { data: [] }; }),
+    ]).then(([d, p, l]) => {
+      setDashboard(d.data); setPrices(p.data); setLots(l.data);
+    });
+  };
+
+  const loadRecommendation = () => {
+    if (!user || !cropId) return;
+    setRecommendationError(false);
+    api.post("/smart-sell", {
+      crop_id: cropId, quantity_kg: 1000, quality_grade: "A",
+      location_lat: 20.0057, location_lng: 73.7229,
+      storage_available: true, urgency: "soon",
+    }).then(r => setRecommendation(r.data)).catch(() => setRecommendationError(true));
+  };
+
   useEffect(() => {
-    if (user && cropId) {
-      Promise.all([
-        api.get("/farmers/dashboard").catch(() => ({ data: null })),
-        api.get(`/markets/prices?crop_id=${cropId}`).catch(() => ({ data: null })),
-        api.get("/lots").catch(() => ({ data: [] })),
-      ]).then(([d, p, l]) => {
-        setDashboard(d.data); setPrices(p.data); setLots(l.data);
-      }).catch(() => {});
-      // Get Smart Sell recommendation
-      api.post("/smart-sell", {
-        crop_id: cropId, quantity_kg: 1000, quality_grade: "A",
-        location_lat: 20.0057, location_lng: 73.7229,
-        storage_available: true, urgency: "soon",
-      }).then(r => setRecommendation(r.data)).catch(() => {});
-    }
+    loadDashboardAndLots();
+    loadRecommendation();
   }, [user, cropId]);
 
   if (loading) return (
@@ -153,6 +166,15 @@ export default function FarmerHome() {
         </div>
       )}
 
+      {recommendationError && !best && (
+        <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your Smart Sell recommendation.</p>
+          <button className="btn-sm" onClick={loadRecommendation} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* ── Quick Actions ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
         {[
@@ -197,6 +219,15 @@ export default function FarmerHome() {
         </div>
       )}
 
+      {dashboardError && (
+        <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your dashboard stats.</p>
+          <button className="btn-sm" onClick={loadDashboardAndLots} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* ── Dashboard Stats ── */}
       {dashboard && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
@@ -217,7 +248,23 @@ export default function FarmerHome() {
       )}
 
       {/* ── My Lots ── */}
-      {lots.length > 0 && (
+      {lotsError ? (
+        <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your produce lots.</p>
+          <button className="btn-sm" onClick={loadDashboardAndLots} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            Retry
+          </button>
+        </div>
+      ) : lots.length === 0 ? (
+        <div className="card section-gap" style={{ textAlign: "center", padding: "20px 16px" }}>
+          <p style={{ fontSize: 24, margin: "0 0 4px" }}>🌾</p>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>No produce listed yet</p>
+          <p className="text-xs" style={{ margin: "0 0 12px" }}>List your first lot to start reaching buyers.</p>
+          <button className="btn-sm" onClick={() => router.push("/farmer/sell")} style={{ background: "var(--green-600)", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + List Produce
+          </button>
+        </div>
+      ) : (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <p className="heading-sm">My Produce</p>

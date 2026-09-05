@@ -30,6 +30,10 @@ export default function BuyerDashboard() {
   const [actionError, setActionError] = useState("");
   const [bookingLotId, setBookingLotId] = useState<number | null>(null);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
+  const [lotsError, setLotsError] = useState(false);
+  const [demandsError, setDemandsError] = useState(false);
+  const [offersError, setOffersError] = useState(false);
+  const [ordersError, setOrdersError] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
 
   const refreshOffersAndOrders = () => {
@@ -40,6 +44,7 @@ export default function BuyerDashboard() {
 
   const actOnOffer = async (offerId: number, action: "accept" | "reject" | "counter", price?: string) => {
     setBusyOfferId(offerId);
+    setActionError("");
     try {
       if (action === "counter") {
         await api.post(`/offers/${offerId}/counter`, { price_per_q: Number(price) });
@@ -50,35 +55,38 @@ export default function BuyerDashboard() {
         if (action === "accept") setActiveTab("orders");
       }
       refreshOffersAndOrders();
-    } catch {
-      // Errors surface via the offer's status staying unchanged; nothing further needed here.
+    } catch (e: any) {
+      setActionError(e.response?.data?.detail || `Couldn't ${action} this offer. Please try again.`);
     } finally {
       setBusyOfferId(null);
     }
   };
 
   useEffect(() => { loadUser().finally(() => setLoading(false)); }, []);
-  useEffect(() => {
-    if (user && user.role === "buyer") {
-      Promise.all([
-        api.get("/demand").catch(() => ({ data: [] })),
-        api.get("/crops").catch(() => ({ data: [] })),
-        api.get("/lots?status=active").catch(() => ({ data: [] })),
-        api.get("/offers").catch(() => ({ data: [] })),
-        api.get("/orders").catch(() => ({ data: [] })),
-      ]).then(([d, c, l, o, or]) => {
-        setDemand(d.data);
-        // Crop ids differ per database — default the demand form to the first real crop
-        if (c.data?.length) {
-          setCrops(c.data);
-          setDemandForm(f => (f.crop_id ? f : { ...f, crop_id: c.data[0].id }));
-        } else {
-          setCrops([]);
-        }
-        setLots(l.data); setOffers(o.data); setOrders(or.data);
-      }).catch(() => {});
-    }
-  }, [user]);
+
+  const loadDashboard = () => {
+    if (!user || user.role !== "buyer") return;
+    setLotsError(false); setDemandsError(false); setOffersError(false); setOrdersError(false);
+    Promise.all([
+      api.get("/demand").catch(() => { setDemandsError(true); return { data: [] }; }),
+      api.get("/crops").catch(() => ({ data: [] })),
+      api.get("/lots?status=active").catch(() => { setLotsError(true); return { data: [] }; }),
+      api.get("/offers").catch(() => { setOffersError(true); return { data: [] }; }),
+      api.get("/orders").catch(() => { setOrdersError(true); return { data: [] }; }),
+    ]).then(([d, c, l, o, or]) => {
+      setDemand(d.data);
+      // Crop ids differ per database — default the demand form to the first real crop
+      if (c.data?.length) {
+        setCrops(c.data);
+        setDemandForm(f => (f.crop_id ? f : { ...f, crop_id: c.data[0].id }));
+      } else {
+        setCrops([]);
+      }
+      setLots(l.data); setOffers(o.data); setOrders(or.data);
+    });
+  };
+
+  useEffect(loadDashboard, [user]);
 
   if (loading) return <div style={{ padding: 16 }}><Skeleton height={80} count={4} /></div>;
   if (!user) { router.push("/login"); return null; }
@@ -253,7 +261,9 @@ export default function BuyerDashboard() {
               </div>
             )}
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>Available Lots</h3>
-            {lots.length === 0 ? (
+            {lotsError ? (
+              <EmptyState icon="⚠️" title="Couldn't load lots" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
+            ) : lots.length === 0 ? (
               <EmptyState icon="📦" title="No lots available" description="Post a demand to find farmers" />
             ) : lots.map((lot: any) => (
               <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
@@ -295,7 +305,9 @@ export default function BuyerDashboard() {
         {activeTab === "demands" && (
           <>
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>My Demands</h3>
-            {demand.length === 0 ? (
+            {demandsError ? (
+              <EmptyState icon="⚠️" title="Couldn't load demands" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
+            ) : demand.length === 0 ? (
               <EmptyState icon="📋" title="No demands yet" description="Create one to find farmers" />
             ) : demand.map((d: any) => (
               <div key={d.id} className="card" style={{ marginBottom: 8 }}>
@@ -320,7 +332,9 @@ export default function BuyerDashboard() {
         {activeTab === "offers" && (
           <>
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>My Offers</h3>
-            {offers.length === 0 ? (
+            {offersError ? (
+              <EmptyState icon="⚠️" title="Couldn't load offers" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
+            ) : offers.length === 0 ? (
               <EmptyState icon="📩" title="No offers yet" description="Browse lots to make one" />
             ) : offers.map((o: any) => {
               // Only offers currently addressed to this buyer (a farmer's
@@ -396,7 +410,9 @@ export default function BuyerDashboard() {
         {activeTab === "orders" && (
           <>
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>Orders</h3>
-            {orders.length === 0 ? (
+            {ordersError ? (
+              <EmptyState icon="⚠️" title="Couldn't load orders" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
+            ) : orders.length === 0 ? (
               <EmptyState icon="🚚" title="No orders yet" description="Accepted offers will appear here" />
             ) : orders.map((o: any) => (
               <div key={o.id} className="card" style={{ marginBottom: 8 }}>

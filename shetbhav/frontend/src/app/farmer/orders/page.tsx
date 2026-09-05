@@ -95,12 +95,17 @@ export default function OrdersPage() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState(false);
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
 
   useEffect(() => { loadUser().finally(() => setLoading(false)); }, []);
-  useEffect(() => {
-    if (user) api.get("/orders").then(r => setOrders(r.data)).catch(() => {});
-  }, [user]);
+
+  const loadOrders = () => {
+    if (!user) return;
+    setOrdersError(false);
+    api.get("/orders").then(r => setOrders(r.data)).catch(() => setOrdersError(true));
+  };
+  useEffect(loadOrders, [user]);
 
   if (!user) return null;
 
@@ -126,7 +131,7 @@ export default function OrdersPage() {
               fontWeight: 600, fontSize: 14,
             }}
             onClick={() => setActiveTab("active")}>
-            {t("active_lots")} ({activeOrders.length})
+            {t("active_orders")} ({activeOrders.length})
           </button>
           <button
             style={{
@@ -142,6 +147,14 @@ export default function OrdersPage() {
 
         {loading ? (
           <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100, marginBottom: 12 }} />)}</div>
+        ) : ordersError ? (
+          <div className="card" style={{ textAlign: "center", padding: 32, borderColor: "var(--danger)" }}>
+            <p style={{ fontSize: 28, margin: 0 }}>⚠️</p>
+            <p style={{ fontSize: 14, color: "var(--danger)", margin: "8px 0 12px 0" }}>
+              Couldn't load your orders. Check your connection and try again.
+            </p>
+            <button className="btn-primary" onClick={loadOrders}>Retry</button>
+          </div>
         ) : displayOrders.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: 40 }}>
             <p style={{ fontSize: 32, margin: 0 }}>📋</p>
