@@ -232,6 +232,7 @@ export default function FarmerProfile() {
         {[
           { label: "📦 Recent Lot Info", path: "/farmer/lots" },
           { label: "💰 My Earnings", path: "/farmer/earnings" },
+          { label: "🏢 FPO Membership", path: "/farmer/fpo" },
           { label: "🔔 Notifications", path: "/farmer/notifications" },
           { label: "🚨 Help & Grievance", path: "/farmer/grievance" },
         ].map(link => (

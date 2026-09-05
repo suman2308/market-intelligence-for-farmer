@@ -40,6 +40,7 @@ function FarmerLotsContent() {
   const [form, setForm] = useState({
     crop_id: 0, quantity_kg: 500, price_per_q: 2000,
     quality_grade: "unrated", urgency: "flexible", storage_available: false,
+    available_for_fpo: false,
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -109,6 +110,7 @@ function FarmerLotsContent() {
   };
 
   const activeLots = lots.filter(l => ACTIVE_STATUSES.includes(l.status));
+  const inFpoProcessLots = lots.filter(l => l.status === "pending_fpo" || l.status === "fpo_aggregated");
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
@@ -176,6 +178,11 @@ function FarmerLotsContent() {
               <input type="checkbox" checked={form.storage_available}
                 onChange={e => setForm({ ...form, storage_available: e.target.checked })} />
               I have storage available for this produce
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={form.available_for_fpo}
+                onChange={e => setForm({ ...form, available_for_fpo: e.target.checked })} />
+              Make this lot available for FPO aggregation
             </label>
             <button className="btn-primary" disabled={creating} onClick={createLot}>
               {creating ? "Listing…" : "List this produce"}
@@ -272,6 +279,28 @@ function FarmerLotsContent() {
             )}
           </div>
         ))
+      )}
+
+      {/* ── In FPO Process ── */}
+      {inFpoProcessLots.length > 0 && (
+        <>
+          <p className="heading-sm" style={{ margin: "20px 0 8px" }}>In FPO Storage</p>
+          {inFpoProcessLots.map(lot => (
+            <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+                    {cropEmoji(lot.crop_name)} {lot.crop_name} · {lot.quantity_kg}kg
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
+                    {lot.status === "pending_fpo" ? "Awaiting your confirmation" : "Aggregated with your FPO"}
+                  </p>
+                </div>
+                <span className="badge badge-amber">{lot.status === "pending_fpo" ? "Pending" : "In FPO storage"}</span>
+              </div>
+            </div>
+          ))}
+        </>
       )}
 
       {/* ── Order History ── */}

@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
-import { NotificationBell } from "@/components/ui";
+import { NotificationBell, EmptyState } from "@/components/ui";
 import { cropEmoji } from "@/lib/cropEmoji";
+import { totalAmount, formatINR } from "@/lib/money";
+
+type FpoTab = "overview" | "members" | "lots" | "demands" | "available-lots" | "payments";
 
 export default function FPODashboard() {
   const router = useRouter();
@@ -13,21 +16,53 @@ export default function FPODashboard() {
   const { t } = useI18n();
   const [dashboard, setDashboard] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
   const [lots, setLots] = useState<any[]>([]);
   const [demands, setDemands] = useState<any[]>([]);
+  const [availableLots, setAvailableLots] = useState<any[]>([]);
+  const [fpoOrders, setFpoOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [tab, setTab] = useState<"overview" | "members" | "lots" | "demands">("overview");
+  const [tab, setTab] = useState<FpoTab>("overview");
   const [respondingTo, setRespondingTo] = useState<number | null>(null);
   const [selectedLotId, setSelectedLotId] = useState("");
   const [fulfilling, setFulfilling] = useState(false);
   const [fulfilledIds, setFulfilledIds] = useState<Set<number>>(new Set());
   const [demandError, setDemandError] = useState("");
+  const [memberActionError, setMemberActionError] = useState("");
+  const [selectedAvailableLots, setSelectedAvailableLots] = useState<Set<number>>(new Set());
+  const [aggregatePrice, setAggregatePrice] = useState("");
+  const [aggregating, setAggregating] = useState(false);
+  const [aggregateError, setAggregateError] = useState("");
+  const [distributingOrderId, setDistributingOrderId] = useState<number | null>(null);
+  const [distributionResult, setDistributionResult] = useState<any>(null);
+  const [distributeError, setDistributeError] = useState("");
   const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     loadUser().finally(() => setAuthChecked(true));
   }, []);
+
+  const load = () => {
+    Promise.all([
+      api.get("/fpo/dashboard"),
+      api.get("/fpo/members"),
+      api.get("/fpo/lots"),
+      api.get("/demand", { params: { status: "open" } }),
+      api.get("/fpo/members/pending").catch(() => ({ data: [] })),
+      api.get("/fpo/available-lots").catch(() => ({ data: [] })),
+      api.get("/fpo/orders").catch(() => ({ data: [] })),
+    ]).then(([d, m, l, dem, pm, al, fo]) => {
+      setDashboard(d.data);
+      setMembers(m.data);
+      setLots(l.data);
+      setDemands(dem.data);
+      setPendingMembers(pm.data);
+      setAvailableLots(al.data);
+      setFpoOrders(fo.data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (!authChecked) return;
@@ -36,18 +71,7 @@ export default function FPODashboard() {
       router.push(roleHomePath(user.role));
       return;
     }
-    Promise.all([
-      api.get("/fpo/dashboard"),
-      api.get("/fpo/members"),
-      api.get("/fpo/lots"),
-      api.get("/demand", { params: { status: "open" } }),
-    ]).then(([d, m, l, dem]) => {
-      setDashboard(d.data);
-      setMembers(m.data);
-      setLots(l.data);
-      setDemands(dem.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    load();
   }, [user, authChecked]);
 
   if (!authChecked || !user || user.role !== "fpo") return null;
@@ -56,14 +80,78 @@ export default function FPODashboard() {
     { icon: "🌾", label: "Overview", tab: "overview" as const },
     { icon: "👥", label: "Members", tab: "members" as const },
     { icon: "📦", label: "Lots", tab: "lots" as const },
+    { icon: "🔍", label: "Available Lots", tab: "available-lots" as const },
     { icon: "📋", label: "Demands", tab: "demands" as const },
+    { icon: "💰", label: "Payments", tab: "payments" as const },
   ];
 
   const goLogout = () => { logout(); router.push("/login"); };
 
-  const openTab = (t: "overview" | "members" | "lots" | "demands") => {
+  const openTab = (t: FpoTab) => {
     setTab(t);
     contentRef.current?.scrollTo({ top: 0 });
+  };
+
+  const approveMember = async (membershipId: number) => {
+    setMemberActionError("");
+    try {
+      await api.put(`/fpo/members/${membershipId}/approve`);
+      load();
+    } catch (e: any) {
+      setMemberActionError(e.response?.data?.detail || "Couldn't approve this request.");
+    }
+  };
+
+  const rejectMember = async (membershipId: number) => {
+    setMemberActionError("");
+    try {
+      await api.put(`/fpo/members/${membershipId}/reject`);
+      load();
+    } catch (e: any) {
+      setMemberActionError(e.response?.data?.detail || "Couldn't decline this request.");
+    }
+  };
+
+  const toggleAvailableLot = (lotId: number) => {
+    setSelectedAvailableLots(prev => {
+      const next = new Set(prev);
+      if (next.has(lotId)) next.delete(lotId); else next.add(lotId);
+      return next;
+    });
+  };
+
+  const requestAggregation = async () => {
+    if (selectedAvailableLots.size === 0) return;
+    setAggregating(true);
+    setAggregateError("");
+    try {
+      await api.post("/fpo/aggregate-request", {
+        lot_ids: Array.from(selectedAvailableLots),
+        expected_price_per_q: aggregatePrice ? Number(aggregatePrice) : null,
+      });
+      setSelectedAvailableLots(new Set());
+      setAggregatePrice("");
+      load();
+    } catch (e: any) {
+      setAggregateError(e.response?.data?.detail || "Couldn't send the aggregation request.");
+    } finally {
+      setAggregating(false);
+    }
+  };
+
+  const distributePayment = async (orderId: number) => {
+    setDistributingOrderId(orderId);
+    setDistributeError("");
+    setDistributionResult(null);
+    try {
+      const { data } = await api.post(`/fpo/orders/${orderId}/distribute-payment`);
+      setDistributionResult(data);
+      load();
+    } catch (e: any) {
+      setDistributeError(e.response?.data?.detail || "Couldn't distribute payment.");
+    } finally {
+      setDistributingOrderId(null);
+    }
   };
 
   const activeLots = lots.filter((l: any) => l.status === "active");
@@ -193,6 +281,29 @@ export default function FPODashboard() {
           {/* Members Tab */}
           {tab === "members" && (
             <div className="flex-col gap-3">
+              {memberActionError && (
+                <div className="auth-error"><span>⚠️</span><p>{memberActionError}</p></div>
+              )}
+              {pendingMembers.length > 0 && (
+                <div className="card" style={{ borderLeft: "3px solid var(--color-accent, #d97706)" }}>
+                  <h3 className="heading-sm" style={{ marginBottom: 8 }}>Pending Join Requests</h3>
+                  {pendingMembers.map((p: any) => (
+                    <div key={p.membership_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--color-border)" }}>
+                      <div>
+                        <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>{p.farmer_name}</p>
+                        <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0" }}>{p.district || "—"}</p>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn-primary btn-sm" onClick={() => approveMember(p.membership_id)}>Approve</button>
+                        <button style={{
+                          padding: "6px 10px", fontSize: 12, borderRadius: 8,
+                          border: "1px solid var(--color-border)", background: "white", cursor: "pointer",
+                        }} onClick={() => rejectMember(p.membership_id)}>Decline</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {members.length === 0 ? (
                 <div className="card" style={{ textAlign: "center", padding: 40 }}>
                   <p style={{ fontSize: 32 }}>👥</p>
@@ -369,6 +480,124 @@ export default function FPODashboard() {
                     </div>
                   );
                 })
+              )}
+            </div>
+          )}
+
+          {/* Available Lots Tab — Section 4.1: browse member lots opted into FPO aggregation */}
+          {tab === "available-lots" && (
+            <div className="flex-col gap-3">
+              {aggregateError && (
+                <div className="auth-error"><span>⚠️</span><p>{aggregateError}</p></div>
+              )}
+              {availableLots.length === 0 ? (
+                <EmptyState icon="🔍" title="No lots available right now"
+                  description="Lots your members mark 'available for FPO aggregation' will show up here." />
+              ) : (
+                <>
+                  {availableLots.map((l: any) => (
+                    <label key={l.lot_id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <input type="checkbox" checked={selectedAvailableLots.has(l.lot_id)}
+                          onChange={() => toggleAvailableLot(l.lot_id)} />
+                        <div>
+                          <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>
+                            {cropEmoji(l.crop_name)} {l.farmer_name} — {l.crop_name} · {l.quantity_kg?.toLocaleString("en-IN")}kg
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0" }}>
+                            Grade {l.quality_grade} · {l.district || "—"}
+                            {l.price_per_q ? ` · ₹${l.price_per_q.toLocaleString("en-IN")}/q asking` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                  {selectedAvailableLots.size > 0 && (
+                    <div className="card" style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
+                      <p className="text-sm" style={{ fontWeight: 600, margin: "0 0 8px" }}>
+                        {selectedAvailableLots.size} lot{selectedAvailableLots.size !== 1 ? "s" : ""} selected ·{" "}
+                        {availableLots.filter((l: any) => selectedAvailableLots.has(l.lot_id))
+                          .reduce((sum: number, l: any) => sum + l.quantity_kg, 0).toLocaleString("en-IN")}kg total
+                      </p>
+                      <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>
+                        Expected price for the aggregated lot (₹/quintal, optional)
+                      </label>
+                      <input className="input" type="number" value={aggregatePrice}
+                        onChange={e => setAggregatePrice(e.target.value)}
+                        placeholder="Falls back to a weighted average of the selected lots"
+                        style={{ marginBottom: 10 }} />
+                      <button className="btn-primary" style={{ width: "100%" }}
+                        disabled={aggregating} onClick={requestAggregation}>
+                        {aggregating ? "Sending…" : "Request Aggregation"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Payments Tab — Section 6.2: distribute a paid order's proceeds to contributing farmers */}
+          {tab === "payments" && (
+            <div className="flex-col gap-3">
+              {distributeError && (
+                <div className="auth-error"><span>⚠️</span><p>{distributeError}</p></div>
+              )}
+              {distributionResult && (
+                <div className="card" style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
+                  <h3 className="heading-sm" style={{ marginBottom: 8 }}>Payment Distributed</h3>
+                  <div className="flex-col gap-2" style={{ marginBottom: 12 }}>
+                    {[
+                      ["Total received", formatINR(distributionResult.total_received)],
+                      ["Commission + platform fee", formatINR(distributionResult.total_commission + distributionResult.total_platform_fee)],
+                      ["Net distributed", formatINR(distributionResult.net_distributed)],
+                    ].map(([label, value]) => (
+                      <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>{label}</span>
+                        <span className="text-sm" style={{ fontWeight: 700 }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {distributionResult.breakdown.map((b: any, i: number) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--color-border)" }}>
+                      <span className="text-sm">{b.farmer_name} · {b.quantity_kg.toLocaleString("en-IN")}kg</span>
+                      <span className="text-sm" style={{ fontWeight: 600 }}>{formatINR(b.net_payable)}</span>
+                    </div>
+                  ))}
+                  <button className="btn-secondary" style={{ width: "100%", marginTop: 12 }}
+                    onClick={() => setDistributionResult(null)}>Close</button>
+                </div>
+              )}
+              {fpoOrders.length === 0 ? (
+                <EmptyState icon="💰" title="No FPO orders yet"
+                  description="Orders buyers place against your aggregated lots will show up here." />
+              ) : (
+                fpoOrders.map((o: any) => (
+                  <div key={o.id} className="card">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <p className="text-sm" style={{ fontWeight: 700, margin: 0 }}>
+                          {o.crop_name || `Order #${o.id}`} · {o.quantity_kg}kg
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0" }}>
+                          {formatINR(o.total_value)} · Total: {formatINR(totalAmount(o.price_per_q, o.quantity_kg))}
+                        </p>
+                      </div>
+                      <span className={`badge ${o.status === "paid" || o.status === "completed" ? "badge-verified" : ""}`}>{o.status}</span>
+                    </div>
+                    {o.status === "paid" && !o.payment_distributed && (
+                      <button className="btn-primary" style={{ width: "100%", marginTop: 10 }}
+                        disabled={distributingOrderId === o.id} onClick={() => distributePayment(o.id)}>
+                        {distributingOrderId === o.id ? "Distributing…" : "Distribute Payment"}
+                      </button>
+                    )}
+                    {o.payment_distributed && (
+                      <p className="text-xs" style={{ color: "var(--color-success)", fontWeight: 600, marginTop: 8 }}>
+                        ✓ Payment distributed to farmers
+                      </p>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           )}

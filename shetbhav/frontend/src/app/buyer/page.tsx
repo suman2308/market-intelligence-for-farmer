@@ -33,6 +33,7 @@ export default function BuyerDashboard() {
   const [bookingLotId, setBookingLotId] = useState<number | null>(null);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const [lotsError, setLotsError] = useState(false);
+  const [sellerTypeFilter, setSellerTypeFilter] = useState<"all" | "farmer" | "fpo">("all");
   const [demandsError, setDemandsError] = useState(false);
   const [offersError, setOffersError] = useState(false);
   const [ordersError, setOrdersError] = useState(false);
@@ -272,19 +273,46 @@ export default function BuyerDashboard() {
         {/* Lots Tab */}
         {activeTab === "lots" && (
           <>
-            <h3 className="heading-sm" style={{ marginBottom: 8 }}>Available Lots</h3>
-            {lotsError ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+              <h3 className="heading-sm" style={{ margin: 0 }}>Available Lots</h3>
+              <div style={{ display: "flex", gap: 4 }}>
+                {[
+                  { v: "all" as const, label: "All" },
+                  { v: "farmer" as const, label: "Farmers" },
+                  { v: "fpo" as const, label: "FPOs" },
+                ].map(opt => (
+                  <button key={opt.v} onClick={() => setSellerTypeFilter(opt.v)}
+                    style={{
+                      padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      border: sellerTypeFilter === opt.v ? "1.5px solid var(--green-600)" : "1px solid var(--stone-200)",
+                      background: sellerTypeFilter === opt.v ? "var(--green-50, #f0fdf4)" : "white",
+                      color: sellerTypeFilter === opt.v ? "var(--green-700)" : "var(--text-secondary)",
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(() => {
+              const visibleLots = lots.filter((lot: any) =>
+                sellerTypeFilter === "all" ? true :
+                sellerTypeFilter === "fpo" ? !!lot.fpo_id : !lot.fpo_id
+              );
+              return lotsError ? (
               <EmptyState icon="⚠️" title="Couldn't load lots" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
-            ) : lots.length === 0 ? (
-              <EmptyState icon="📦" title="No lots available" description="Post a demand to find farmers" />
-            ) : lots.map((lot: any) => (
+            ) : visibleLots.length === 0 ? (
+              <EmptyState icon="📦" title="No lots available"
+                description={sellerTypeFilter === "all" ? "Post a demand to find farmers" : `No ${sellerTypeFilter === "fpo" ? "FPO" : "individual farmer"} lots right now`} />
+            ) : visibleLots.map((lot: any) => (
               <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                   onClick={() => router.push(`/lots/${lot.id}`)}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lot.crop_name} — {lot.quantity_kg}kg</p>
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {lot.quality_grade || "Any"} · {lot.address}</p>
-                    {lot.farmer_name && (
+                    {lot.fpo_id ? (
+                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--info)" }}>🏢 {lot.fpo_name || "FPO"}</p>
+                    ) : lot.farmer_name && (
                       <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>by {lot.farmer_name}</p>
                     )}
                   </div>
@@ -314,7 +342,8 @@ export default function BuyerDashboard() {
                   </button>
                 </div>
               </div>
-            ))}
+            ));
+            })()}
           </>
         )}
 

@@ -21,7 +21,7 @@ const CHILDREN: Record<string, string[]> = {
   "/farmer/prices": ["/farmer/buyers", "/farmer/sell"],
   "/farmer/demands": [],
   "/farmer/lots": ["/farmer/quality", "/farmer/offers", "/farmer/orders"],
-  "/farmer/profile": ["/farmer/earnings", "/farmer/grievance", "/farmer/notifications"],
+  "/farmer/profile": ["/farmer/earnings", "/farmer/grievance", "/farmer/notifications", "/farmer/fpo"],
 };
 
 export default function FarmerBottomNav({ active }: { active?: string } = {}) {
