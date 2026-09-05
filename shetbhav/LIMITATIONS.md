@@ -1,6 +1,6 @@
 # ShetBhav — Limitations
 
-**Last Updated:** September 4, 2026
+**Last Updated:** September 5, 2026
 
 ---
 
@@ -97,7 +97,6 @@ ShetBhav is an **MVP prototype** built for Smart India Hackathon 2026. It is **n
 - Live transporter/warehouse APIs
 - Trained quality grading model
 - Comprehensive XGBoost training data
-- CI/CD pipeline
 - HTTPS and domain
 - Rate limiting hardening
 - Push notifications

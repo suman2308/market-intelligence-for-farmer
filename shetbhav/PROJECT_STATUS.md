@@ -1,6 +1,6 @@
 # ShetBhav — Project Status
 
-**Last Updated:** September 4, 2026
+**Last Updated:** September 5, 2026
 **Status:** MVP demo-ready, GitHub-ready
 
 ---
@@ -9,12 +9,14 @@
 
 | Metric | Value |
 |--------|-------|
-| Frontend Routes | 19 |
-| Backend API Endpoints | 78 methods across 73 paths |
-| Database Tables | 43 |
-| pytest Tests | 175/175 PASS |
+| Frontend Routes | 24 (incl. dynamic `[id]`/`[userId]` routes) |
+| Backend API Endpoints | 104 |
+| Database Tables | 45 |
+| pytest Tests | 246/246 PASS (14 files) |
+| Playwright E2E Tests | 15/15 PASS (4 spec files) |
 | E2E Demo Steps | 22/22 PASS |
-| Frontend Build | 17 routes, 0 errors |
+| Frontend Build | 24 routes, 0 errors |
+| UI component layer | shadcn/ui (Base UI) — full redesign across all 24 pages |
 | Languages | English, Hindi, Marathi |
 | Demo Accounts | 4 (Farmer, Buyer, Admin, FPO) |
 | Market Price Records | 863 (770 historical + 93 live) |
@@ -47,7 +49,11 @@
 | Admin grievance resolution | ✅ COMPLETE | E2E step 22 |
 | Admin buyer verification | ✅ COMPLETE | admin endpoint |
 | Admin platform stats | ✅ COMPLETE | E2E step 21 |
-| FPO aggregation | ✅ COMPLETE | test_api.py, fpo_aggregation.py |
+| FPO aggregation (with farmer confirmation) | ✅ COMPLETE | test_fpo_flow.py, fpo_aggregation.py |
+| FPO join request / leave | ✅ COMPLETE | test_fpo_flow.py, /fpo/join-request, /fpo/leave |
+| FPO member approve/reject/remove | ✅ COMPLETE | test_fpo_flow.py, /fpo/members/{id}/* |
+| FPO member detail view | ✅ COMPLETE | test_fpo_flow.py, GET /fpo/members/{farmer_id} |
+| FPO payment distribution (volume share) | ✅ COMPLETE | test_fpo_flow.py, /fpo/orders/{id}/distribute-payment |
 | AI quality grading | ✅ COMPLETE | 24 tests, crop_vision.py |
 | Logistics estimation | ✅ COMPLETE | test_api.py (2 tests) |
 | Transport options | ✅ COMPLETE | 2 seeded transporters |
@@ -118,13 +124,17 @@ cd shetbhav/frontend
 npm install
 npm run dev
 
-# Tests (175 tests)
+# Tests (246 tests)
 cd shetbhav/backend
 python -m pytest tests/ -v
 
-# E2E demo test (22 steps)
+# Playwright E2E (15 tests, needs both servers running)
+cd shetbhav/frontend
+npx playwright test
+
+# Manual E2E demo script (22 steps)
 cd shetbhav/backend
-python e2e_demo.py
+python scripts/e2e_demo.py
 ```
 
 Open http://localhost:3000
@@ -142,8 +152,9 @@ Open http://localhost:3000
 
 ## Production Blockers
 
-1. Alembic database migrations (currently using `create_all()`)
-2. CI/CD pipeline (GitHub Actions)
-3. Rate limiting hardening (Redis-based)
-4. Push notifications (WebSocket/Firebase)
-5. Real payment gateway (Razorpay/PayU)
+1. Alembic database migrations (currently using `create_all()` + additive-column bootstrap)
+2. Rate limiting hardening (Redis-based)
+3. Push notifications (WebSocket/Firebase)
+4. Real payment gateway (Razorpay/PayU)
+
+> CI/CD (GitHub Actions) is no longer a blocker — see [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), which runs the backend pytest suite, frontend build/typecheck/lint, and the Playwright E2E suite on every push.

@@ -9,7 +9,7 @@ A market-intelligence platform that helps Indian farmers decide **where, when, a
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-175%2F175-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-246%2F246-brightgreen)](#testing--ci)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
 ---
@@ -94,12 +94,12 @@ Fresh captures from the running app (Sept 2026). Farmers get a phone-first flow;
 - **Smart Sell engine** — ranks mandi sale, buyer offer, storage-and-sell-later, and FPO aggregation by net ₹/quintal (after transport, storage, handling), with reasons and a confidence score.
 - **Real mandi prices** — official AGMARKNET data with freshness/source badges on every price card, plus a 7-day XGBoost price forecast (with automatic baseline fallback when history is thin).
 - **Full marketplace flow** — lots → offers → counter-offers → orders → delivery timeline → (simulated, clearly labeled) payments.
-- **FPO aggregation** — combine member lots into bulk volumes for better buyer terms.
+- **FPO membership & aggregation** — farmers browse/join/leave an FPO (self-service, with admin approval); the FPO approves or removes members, views each member's contact info and lots, combines opted-in lots into one collective lot for buyer demand, and splits payment back to contributors by their quantity share (net of commission).
 - **AI quality grading (prototype)** — photo-based grade assessment with manual override.
 - **3 languages** — English, हिन्दी, मराठी switchable live.
 - **JWT auth with 4 roles** — farmer, buyer, FPO, admin; role-based API access enforced on every endpoint.
 - **Leaflet map of mandis** — pick markets visually on a Maharashtra map.
-- **Voice read-out** — farmers can listen to recommendations (Web Speech API).
+- **shadcn/ui component system** — the entire UI (24 pages) is built on shadcn/ui (Base UI) primitives mapped onto ShetBhav's own green/saffron brand tokens, not a generic theme.
 
 ---
 
@@ -117,7 +117,7 @@ flowchart TB
     end
 
     subgraph B["Render — FastAPI · Python 3.11"]
-        API["REST API<br/>69 endpoints · JWT + role guard"]
+        API["REST API<br/>104 endpoints · JWT + role guard"]
         SE["🧠 Smart Sell engine"]
         MD["📈 Market data service<br/>data.gov.in AGMARKNET"]
         ML["🔮 XGBoost forecast<br/>auto-fallback to baselines"]
@@ -188,8 +188,8 @@ sequenceDiagram
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router), TypeScript, Tailwind, Zustand, Leaflet, Recharts |
-| Backend | FastAPI, Python 3.11, SQLAlchemy 2.0 (43 tables) |
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui (Base UI), Zustand, Leaflet, Recharts |
+| Backend | FastAPI, Python 3.11, SQLAlchemy 2.0 (45 tables) |
 | Database | SQLite (local) / PostgreSQL (production) |
 | ML | XGBoost, scikit-learn, pandas, joblib (forecasting + quality grading) |
 | Market data | data.gov.in AGMARKNET API + bundled historical sample |
@@ -249,22 +249,25 @@ market-intelligence-for-farmer/
 ├── LICENSE                   MIT
 ├── render.yaml               Render Blueprint (backend + PostgreSQL)
 ├── screenshots/              Real UI captures used above
-├── .github/workflows/ci.yml  Runs the full 175-test backend suite
+├── .github/workflows/ci.yml  Backend suite + frontend build/lint/typecheck + Playwright E2E
 └── shetbhav/
     ├── backend/
-    │   ├── app/main.py           FastAPI app (69 endpoints, startup seeding)
+    │   ├── app/main.py           FastAPI app (104 endpoints, startup seeding)
     │   ├── app/scripts/          Market-data CSV import tool
+    │   ├── scripts/               Manual E2E demo script (scripts/e2e_demo.py)
     │   ├── config/               Settings + DB engine
-    │   ├── services/             Smart Sell · market data · auth · logistics · quality
+    │   ├── services/             Smart Sell · market data · auth · logistics · quality · notifications
     │   ├── ml/                   XGBoost pipeline, baselines, evaluation
     │   ├── models/               SQLAlchemy models + Pydantic schemas
-    │   ├── tests/                7 files · 175 tests
+    │   ├── tests/                14 files · 246 pytest tests
     │   ├── data/                 Sample AGMARKNET CSV (20 KB)
     │   └── .env.example
     └── frontend/
-        ├── src/app/             17 routes: farmer/*, buyer, fpo, admin, login, register
-        ├── src/components/       Shared UI (headers, nav, map, voice)
+        ├── src/app/             24 routes (incl. dynamic [id]/[userId]): farmer/*, buyer, fpo, admin, login, register
+        ├── src/components/ui/   shadcn/ui primitives (Button, Card, Tabs, Dialog, Carousel, ...)
+        ├── src/components/       App-specific shared UI (headers, nav, map, notifications)
         ├── src/lib/              API client · auth store · i18n (EN/HI/MR)
+        ├── e2e/                  Playwright E2E specs (15 tests)
         ├── public/
         ├── vercel.json          /api rewrite → Render backend
         └── package.json
@@ -276,7 +279,7 @@ market-intelligence-for-farmer/
 
 ```bash
 cd shetbhav/backend
-python -m pytest tests/ -q        # 175 passed
+python -m pytest tests/ -q        # 246 passed
 ```
 
 | File | Covers |
@@ -287,9 +290,13 @@ python -m pytest tests/ -q        # 175 passed
 | `test_forecasting.py` | XGBoost pipeline, baselines, validation |
 | `test_data_gov.py` | AGMARKNET integration, key handling, normalization |
 | `test_quality_grading.py` | AI quality assessment |
-| `test_data_gov.py` etc. | (see per-file docstrings) |
+| `test_fpo_flow.py` | FPO join/leave/aggregation-with-confirmation/payment distribution |
+| `test_booking.py`, `test_demand_direct_response.py` | Direct book/demand-response flows |
+| `test_offers_notifications.py` | Offer negotiation, notification delivery |
+| `test_payment_deadline.py` | Payment-window enforcement |
+| `test_lot_edit_delete.py`, `test_profiles_and_admin.py` | Lot edit/withdraw, profile + admin endpoints |
 
-Frontend: `npm run build` compiles all 17 routes cleanly. CI runs the backend suite on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+Frontend: `npm run build` compiles all 24 routes cleanly, and `npx playwright test` (from `shetbhav/frontend`, both servers running) runs 15 browser-driven E2E tests covering the full book-and-pay loop, counterparty detail pages, and the Smart Sell/My Lots handoff. CI runs the backend suite, frontend build/typecheck/lint, and the Playwright suite on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 

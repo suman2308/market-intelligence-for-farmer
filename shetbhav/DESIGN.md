@@ -106,29 +106,43 @@ Scale: `4, 8, 12, 16, 20, 24, 32, 40, 48, 64`
 
 ## Components
 
-All shared components live in `src/components/ui.tsx` and `src/components/FarmerHeader.tsx`.
+The UI layer is **shadcn/ui** (built on Base UI, not Radix) as the primary component system, with a small set of app-specific components layered on top. shadcn's generated primitives are copied into the repo directly rather than pulled from a package, so every one below is editable source, not a black box.
+
+**shadcn/ui primitives** — `src/components/ui/*.tsx`, styled via `class-variance-authority` and mapped onto ShetBhav's own brand tokens (not shadcn's default zinc/slate palette):
 
 | Component | File | Notes |
 |-----------|------|-------|
-| `PageHeader` | ui.tsx | Title + optional back button + actions |
-| `ProgressBar` | ui.tsx | Wizard step indicator (dots) |
-| `BottomNav` | ui.tsx | Mobile bottom navigation (farmer) |
-| `Sidebar` | ui.tsx | Desktop left nav (buyer, FPO, admin) |
-| `DataSourceBadge` | ui.tsx | Source label: live / cached / model / synthetic / imported |
-| `ConfidenceBadge` | ui.tsx | High / Medium / Low with % |
-| `ScoreBadge` | ui.tsx | `82/100` style |
-| `VerificationBadge` | ui.tsx | Verified / Pending / Rejected |
-| `StatCard` | ui.tsx | Icon + value + label metric card |
-| `CropCard` | ui.tsx | Large visual crop selector |
-| `RecommendationCard` | ui.tsx | Green hero card: price, score, reasons, risks |
-| `LotCard` | ui.tsx | Crop lot summary |
-| `EmptyState` | ui.tsx | Icon + title + description + optional action |
-| `VoiceButton` / `VoicePlayButton` | ui.tsx | SpeechSynthesis playback (hi-IN) |
-| `Skeleton` | ui.tsx | Loading placeholder |
-| `TrustScore` | ui.tsx | Buyer trust score display |
-| `WhyExplainer` | ui.tsx | Collapsible "why recommended" section |
-| `MobileStickyAction` | ui.tsx | Sticky bottom CTA (mobile) |
+| `Button` | ui/button.tsx | `default` / `secondary` / `outline` / `ghost` / `destructive` / `link` variants; `xs`–`lg` and icon sizes |
+| `Card` | ui/card.tsx | Used as a flat container almost everywhere (`px`/`py` padding on the component itself, not just via `CardContent`) |
+| `Badge` | ui/badge.tsx | Status chips |
+| `Input` | ui/input.tsx | Text/number/date inputs |
+| `Select` | ui/select.tsx | Available, but native `<select>` is still used for most dropdowns (better mobile OS picker) |
+| `Tabs` | ui/tabs.tsx | Replaces hand-rolled toggle-button tab groups |
+| `Dialog` | ui/dialog.tsx | Modals |
+| `DropdownMenu` | ui/dropdown-menu.tsx | Menus |
+| `Carousel` | ui/carousel.tsx | embla-based; powers the home page's auto-rotating price cards (real `loop: true`, not a hand-rolled clone-slide hack) |
+| `Avatar` | ui/avatar.tsx | User avatars |
+| `Skeleton` | ui/skeleton.tsx | shadcn's loading placeholder |
+| `Sonner` | ui/sonner.tsx | Toast notifications |
+
+**App-specific components** — `src/components/ui.tsx` (kept for things shadcn doesn't cover):
+
+| Component | Notes |
+|-----------|-------|
+| `ProgressBar` | Wizard step indicator (dots) — Smart Sell wizard |
+| `DataSourceBadge` | Source label: live / cached / model / synthetic / imported |
+| `EmptyState` | Icon + title + description + optional action, built on `Card` |
+| `PasswordInput` | Show/hide toggle input (login/register) |
+| `NotificationBell` | Header bell + unread-count dropdown |
+| `NotificationsPanel` | Full inline notification list (Notifications page) |
+| `Skeleton` (app version) | Height/count wrapper around the CSS `.skeleton` shimmer, distinct from `ui/skeleton.tsx` |
+
+**Other shared components** — `src/components/*.tsx`:
+
+| Component | File | Notes |
+|-----------|------|-------|
 | `FarmerHeader` | FarmerHeader.tsx | Green sticky header: logo, language toggle, profile menu |
+| `FarmerBottomNav` | FarmerBottomNav.tsx | Mobile bottom navigation (farmer shell) |
 | `MapView` | MapView.tsx | Leaflet/OSM map |
 
 ### Source badges (critical for trust)
@@ -151,9 +165,9 @@ All shared components live in `src/components/ui.tsx` and `src/components/Farmer
 - Sticky green `FarmerHeader` with brand, language toggle, profile menu.
 
 ### Buyer / FPO / Admin (desktop-first)
-- `.has-sidebar` layout: fixed 240px dark-green sidebar + fluid content.
-- Metric cards row, tabbed sections, tables for business workflows.
-- On mobile the sidebar collapses and content becomes single-column.
+- `.role-app` layout: fixed 240px dark-green sidebar (`.role-side`) + a white top bar (`.role-topbar`) + scrollable content (`.role-content`).
+- Metric cards row, tabbed sections (shadcn `Tabs`), `Card`-based lists for business workflows.
+- On mobile the sidebar hides and a bottom nav (`.bottom-nav`) takes over; content becomes single-column.
 
 ### Auth (login / register)
 - Mobile: green sticky header (brand + language toggle) + centered form below.
@@ -188,7 +202,6 @@ The farmer gets the same mobile experience centered on any screen.
 - **ARIA:** nav landmarks, `aria-current="page"` on active nav items, `aria-label` on icon-only buttons (back, voice).
 - **Contrast:** navy `#172033` on cream `#FCFAF5` (13:1), white on `#1F6B45` (6.4:1) — both pass WCAG AA.
 - **Colorblind:** status always includes icon + label, never color alone.
-- **Voice:** `VoicePlayButton` reads recommendation, prices, order status in hi-IN.
 - **Reduced motion:** `prefers-reduced-motion` disables animations.
 - **Language:** instant EN/HI/MR switch via `useI18n`, persisted in localStorage.
 
@@ -230,8 +243,8 @@ Avoided:
 
 1. **Never inline colors** — use `var(--green-600)`, `var(--text-secondary)`, etc.
 2. **Never invent new type sizes** — use the heading/text classes (`heading-xl` → `text-xs`).
-3. **Use shared components** from `ui.tsx` instead of rebuilding cards.
-4. **Wrap farmer pages** in `farmer-shell`, business pages in `has-sidebar`.
+3. **Use shadcn/ui primitives** (`Button`, `Card`, `Badge`, `Input`, `Tabs`, `Dialog`) from `src/components/ui/` for new UI; fall back to `ui.tsx` only for the app-specific pieces shadcn doesn't cover.
+4. **Wrap farmer pages** in `farmer-shell`, business pages in `role-app` (sidebar + topbar + content).
 5. **Every price must carry a source badge** — always.
 6. **Test every page at 360px, 390px, 768px, 1024px, 1280px, 1440px** before considering it done.
 

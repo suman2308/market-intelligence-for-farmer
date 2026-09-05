@@ -13,23 +13,23 @@ ShetBhav is a full-stack web app with a Python backend and a Next.js frontend.
 ```
 ┌────────────────────────────────────────────────┐
 │                   Frontend                     │
-│  Next.js 16 · TypeScript · Tailwind CSS        │
-│  Zustand state · Axios API client              │
-│  17 routes · EN/HI/MR i18n                     │
+│  Next.js 16 · TypeScript · Tailwind v4         │
+│  shadcn/ui (Base UI) · Zustand · Axios         │
+│  24 routes (incl. dynamic) · EN/HI/MR i18n     │
 │  Mobile-first (farmer) + desktop (business)    │
 └───────────────────┬────────────────────────────┘
                     │ REST API (JSON + JWT)
 ┌───────────────────▼────────────────────────────┐
 │                   Backend                      │
 │  FastAPI · Python 3.11 · Pydantic              │
-│  69 API endpoints) · JWT auth · RBAC   │
-│  7 service modules · 1 ML pipeline             │
+│  104 API endpoints · JWT auth · RBAC           │
+│  8 service modules · 1 ML pipeline             │
 └───────────────────┬────────────────────────────┘
                     │
 ┌───────────────────▼────────────────────────────┐
 │                 Database                       │
 │  SQLite (dev) · PostgreSQL (Render prod)       │
-│  43 tables · SQLAlchemy ORM                    │
+│  45 tables · SQLAlchemy ORM                    │
 │  Referential integrity · Indexes               │
 └────────────────────────────────────────────────┘
 ```
@@ -45,9 +45,10 @@ ShetBhav is a full-stack web app with a Python backend and a Next.js frontend.
 3. **data.gov.in Client** (`services/data_gov.py`) — Fetches official AGMARKNET mandi prices, validates records, deduplicates, stores with full source metadata.
 4. **Forecasting Service** (`ml/forecasting.py`) — XGBoost price prediction with chronological train/test split and naive-baseline comparison. Falls back gracefully when data is thin.
 5. **Logistics Service** (`services/logistics.py`) — Haversine distance, cost estimation, storage decisions.
-6. **FPO Aggregation** (`services/fpo_aggregation.py`) — Groups member farmer lots into collective lots for better bargaining.
+6. **FPO Aggregation** (`services/fpo_aggregation.py`) — Groups member farmer lots into collective lots for better bargaining. The self-service membership lifecycle (join request → approve/reject, leave, remove-member, member detail), aggregation-with-farmer-confirmation, and payment distribution live directly in `app/main.py`'s FPO-prefixed routes (22 endpoints) rather than this module, which handles the older immediate-aggregate path.
 7. **Quality Grading** (`services/quality_grading.py` + `ml/crop_vision.py`) — Rule-based computer-vision estimate for Tomato, Onion, Soybean. Always labeled "AI-assisted estimate", never "certified".
 8. **Auth Service** (`services/auth.py`) — JWT tokens, bcrypt password hashing, role verification.
+9. **Notifications Service** (`services/notifications.py`) — Writes `Notification` rows (join requests, approvals, member removal, offers, payments, order events) with a title/message/type/link, surfaced via the header bell and an inline notifications page.
 
 ### Data Flow
 
@@ -78,25 +79,37 @@ If the live API fails: cached official data → clearly-labeled demo data. We ne
 
 | Path | Role | Description |
 |------|------|-------------|
+| `/` | Public | Landing page |
 | `/login` | Public | Sign in (credentials → role selection) |
 | `/register` | Public | Create account (details → role selection) |
 | `/farmer` | Farmer | Home dashboard with Smart Sell recommendation |
 | `/farmer/sell` | Farmer | Smart Sell wizard (one question per screen) |
 | `/farmer/prices` | Farmer | Market prices + forecast |
-| `/farmer/buyers` | Farmer | Buyer directory |
-| `/farmer/orders` | Farmer | Order tracking |
+| `/farmer/buyers` | Farmer | Buyer / FPO directory |
+| `/farmer/demands` | Farmer | Buyer demands the farmer can accept, negotiate, or reject |
+| `/farmer/offers` | Farmer | Ranked offers on the farmer's lots |
+| `/farmer/orders`, `/farmer/orders/[id]` | Farmer | Order tracking + order detail/timeline |
 | `/farmer/earnings` | Farmer | Payment history |
-| `/farmer/lots` | Farmer | My produce lots |
+| `/farmer/lots` | Farmer | My produce lots (active / FPO-listed / order history) |
+| `/farmer/fpo` | Farmer | Browse FPOs, join/leave, respond to aggregation requests |
+| `/farmer/notifications` | Farmer | Full inline notification list |
+| `/farmer/grievance` | Farmer | File and track grievances |
 | `/farmer/profile` | Farmer | Profile + farm details |
 | `/farmer/quality` | Farmer | Quality grading |
-| `/buyer` | Buyer | Dashboard, lots, offers |
-| `/fpo` | FPO | Members, lots, aggregation |
-| `/admin` | Admin | Platform management |
+| `/buyer` | Buyer | Dashboard: lots, demands, offers, orders, profile |
+| `/fpo` | FPO | Overview, members (approve/reject/remove + detail), lots, demands, available-lots, payments |
+| `/admin` | Admin | Platform management, users, grievances, analytics, ML status |
+| `/lots/[id]`, `/demands/[id]` | Any | Counterparty-visible lot/demand detail pages |
+| `/profile/[userId]` | Any | A counterparty's public profile |
+
+### Component layer
+
+All 24 pages are built on **shadcn/ui** (`src/components/ui/*.tsx` — Button, Card, Badge, Input, Tabs, Dialog, DropdownMenu, Carousel, Avatar, Skeleton, Sonner), copied into the repo and re-themed onto ShetBhav's own green/saffron/navy CSS custom properties rather than shadcn's defaults. A small set of app-specific components (`src/components/ui.tsx`: `EmptyState`, `DataSourceBadge`, `PasswordInput`, `NotificationBell`, `NotificationsPanel`, `ProgressBar`) fills gaps shadcn doesn't cover. See [DESIGN.md](DESIGN.md) for the full component inventory.
 
 ### Layouts
 
 - **Farmer pages** are mobile-first. On desktop browsers the app still renders the phone-width experience (`farmer-shell`, centered, max 420px) so the farmer interface is identical everywhere.
-- **Buyer, FPO, Admin pages** use the desktop sidebar layout (`has-sidebar`) on wide screens and collapse to single column on mobile.
+- **Buyer, FPO, Admin pages** use the desktop dashboard shell (`role-app` / `role-side` / `role-topbar` / `role-content`) on wide screens and collapse to a bottom nav + single column on mobile.
 
 ### State Management
 
@@ -135,7 +148,7 @@ User (1) ─── (N) Notification
 Lot (1) ─── (1) QualityReport (verification_type, grade, confidence)
 ```
 
-43 tables total, defined in `models/database.py`.
+45 tables total, defined in `models/database.py`.
 
 ---
 
