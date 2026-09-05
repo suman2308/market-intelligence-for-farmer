@@ -1,13 +1,13 @@
 import { test, expect, APIRequestContext } from "@playwright/test";
 
 /**
- * Regression test for the "Create Lot & Find Buyers" button on the Smart
- * Sell wizard result screen (farmer/sell/page.tsx). It previously called
- * POST /lots inside a try/catch with an EMPTY catch block — any failure
- * (validation, expired auth, network) was silently swallowed, so a user
- * clicking it got zero feedback: no navigation, no error, nothing. Fixed
- * to surface errors via the existing `error` state and show a loading
- * state on the button while the request is in flight.
+ * Smart Sell wizard result screen (farmer/sell/page.tsx): its "Create a
+ * Lot" button no longer creates the lot directly — it hands the
+ * crop/quantity/grade/urgency the farmer already chose off to the My Lots
+ * tab's own create-lot form via query params, prefilling and auto-opening
+ * it there (the wizard itself doesn't collect a price anymore; that's set
+ * on the My Lots form). This covers that handoff actually creates the lot
+ * server-side once the farmer sets a price and submits.
  */
 
 const API_BASE = process.env.E2E_API_URL || "http://127.0.0.1:8000";
@@ -24,7 +24,7 @@ async function registerFarmer(request: APIRequestContext) {
   if (!resp.ok()) throw new Error(`Register failed: ${resp.status()} ${await resp.text()}`);
 }
 
-test("Smart Sell wizard: Create Lot & Find Buyers actually creates the lot and navigates home", async ({ page, request }) => {
+test("Smart Sell wizard: Create a Lot hands off to My Lots and the lot gets created", async ({ page, request }) => {
   await registerFarmer(request);
 
   await page.goto("/login");
@@ -48,17 +48,23 @@ test("Smart Sell wizard: Create Lot & Find Buyers actually creates the lot and n
   // Step 5: confirm -> analyze
   await page.getByRole("button", { name: /Find Best Options/ }).click();
 
-  // Result step
-  await expect(page.getByRole("button", { name: /Create Lot & Find Buyers/ })).toBeVisible({ timeout: 15000 });
-  await page.getByRole("button", { name: /Create Lot & Find Buyers/ }).click();
+  // Result step — "Create a Lot" hands off to /farmer/lots, prefilled and open.
+  await expect(page.getByRole("button", { name: /Create a Lot/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /Create a Lot/ }).click();
 
-  // Must actually navigate — this is exactly what silently failed before the fix.
-  await expect(page).toHaveURL(/\/farmer$/, { timeout: 10000 });
+  await page.waitForURL(/\/farmer\/lots\?/, { timeout: 10000 });
+  await expect(page.getByRole("button", { name: "List this produce" })).toBeVisible({ timeout: 10000 });
 
-  // And the lot must really exist server-side, not just a client-side redirect.
+  // Quantity was carried over from the wizard; only the price still needs
+  // to be set on this form (the wizard no longer collects one).
+  const priceInput = page.locator('input[type="number"]').nth(1);
+  await priceInput.fill("2400");
+  await page.getByRole("button", { name: "List this produce" }).click();
+
+  // Must actually create the lot server-side, not just look like it did.
   const login = await request.post(`${API_BASE}/auth/login`, { data: FARMER });
   const { access_token } = await login.json();
   const lots = await request.get(`${API_BASE}/lots`, { headers: { Authorization: `Bearer ${access_token}` } });
   const lotList = await lots.json();
-  expect(lotList.length).toBeGreaterThan(0);
+  expect(lotList.some((l: any) => l.price_per_q === 2400)).toBeTruthy();
 });

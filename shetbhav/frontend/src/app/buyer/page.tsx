@@ -5,6 +5,7 @@ import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { EmptyState, Skeleton, NotificationBell, NotificationsPanel } from "@/components/ui";
+import { totalAmount, formatINR } from "@/lib/money";
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function BuyerDashboard() {
     crop_id: 0, quantity_kg: 5000, quality_grade: "A",
     required_by_date: "", district: "Pune", offered_price_per_q: 2500,
   });
-  const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders" | "notifications">("lots");
+  const [activeTab, setActiveTab] = useState<"lots" | "demands" | "offers" | "orders" | "notifications" | "profile">("lots");
   const [loading, setLoading] = useState(true);
   const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
   const [counterOfferId, setCounterOfferId] = useState<number | null>(null);
@@ -35,6 +36,11 @@ export default function BuyerDashboard() {
   const [demandsError, setDemandsError] = useState(false);
   const [offersError, setOffersError] = useState(false);
   const [ordersError, setOrdersError] = useState(false);
+  const [buyerProfile, setBuyerProfile] = useState<any>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ business_name: "", business_type: "", district: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
   const contentRef = useRef<HTMLElement | null>(null);
 
   const refreshOffersAndOrders = () => {
@@ -74,7 +80,8 @@ export default function BuyerDashboard() {
       api.get("/lots?status=active").catch(() => { setLotsError(true); return { data: [] }; }),
       api.get("/offers").catch(() => { setOffersError(true); return { data: [] }; }),
       api.get("/orders").catch(() => { setOrdersError(true); return { data: [] }; }),
-    ]).then(([d, c, l, o, or]) => {
+      api.get("/buyers/profile").catch(() => null),
+    ]).then(([d, c, l, o, or, bp]) => {
       setDemand(d.data);
       // Crop ids differ per database — default the demand form to the first real crop
       if (c.data?.length) {
@@ -84,6 +91,14 @@ export default function BuyerDashboard() {
         setCrops([]);
       }
       setLots(l.data); setOffers(o.data); setOrders(or.data);
+      if (bp) {
+        setBuyerProfile(bp.data);
+        setProfileForm({
+          business_name: bp.data.business_name || "",
+          business_type: bp.data.business_type || "",
+          district: bp.data.district || "",
+        });
+      }
     });
   };
 
@@ -106,13 +121,28 @@ export default function BuyerDashboard() {
     { icon: "📨", label: "My Offers", tab: "offers" as const },
     { icon: "🚚", label: "My Orders", tab: "orders" as const },
     { icon: "🔔", label: "Notifications", tab: "notifications" as const },
+    { icon: "👤", label: "Profile", tab: "profile" as const },
   ];
 
   const goLogout = () => { logout(); router.push("/login"); };
 
-  const openTab = (tab: "lots" | "demands" | "offers" | "orders" | "notifications") => {
+  const openTab = (tab: "lots" | "demands" | "offers" | "orders" | "notifications" | "profile") => {
     setActiveTab(tab);
     contentRef.current?.scrollTo({ top: 0 });
+  };
+
+  const saveBuyerProfile = async () => {
+    setSavingProfile(true);
+    setProfileError("");
+    try {
+      const { data } = await api.put("/buyers/profile", profileForm);
+      setBuyerProfile(data);
+      setEditingProfile(false);
+    } catch (e: any) {
+      setProfileError(e.response?.data?.detail || "Couldn't save your changes. Please try again.");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const createDemand = async () => {
@@ -242,32 +272,6 @@ export default function BuyerDashboard() {
         {/* Lots Tab */}
         {activeTab === "lots" && (
           <>
-            <button className="btn-accent section-gap" onClick={() => setShowCreateDemand(!showCreateDemand)}>
-              ➕ {t("create_demand")}
-            </button>
-            {showCreateDemand && (
-              <div className="card section-gap">
-                <h3 className="heading-sm" style={{ marginBottom: 12 }}>Post Demand</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <select className="select" value={demandForm.crop_id}
-                    onChange={e => setDemandForm({ ...demandForm, crop_id: Number(e.target.value) })}>
-                    {crops.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <input className="input" type="number" placeholder="Qty (kg)" value={demandForm.quantity_kg}
-                      onChange={e => setDemandForm({ ...demandForm, quantity_kg: Number(e.target.value) })} />
-                    <input className="input" type="number" placeholder="Price/quintal (₹)" value={demandForm.offered_price_per_q}
-                      onChange={e => setDemandForm({ ...demandForm, offered_price_per_q: Number(e.target.value) })} />
-                  </div>
-                  <input className="input" type="text" placeholder="District" value={demandForm.district}
-                    onChange={e => setDemandForm({ ...demandForm, district: e.target.value })} />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn-primary" style={{ flex: 1 }} onClick={createDemand}>Post Demand</button>
-                    <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowCreateDemand(false)}>Cancel</button>
-                  </div>
-                </div>
-              </div>
-            )}
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>Available Lots</h3>
             {lotsError ? (
               <EmptyState icon="⚠️" title="Couldn't load lots" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
@@ -286,7 +290,12 @@ export default function BuyerDashboard() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     {lot.price_per_q && (
-                      <p className="price-highlight" style={{ margin: 0 }}>₹{lot.price_per_q.toLocaleString("en-IN")}/q</p>
+                      <>
+                        <p className="price-highlight" style={{ margin: 0 }}>₹{lot.price_per_q.toLocaleString("en-IN")}/q</p>
+                        <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>
+                          Total: {formatINR(totalAmount(lot.price_per_q, lot.quantity_kg))}
+                        </p>
+                      </>
                     )}
                     <span className={`badge badge-${lot.status === "active" ? "active" : "pending"}`}>{lot.status}</span>
                   </div>
@@ -312,6 +321,57 @@ export default function BuyerDashboard() {
         {/* Demands Tab */}
         {activeTab === "demands" && (
           <>
+            <button className="btn-accent section-gap" onClick={() => setShowCreateDemand(!showCreateDemand)}>
+              {showCreateDemand ? "✕ Cancel" : `➕ ${t("create_demand")}`}
+            </button>
+            {showCreateDemand && (
+              <div className="card section-gap">
+                <h3 className="heading-sm" style={{ marginBottom: 12 }}>Post a Demand</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Crop</label>
+                    <select className="select" value={demandForm.crop_id}
+                      onChange={e => setDemandForm({ ...demandForm, crop_id: Number(e.target.value) })} style={{ width: "100%" }}>
+                      {crops.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity (kg)</label>
+                      <input className="input" type="number" value={demandForm.quantity_kg}
+                        onChange={e => setDemandForm({ ...demandForm, quantity_kg: Number(e.target.value) })} min={1} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Price (₹/quintal)</label>
+                      <input className="input" type="number" value={demandForm.offered_price_per_q}
+                        onChange={e => setDemandForm({ ...demandForm, offered_price_per_q: Number(e.target.value) })} min={1} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quality Grade</label>
+                      <select className="select" value={demandForm.quality_grade}
+                        onChange={e => setDemandForm({ ...demandForm, quality_grade: e.target.value })} style={{ width: "100%" }}>
+                        <option value="A">Grade A — Premium</option>
+                        <option value="B">Grade B — Standard</option>
+                        <option value="C">Grade C — Below Standard</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Required By</label>
+                      <input className="input" type="date" value={demandForm.required_by_date}
+                        onChange={e => setDemandForm({ ...demandForm, required_by_date: e.target.value })} style={{ width: "100%" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>District</label>
+                    <input className="input" type="text" value={demandForm.district}
+                      onChange={e => setDemandForm({ ...demandForm, district: e.target.value })} style={{ width: "100%" }} />
+                  </div>
+                  <button className="btn-primary" onClick={createDemand}>Post Demand</button>
+                </div>
+              </div>
+            )}
             <h3 className="heading-sm" style={{ marginBottom: 8 }}>My Demands</h3>
             {demandsError ? (
               <EmptyState icon="⚠️" title="Couldn't load demands" description="Check your connection and try again." action={{ label: "Retry", onClick: loadDashboard }} />
@@ -327,8 +387,13 @@ export default function BuyerDashboard() {
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {d.quality_grade || "Any"} · {d.district}</p>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <span className="price-highlight">₹{d.offered_price_per_q?.toLocaleString("en-IN")}/q</span>
-                    <span className={`badge badge-${d.status === "open" ? "active" : "pending"}`} style={{ marginLeft: 6 }}>{d.status}</span>
+                    <div>
+                      <span className="price-highlight">₹{d.offered_price_per_q?.toLocaleString("en-IN")}/q</span>
+                      <span className={`badge badge-${d.status === "open" ? "active" : "pending"}`} style={{ marginLeft: 6 }}>{d.status}</span>
+                    </div>
+                    <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>
+                      Total: {formatINR(totalAmount(d.offered_price_per_q, d.quantity_kg))}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -352,13 +417,25 @@ export default function BuyerDashboard() {
               return (
                 <div key={o.id} className="card" style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Offer #{o.id}</p>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                        {o.crop_name || `Offer #${o.id}`}{o.quality_grade ? ` · Grade ${o.quality_grade}` : ""}
+                      </p>
                       <p className="text-sm" style={{ margin: "2px 0 0" }}>{o.quantity_kg}kg @ ₹{o.price_per_q?.toLocaleString("en-IN")}/q</p>
+                      {(o.farmer_name || o.lot_address) && (
+                        <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>
+                          {o.farmer_name ? `by ${o.farmer_name}` : ""}{o.farmer_name && o.lot_address ? " · " : ""}{o.lot_address || ""}
+                        </p>
+                      )}
                     </div>
-                    <span className={`badge ${o.status === "accepted" ? "badge-green" : o.status === "pending" ? "badge-amber" : o.status === "countered" ? "badge-blue" : "badge-gray"}`}>
-                      {o.status}
-                    </span>
+                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <span className={`badge ${o.status === "accepted" ? "badge-green" : o.status === "pending" ? "badge-amber" : o.status === "countered" ? "badge-blue" : "badge-gray"}`}>
+                        {o.status}
+                      </span>
+                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>
+                        Total: {formatINR(totalAmount(o.price_per_q, o.quantity_kg))}
+                      </p>
+                    </div>
                   </div>
                   {o.status === "countered" && (
                     <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "var(--saffron-50)" }}>
@@ -424,16 +501,28 @@ export default function BuyerDashboard() {
               <EmptyState icon="🚚" title="No orders yet" description="Accepted offers will appear here" />
             ) : orders.map((o: any) => (
               <div key={o.id} className="card" style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Order #{o.id}</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                      {o.crop_name || `Order #${o.id}`}{o.quality_grade ? ` · Grade ${o.quality_grade}` : ""}
+                    </p>
                     <p className="text-xs" style={{ margin: "2px 0 0" }}>{o.quantity_kg}kg @ ₹{o.price_per_q}/q</p>
+                    {(o.farmer_name || o.address) && (
+                      <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>
+                        {o.farmer_name ? `by ${o.farmer_name}` : ""}{o.farmer_name && o.address ? " · " : ""}{o.address || ""}
+                      </p>
+                    )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     <p className="price-highlight" style={{ margin: 0 }}>₹{o.total_value?.toLocaleString("en-IN")}</p>
                     <span className={`badge badge-${o.status === "paid" || o.status === "completed" ? "completed" : "active"}`}>{o.status}</span>
                   </div>
                 </div>
+                {(o.status === "payment_pending" || o.status === "accepted") && o.payment_deadline && (
+                  <p className="text-xs" style={{ margin: "8px 0 0", color: "var(--warning, #d97706)" }}>
+                    ⏰ Pay before {new Date(o.payment_deadline).toLocaleString("en-IN")} — after that the lot is released to other buyers.
+                  </p>
+                )}
                 {(o.status === "payment_pending" || o.status === "accepted") && (
                   <button className="btn-primary btn-sm" style={{ marginTop: 10, width: "100%" }}
                     disabled={payingOrderId === o.id}
@@ -453,6 +542,156 @@ export default function BuyerDashboard() {
             <NotificationsPanel />
           </>
         )}
+
+        {/* Profile Tab */}
+        {activeTab === "profile" && (() => {
+          const paidOrders = orders.filter((o: any) => o.status === "paid" || o.status === "completed");
+          const totalSpent = paidOrders.reduce((sum: number, o: any) => sum + (o.total_value || 0), 0);
+          const byCrop: Record<string, { quantity_kg: number; total_value: number; count: number }> = {};
+          paidOrders.forEach((o: any) => {
+            const key = o.crop_name || "Other";
+            if (!byCrop[key]) byCrop[key] = { quantity_kg: 0, total_value: 0, count: 0 };
+            byCrop[key].quantity_kg += o.quantity_kg || 0;
+            byCrop[key].total_value += o.total_value || 0;
+            byCrop[key].count += 1;
+          });
+          const recentOrders = [...orders]
+            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5);
+
+          return (
+            <>
+              {/* Profile Card */}
+              <div className="card section-gap" style={{ textAlign: "center", padding: 24 }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--green-100), var(--green-200))",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 32, fontWeight: 800, color: "var(--green-800)",
+                  margin: "0 auto 12px",
+                }}>
+                  {user.full_name.charAt(0)}
+                </div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{user.full_name}</h2>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>@{user.username} · Buyer</p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{user.email}</p>
+                {buyerProfile && (
+                  <span className="badge badge-green" style={{ marginTop: 8, display: "inline-block" }}>
+                    Trust score: {buyerProfile.trust_score?.toFixed(0) ?? 0}
+                  </span>
+                )}
+              </div>
+
+              {/* Business Details */}
+              <div className="card section-gap">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Business Details</h3>
+                  <button onClick={() => setEditingProfile(!editingProfile)}
+                    style={{ fontSize: 13, color: "var(--green-600)", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -10px", minHeight: 36, minWidth: 44 }}>
+                    {editingProfile ? "Cancel" : "Edit"}
+                  </button>
+                </div>
+
+                {editingProfile ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>Business Name</label>
+                      <input className="input" value={profileForm.business_name}
+                        onChange={e => setProfileForm({ ...profileForm, business_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>Business Type</label>
+                      <input className="input" value={profileForm.business_type}
+                        onChange={e => setProfileForm({ ...profileForm, business_type: e.target.value })}
+                        placeholder="e.g. Wholesaler, Retailer, Processor" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" }}>District</label>
+                      <input className="input" value={profileForm.district}
+                        onChange={e => setProfileForm({ ...profileForm, district: e.target.value })} />
+                    </div>
+                    {profileError && (
+                      <p style={{ fontSize: 13, color: "var(--danger)", margin: 0 }}>⚠️ {profileError}</p>
+                    )}
+                    <button className="btn-primary" onClick={saveBuyerProfile} disabled={savingProfile}>
+                      {savingProfile ? "Saving…" : "Save Changes"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>Business Name</span>
+                      <span style={{ fontWeight: 500, fontSize: 14 }}>{buyerProfile?.business_name || "Not set"}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>Business Type</span>
+                      <span style={{ fontWeight: 500, fontSize: 14 }}>{buyerProfile?.business_type || "Not set"}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>District</span>
+                      <span style={{ fontWeight: 500, fontSize: 14 }}>{buyerProfile?.district || "Not set"}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Transaction History */}
+              <div className="card section-gap">
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>📋 Transaction History</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+                  {[
+                    { label: "Orders", value: orders.length },
+                    { label: "Completed", value: paidOrders.length },
+                    { label: "Spent", value: formatINR(totalSpent) },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ textAlign: "center", padding: "10px 4px", background: "var(--stone-50, #f9fafb)", borderRadius: 10 }}>
+                      <p style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>{stat.value}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {Object.keys(byCrop).length > 0 && (
+                  <>
+                    <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>By Crop</p>
+                    {Object.entries(byCrop).map(([crop, stats]) => (
+                      <div key={crop} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--stone-100, #f3f4f6)" }}>
+                        <span style={{ fontSize: 13 }}>{crop} · {stats.count} order{stats.count !== 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{stats.quantity_kg.toLocaleString("en-IN")}kg · {formatINR(stats.total_value)}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {recentOrders.length === 0 ? (
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", margin: "12px 0 0" }}>No transactions yet</p>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, fontWeight: 700, margin: "16px 0 8px" }}>Recent Orders</p>
+                    {recentOrders.map((order: any) => (
+                      <div key={order.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--stone-100, #f3f4f6)" }}>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{order.crop_name || `Order #${order.id}`} · {order.quantity_kg}kg</p>
+                          <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>₹{order.price_per_q}/q</p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{formatINR(order.total_value || 0)}</p>
+                          <span className={`badge ${order.status === "paid" || order.status === "completed" ? "badge-completed" : "badge-active"}`} style={{ fontSize: 10 }}>
+                            {order.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              <button className="btn-primary" onClick={goLogout} style={{ background: "var(--danger, #ef4444)", width: "100%" }}>
+                {t("logout") || "Log out"}
+              </button>
+            </>
+          );
+        })()}
           </div>
         </main>
       </div>
@@ -521,6 +760,7 @@ export default function BuyerDashboard() {
           { icon: "📋", label: "Demands", tab: "demands" as const },
           { icon: "📨", label: "Offers", tab: "offers" as const },
           { icon: "🚚", label: "Orders", tab: "orders" as const },
+          { icon: "👤", label: "Profile", tab: "profile" as const },
         ].map(item => (
           <button key={item.tab}
             className={`nav-item ${activeTab === item.tab ? "active" : ""}`}

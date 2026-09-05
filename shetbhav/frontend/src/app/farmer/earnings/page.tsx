@@ -86,7 +86,7 @@ export default function EarningsPage() {
           <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "8px 0 0 0" }}>No transactions yet. Sell your produce to start earning!</p>
           <button className="btn-primary" style={{ marginTop: 12 }}
             onClick={() => router.push("/farmer/lots")}>
-            {t("create_lot") || "Create Lot"}
+            {t("create_lot") || "Create a Lot"}
           </button>
         </div>
       ) : (

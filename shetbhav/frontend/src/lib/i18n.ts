@@ -13,7 +13,7 @@ const translations: Record<Lang, Record<string, string>> = {
     my_earnings: "My Earnings",
     help: "Help",
     my_produce: "My Produce",
-    create_lot: "Create Lot",
+    create_lot: "Create a Lot",
     smart_sell: "Smart Sell Recommendation",
     best_option: "Best Option",
     net_realization: "Net Realization",

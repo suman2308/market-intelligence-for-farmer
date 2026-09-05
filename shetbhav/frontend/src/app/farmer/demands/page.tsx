@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EmptyState, Skeleton } from "@/components/ui";
 import { cropEmoji } from "@/lib/cropEmoji";
+import { totalAmount, formatINR } from "@/lib/money";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -145,9 +146,14 @@ export default function FarmerDemands() {
                       {demand.quality_grade ? ` · Grade ${demand.quality_grade}` : ""}
                     </p>
                   </div>
-                  <p style={{ fontSize: 16, fontWeight: 800, margin: 0, whiteSpace: "nowrap" }}>
-                    ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q
-                  </p>
+                  <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <p style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>
+                      ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q
+                    </p>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
+                      Total: {formatINR(totalAmount(demand.offered_price_per_q, demand.quantity_kg))}
+                    </p>
+                  </div>
                 </div>
 
                 {acceptedIds.has(demand.id) ? (
@@ -163,19 +169,19 @@ export default function FarmerDemands() {
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
                       Your counter-price (₹/quintal)
                     </label>
+                    <input className="input" type="number" value={negotiatePrice}
+                      onChange={e => setNegotiatePrice(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px", fontSize: 16, marginBottom: 8 }} />
                     <div style={{ display: "flex", gap: 6 }}>
-                      <input className="input" type="number" value={negotiatePrice}
-                        onChange={e => setNegotiatePrice(e.target.value)}
-                        style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                      <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
+                      <button className="btn-primary" style={{ flex: 1, padding: "10px", fontSize: 13 }}
                         disabled={!negotiatePrice || busy} onClick={() => sendNegotiate(demand)}>
                         {busy ? "Sending…" : "Send"}
                       </button>
                       <button style={{
-                        padding: "8px 10px", fontSize: 13, borderRadius: 8,
+                        padding: "10px 16px", fontSize: 13, borderRadius: 8,
                         border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
                       }} onClick={() => { setNegotiatingId(null); setNegotiatePrice(""); }}>
-                        ✕
+                        Cancel
                       </button>
                     </div>
                   </div>

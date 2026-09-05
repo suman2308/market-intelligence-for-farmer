@@ -32,8 +32,16 @@ test("My Lots tab: direct create-lot form lists the new lot as active", async ({
   await page.waitForURL(/\/farmer$/, { timeout: 10000 });
 
   await page.goto("/farmer/lots");
-  await page.getByRole("button", { name: /Create Lot/ }).click();
+  await page.getByRole("button", { name: /Create a Lot/ }).click();
 
+  // The crop select's value comes from an async default-fill once /crops
+  // resolves — explicitly choosing a value (even the one already showing)
+  // forces a real onChange, so this doesn't race that default-fill. Wait
+  // for the option to actually exist first (the select renders empty
+  // until /crops resolves).
+  const cropSelect = page.locator("select").first();
+  await cropSelect.locator("option", { hasText: "Tomato" }).waitFor({ state: "attached" });
+  await cropSelect.selectOption({ label: "🍅 Tomato" });
   await page.locator('input[type="number"]').first().fill("777");
   await page.locator('input[type="number"]').nth(1).fill("3100");
   await page.getByRole("button", { name: "List this produce" }).click();

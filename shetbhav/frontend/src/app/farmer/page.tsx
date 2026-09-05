@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
@@ -26,8 +26,23 @@ export default function FarmerHome() {
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
+
+  // Auto-advance the price carousel — comes and goes horizontally on its
+  // own, while a manual swipe still works via the underlying scroll-x.
+  useEffect(() => {
+    if (!sectionsLoaded || crops.length <= 1) return;
+    const el = carouselRef.current;
+    if (!el) return;
+    const timer = setInterval(() => {
+      const cardStep = el.clientWidth * 0.82 + 10;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 5;
+      el.scrollTo({ left: atEnd ? 0 : el.scrollLeft + cardStep, behavior: "smooth" });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [sectionsLoaded, crops.length]);
 
   const loadDashboardAndLots = () => {
     if (!user) return;
@@ -110,7 +125,7 @@ export default function FarmerHome() {
           <Skeleton height={140} />
         </div>
       ) : (
-        <div className="scroll-x section-gap" style={{ display: "flex", gap: 10, scrollSnapType: "x mandatory" as any }}>
+        <div ref={carouselRef} className="scroll-x section-gap" style={{ display: "flex", gap: 10, scrollSnapType: "x mandatory" as any }}>
           {crops.map((crop: any) => {
             const p = cropPrices[crop.id];
             return (

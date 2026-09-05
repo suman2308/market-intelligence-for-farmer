@@ -698,6 +698,13 @@ export function NotificationBell() {
 
   React.useEffect(() => { load(); }, [load]);
 
+  // Poll for new notifications so the badge/list update live without a
+  // manual page refresh.
+  React.useEffect(() => {
+    const timer = setInterval(load, 20000);
+    return () => clearInterval(timer);
+  }, [load]);
+
   React.useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
@@ -778,11 +785,19 @@ export function NotificationsPanel() {
   const [notifs, setNotifs] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
+  const load = React.useCallback(() => {
     api.get<NotificationItem[]>("/notifications")
       .then(r => setNotifs(r.data))
       .finally(() => setLoading(false));
   }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  // Poll so this list updates live without a manual page refresh.
+  React.useEffect(() => {
+    const timer = setInterval(load, 20000);
+    return () => clearInterval(timer);
+  }, [load]);
 
   const markRead = (n: NotificationItem) => {
     if (!n.is_read) {

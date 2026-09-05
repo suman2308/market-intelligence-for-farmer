@@ -32,14 +32,13 @@ export default function SmartSellPage() {
   const [step, setStep] = useState(0);
   const [crops, setCrops] = useState<any[]>([]);
   const [form, setForm] = useState({
-    crop_id: 0, crop_name: "", quantity_kg: 2000, price_per_q: 2000, quality_grade: "A",
+    crop_id: 0, crop_name: "", quantity_kg: 2000, quality_grade: "A",
     location_lat: 20.0057, location_lng: 73.7229,
     harvest_date: "", storage_available: true, urgency: "soon",
   });
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [creatingLot, setCreatingLot] = useState(false);
   const [error, setError] = useState("");
   const [showExplanation, setShowExplanation] = useState(false);
 
@@ -70,21 +69,13 @@ export default function SmartSellPage() {
     }
   };
 
-  const createLotAndGoHome = async () => {
-    setCreatingLot(true);
-    setError("");
-    try {
-      await api.post("/lots", {
-        crop_id: form.crop_id, quantity_kg: form.quantity_kg, price_per_q: form.price_per_q,
-        quality_grade: form.quality_grade, location_lat: form.location_lat,
-        location_lng: form.location_lng, storage_available: form.storage_available,
-        urgency: form.urgency,
-      });
-      router.push("/farmer");
-    } catch (e: any) {
-      setError(e.response?.data?.detail || t("error_generic"));
-      setCreatingLot(false);
-    }
+  const goToCreateLot = () => {
+    const params = new URLSearchParams({
+      crop_id: String(form.crop_id), quantity_kg: String(form.quantity_kg),
+      quality_grade: form.quality_grade, urgency: form.urgency,
+      storage_available: String(form.storage_available),
+    });
+    router.push(`/farmer/lots?${params.toString()}`);
   };
 
   if (!user) return null;
@@ -180,32 +171,9 @@ export default function SmartSellPage() {
             ))}
           </div>
 
-          <h2 className="heading-lg" style={{ margin: "32px 0 4px" }}>Your asking price</h2>
-          <p className="text-sm" style={{ color: "var(--color-text-secondary)", marginBottom: 20 }}>
-            Per quintal — this is the price buyers will see and can book at directly
-          </p>
-          <div style={{ textAlign: "center", marginBottom: 12 }}>
-            <input
-              className="input"
-              type="number"
-              value={form.price_per_q}
-              onChange={e => setForm({ ...form, price_per_q: Number(e.target.value) })}
-              min={1} step={50}
-              style={{
-                textAlign: "center", fontSize: 32, fontWeight: 800,
-                padding: "16px", maxWidth: 280, margin: "0 auto",
-                color: "var(--color-primary)",
-              }}
-              aria-label="Asking price per quintal in rupees"
-            />
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)", marginTop: 8 }}>
-              ₹{form.price_per_q}/q
-            </p>
-          </div>
-
           <div style={{ marginTop: 24, textAlign: "center" }}>
             <button className="btn-primary" style={{ maxWidth: 300, margin: "0 auto" }}
-              onClick={() => setStep(2)} disabled={form.quantity_kg <= 0 || form.price_per_q <= 0}>
+              onClick={() => setStep(2)} disabled={form.quantity_kg <= 0}>
               {t("next")} →
             </button>
           </div>
@@ -319,7 +287,6 @@ export default function SmartSellPage() {
               {[
                 ["Crop", `${cropEmoji(form.crop_name)} ${form.crop_name}`],
                 ["Quantity", `${form.quantity_kg.toLocaleString("en-IN")} kg (${(form.quantity_kg / 100).toFixed(1)} q)`],
-                ["Asking price", `₹${form.price_per_q.toLocaleString("en-IN")}/q`],
                 ["Quality", `Grade ${form.quality_grade}`],
                 ["Urgency", form.urgency === "urgent" ? "Within 2 days" : form.urgency === "soon" ? "Within 3-5 days" : "Flexible timing"],
                 ["Storage", form.storage_available ? "Available" : "Not available"],
@@ -528,11 +495,11 @@ export default function SmartSellPage() {
           </div>
 
           {/* Actions */}
-          <button className="btn-primary" onClick={createLotAndGoHome} disabled={creatingLot}
+          <button className="btn-primary" onClick={goToCreateLot}
             style={{ fontSize: 16, marginBottom: 12 }}>
-            {creatingLot ? <><span className="spinner" /> Creating…</> : <>📦 {t("create_lot")} & {t("find_buyers")}</>}
+            📦 {t("create_lot")}
           </button>
-          <button className="btn-secondary" onClick={() => router.push("/farmer")} disabled={creatingLot}>
+          <button className="btn-secondary" onClick={() => router.push("/farmer")}>
             {t("home")}
           </button>
         </div>

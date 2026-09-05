@@ -36,6 +36,8 @@ export default function FarmerOffers() {
   const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
   const [counterOfferId, setCounterOfferId] = useState<number | null>(null);
   const [counterPrice, setCounterPrice] = useState("");
+  const [acceptingOfferId, setAcceptingOfferId] = useState<number | null>(null);
+  const [paymentWindowHours, setPaymentWindowHours] = useState(24);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -73,7 +75,12 @@ export default function FarmerOffers() {
         await load();
         return;
       }
-      await api.post(`/offers/${offerId}/${action}`);
+      if (action === "accept") {
+        await api.post(`/offers/${offerId}/accept`, { payment_window_hours: paymentWindowHours });
+        setAcceptingOfferId(null);
+      } else {
+        await api.post(`/offers/${offerId}/${action}`);
+      }
       if (action === "accept") {
         const { data: orders } = await api.get("/orders");
         const order = orders.find((o: any) => o.offer_id === offerId);
@@ -158,12 +165,12 @@ export default function FarmerOffers() {
                         {offer.quantity_kg}kg requested
                       </p>
 
-                      {actionable && counterOfferId !== offer.id && (
+                      {actionable && counterOfferId !== offer.id && acceptingOfferId !== offer.id && (
                         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                           <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
                             disabled={busyOfferId === offer.id}
-                            onClick={() => act(offer.id, "accept")}>
-                            {busyOfferId === offer.id ? "…" : "Accept"}
+                            onClick={() => { setPaymentWindowHours(24); setAcceptingOfferId(offer.id); }}>
+                            Accept
                           </button>
                           <button className="btn-secondary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
                             disabled={busyOfferId === offer.id}
@@ -177,6 +184,36 @@ export default function FarmerOffers() {
                             onClick={() => act(offer.id, "reject")}>
                             Reject
                           </button>
+                        </div>
+                      )}
+
+                      {acceptingOfferId === offer.id && (
+                        <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: "var(--stone-50, #f9fafb)" }}>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                            Payment window — how long does the buyer have to pay before this lot is released again?
+                          </label>
+                          <select className="select" value={paymentWindowHours}
+                            onChange={e => setPaymentWindowHours(Number(e.target.value))}
+                            style={{ width: "100%", marginBottom: 8 }}>
+                            <option value={6}>6 hours</option>
+                            <option value={12}>12 hours</option>
+                            <option value={24}>24 hours (default)</option>
+                            <option value={48}>48 hours</option>
+                            <option value={72}>3 days</option>
+                          </select>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                              disabled={busyOfferId === offer.id}
+                              onClick={() => act(offer.id, "accept")}>
+                              {busyOfferId === offer.id ? "…" : "Confirm Accept"}
+                            </button>
+                            <button style={{
+                              padding: "8px 14px", fontSize: 13, borderRadius: 8,
+                              border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                            }} onClick={() => setAcceptingOfferId(null)}>
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       )}
 

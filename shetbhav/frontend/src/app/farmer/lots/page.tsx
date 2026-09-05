@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { cropEmoji } from "@/lib/cropEmoji";
+import { totalAmount, formatINR } from "@/lib/money";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -15,7 +16,16 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
 };
 
 export default function FarmerLots() {
+  return (
+    <Suspense fallback={null}>
+      <FarmerLotsContent />
+    </Suspense>
+  );
+}
+
+function FarmerLotsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useI18n();
   const [lots, setLots] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -50,6 +60,22 @@ export default function FarmerLots() {
   };
 
   useEffect(load, []);
+
+  // Arriving from the Smart Sell recommendation with a crop/quantity/grade
+  // already chosen there — prefill and open the create form immediately.
+  useEffect(() => {
+    const cropId = searchParams.get("crop_id");
+    if (!cropId) return;
+    setForm(f => ({
+      ...f,
+      crop_id: Number(cropId) || f.crop_id,
+      quantity_kg: Number(searchParams.get("quantity_kg")) || f.quantity_kg,
+      quality_grade: searchParams.get("quality_grade") || f.quality_grade,
+      urgency: searchParams.get("urgency") || f.urgency,
+      storage_available: searchParams.get("storage_available") === "true",
+    }));
+    setShowCreate(true);
+  }, [searchParams]);
 
   const toggleMatches = (lotId: number) => {
     if (expandedLotId === lotId) { setExpandedLotId(null); return; }
@@ -100,7 +126,7 @@ export default function FarmerLots() {
       {/* ── Create Lot ── */}
       <button className="btn-primary" style={{ width: "100%", marginBottom: showCreate ? 12 : 16 }}
         onClick={() => setShowCreate(s => !s)}>
-        {showCreate ? "✕ Cancel" : `➕ ${t("create_lot") || "Create Lot"}`}
+        {showCreate ? "✕ Cancel" : `➕ ${t("create_lot") || "Create a Lot"}`}
       </button>
 
       {showCreate && (
@@ -192,6 +218,11 @@ export default function FarmerLots() {
                   Grade {lot.quality_grade} · {lot.urgency}
                   {lot.price_per_q ? ` · ₹${lot.price_per_q.toLocaleString("en-IN")}/q` : ""}
                 </p>
+                {lot.price_per_q && (
+                  <p style={{ fontSize: 13, fontWeight: 700, margin: "2px 0 0 0" }}>
+                    Total: {formatINR(totalAmount(lot.price_per_q, lot.quantity_kg))}
+                  </p>
+                )}
                 {lot.address && <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>{lot.address}</p>}
               </div>
               <span className={`badge ${lot.status === "active" ? "badge-active" : "badge-completed"}`}>
@@ -229,6 +260,9 @@ export default function FarmerLots() {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <p style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>₹{m.offered_price?.toLocaleString("en-IN")}/q</p>
+                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "1px 0 0" }}>
+                          Total: {formatINR(totalAmount(m.offered_price, m.quantity_needed))}
+                        </p>
                         <span className="badge badge-green" style={{ fontSize: 10 }}>{m.score}% match</span>
                       </div>
                     </div>

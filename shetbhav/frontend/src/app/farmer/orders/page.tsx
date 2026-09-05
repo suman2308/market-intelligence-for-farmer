@@ -167,7 +167,7 @@ export default function OrdersPage() {
             {activeTab === "active" && (
               <button className="btn-primary" style={{ marginTop: 12 }}
                 onClick={() => router.push("/farmer/lots")}>
-                {t("create_lot") || "Create Lot"}
+                {t("create_lot") || "Create a Lot"}
               </button>
             )}
           </div>

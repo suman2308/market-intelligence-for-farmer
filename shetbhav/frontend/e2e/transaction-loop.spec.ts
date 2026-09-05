@@ -152,12 +152,16 @@ test.describe("Two-account book-and-pay transaction loop", () => {
 
   test("Direction B: buyer posts a demand via the UI", async ({ page }) => {
     await loginViaUI(page, BUYER);
+    // Create Demand now lives on the Demands tab, not Browse Lots.
+    await page.getByRole("button", { name: "My Demands" }).click();
     await page.getByRole("button", { name: /Create Demand/i }).click();
-    await page.locator('input[placeholder="Qty (kg)"]').fill("400");
-    await page.locator('input[placeholder="Price/quintal (₹)"]').fill("2400");
-    await page.locator('input[placeholder="District"]').fill("Nashik");
-    await page.getByRole("button", { name: "Post Demand", exact: true }).click();
-    await expect(page.locator('input[placeholder="Qty (kg)"]')).toHaveCount(0);
+
+    const formCard = page.locator(".card", { hasText: "Post a Demand" });
+    await formCard.locator('input[type="number"]').nth(0).fill("400"); // quantity
+    await formCard.locator('input[type="number"]').nth(1).fill("2400"); // price
+    await formCard.locator('input[type="text"]').fill("Nashik"); // district
+    await formCard.getByRole("button", { name: "Post Demand", exact: true }).click();
+    await expect(formCard).toHaveCount(0);
   });
 
   test("farmer browses /farmer/demands and accepts it directly via the UI", async ({ page }) => {

@@ -149,7 +149,7 @@ export default function QualityPage() {
             <p style={{ fontSize: 28, margin: 0 }}>📦</p>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "8px 0 0 0" }}>No lots to grade. Create a lot first.</p>
             <button className="btn-primary" style={{ marginTop: 12, fontSize: 14 }}
-              onClick={() => router.push("/farmer/lots")}>{t("create_lot") || "Create Lot"}</button>
+              onClick={() => router.push("/farmer/lots")}>{t("create_lot") || "Create a Lot"}</button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
