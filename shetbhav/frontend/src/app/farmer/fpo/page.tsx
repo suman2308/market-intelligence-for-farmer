@@ -29,6 +29,8 @@ export default function FarmerFpoPage() {
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [respondingId, setRespondingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [expandedFpoId, setExpandedFpoId] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   const load = () => {
     setLoadError(false);
@@ -59,6 +61,19 @@ export default function FarmerFpoPage() {
       setError(e.response?.data?.detail || "Couldn't send the request. Please try again.");
     } finally {
       setJoiningId(null);
+    }
+  };
+
+  const leaveFpo = async (fpoId: number) => {
+    setLeaving(true);
+    setError("");
+    try {
+      await api.post("/fpo/leave", null, { params: { fpo_id: fpoId } });
+      load();
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Couldn't leave this FPO. Please try again.");
+    } finally {
+      setLeaving(false);
     }
   };
 
@@ -143,15 +158,21 @@ export default function FarmerFpoPage() {
                 <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "8px 0 0" }}>
                   Mark a lot "available for FPO aggregation" when you create it to let this FPO pick it up.
                 </p>
+                <Button variant="outline" className="w-full text-destructive" style={{ marginTop: 12 }}
+                  disabled={leaving} onClick={() => leaveFpo(activeMembership.fpo_id)}>
+                  {leaving ? "Leaving…" : "Leave FPO"}
+                </Button>
               </Card>
             ) : fpos.length === 0 ? (
               <EmptyState icon="🏢" title="No FPOs registered yet" description="Check back later." />
             ) : (
               fpos.map(fpo => {
                 const m = membershipFor(fpo.id);
+                const expanded = expandedFpoId === fpo.id;
                 return (
                   <Card key={fpo.id} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                      onClick={() => setExpandedFpoId(expanded ? null : fpo.id)}>
                       <div>
                         <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{fpo.name}</p>
                         <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "2px 0 0" }}>
@@ -164,11 +185,22 @@ export default function FarmerFpoPage() {
                         <Badge variant="outline">Declined</Badge>
                       ) : (
                         <Button size="sm" disabled={joiningId === fpo.id}
-                          onClick={() => joinFpo(fpo.id)}>
+                          onClick={(e) => { e.stopPropagation(); joinFpo(fpo.id); }}>
                           {joiningId === fpo.id ? "…" : "Join"}
                         </Button>
                       )}
                     </div>
+                    {expanded && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--stone-100, #f5f5f4)", fontSize: 13, color: "var(--text-secondary)" }}>
+                        <p style={{ margin: "0 0 4px" }}>📍 {fpo.address || "Address not provided"}</p>
+                        {fpo.contact_phone && <p style={{ margin: "0 0 4px" }}>📞 {fpo.contact_phone}</p>}
+                        {fpo.contact_email && <p style={{ margin: "0 0 4px" }}>✉️ {fpo.contact_email}</p>}
+                        <p style={{ margin: "0 0 4px" }}>
+                          {fpo.has_storage_facility ? `🏬 Storage: ${fpo.storage_capacity_quintals || "—"} quintals` : "🏬 No storage facility"}
+                        </p>
+                        <p style={{ margin: 0 }}>💰 Commission: {fpo.commission_percentage}% on payouts</p>
+                      </div>
+                    )}
                   </Card>
                 );
               })

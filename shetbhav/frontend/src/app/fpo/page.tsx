@@ -40,6 +40,10 @@ export default function FPODashboard() {
   const [distributingOrderId, setDistributingOrderId] = useState<number | null>(null);
   const [distributionResult, setDistributionResult] = useState<any>(null);
   const [distributeError, setDistributeError] = useState("");
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [memberDetail, setMemberDetail] = useState<any>(null);
+  const [memberDetailLoading, setMemberDetailLoading] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -113,6 +117,30 @@ export default function FPODashboard() {
     } catch (e: any) {
       setMemberActionError(e.response?.data?.detail || "Couldn't decline this request.");
     }
+  };
+
+  const removeMember = async (farmerId: number) => {
+    setRemovingId(farmerId);
+    setMemberActionError("");
+    try {
+      await api.put(`/fpo/members/${farmerId}/remove`);
+      if (selectedMemberId === farmerId) { setSelectedMemberId(null); setMemberDetail(null); }
+      load();
+    } catch (e: any) {
+      setMemberActionError(e.response?.data?.detail || "Couldn't remove this member.");
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const viewMember = (farmerId: number) => {
+    if (selectedMemberId === farmerId) { setSelectedMemberId(null); setMemberDetail(null); return; }
+    setSelectedMemberId(farmerId);
+    setMemberDetail(null);
+    setMemberDetailLoading(true);
+    api.get(`/fpo/members/${farmerId}`).then(r => setMemberDetail(r.data))
+      .catch(() => setMemberActionError("Couldn't load this member's details."))
+      .finally(() => setMemberDetailLoading(false));
   };
 
   const toggleAvailableLot = (lotId: number) => {
@@ -313,8 +341,8 @@ export default function FPODashboard() {
                 members.map((m) => (
                   <Card key={m.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <h3 className="heading-sm" style={{ margin: 0 }}>{m.name}</h3>
+                      <div style={{ cursor: "pointer" }} onClick={() => viewMember(m.id)}>
+                        <h3 className="heading-sm" style={{ margin: 0, textDecoration: "underline", textDecorationStyle: "dotted" }}>{m.name}</h3>
                         <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
                           {m.district} · {m.farm_size_acres || "---"} acres
                         </p>
@@ -347,6 +375,37 @@ export default function FPODashboard() {
                         </span>
                       ))}
                     </div>
+
+                    {selectedMemberId === m.id && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
+                        {memberDetailLoading ? (
+                          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Loading…</p>
+                        ) : memberDetail ? (
+                          <>
+                            {(memberDetail.phone || memberDetail.email) && (
+                              <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "0 0 8px" }}>
+                                {memberDetail.phone && <>📞 {memberDetail.phone}</>}
+                                {memberDetail.phone && memberDetail.email ? " · " : ""}
+                                {memberDetail.email && <>✉️ {memberDetail.email}</>}
+                              </p>
+                            )}
+                            <p className="text-xs" style={{ fontWeight: 600, margin: "0 0 6px" }}>Lots</p>
+                            {memberDetail.lots.length === 0 ? (
+                              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>No lots yet</p>
+                            ) : memberDetail.lots.map((lot: any) => (
+                              <div key={lot.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                                <span className="text-xs">{cropEmoji(lot.crop_name)} {lot.crop_name} · {lot.quantity_kg?.toLocaleString("en-IN")}kg</span>
+                                <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>{lot.status}</span>
+                              </div>
+                            ))}
+                          </>
+                        ) : null}
+                        <Button variant="outline" size="sm" className="text-destructive" style={{ marginTop: 10 }}
+                          disabled={removingId === m.id} onClick={() => removeMember(m.id)}>
+                          {removingId === m.id ? "Removing…" : "Remove from FPO"}
+                        </Button>
+                      </div>
+                    )}
                   </Card>
                 ))
               )}

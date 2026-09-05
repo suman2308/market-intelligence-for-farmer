@@ -63,6 +63,72 @@ class TestFarmerJoinsFPO:
         assert resp.status_code == 400
 
 
+class TestLeaveAndRemoveMembership:
+    def _approved_member(self, suffix):
+        fpo_token = _register_and_login(f"fpo_leave_manager{suffix}", "fpo")
+        farmer_token = _register_and_login(f"fpo_leave_farmer{suffix}", "farmer")
+        fpo_id = next(f["id"] for f in client.get("/fpo/browse", headers=_auth(farmer_token)).json()
+                      if f["name"] == f"Fpo_Leave_Manager{suffix}")
+        mid = client.post("/fpo/join-request", params={"fpo_id": fpo_id}, headers=_auth(farmer_token)).json()["membership_id"]
+        client.put(f"/fpo/members/{mid}/approve", headers=_auth(fpo_token))
+        return fpo_token, farmer_token, fpo_id
+
+    def test_farmer_can_leave_and_status_becomes_left(self):
+        fpo_token, farmer_token, fpo_id = self._approved_member("1")
+        resp = client.post("/fpo/leave", params={"fpo_id": fpo_id}, headers=_auth(farmer_token))
+        assert resp.status_code == 200
+        status = client.get("/farmer/fpo-status", headers=_auth(farmer_token)).json()
+        assert status[0]["status"] == "left"
+        # No longer listed as an active member from the FPO's side.
+        members = client.get("/fpo/members", headers=_auth(fpo_token)).json()
+        assert not any(m["name"] == "Fpo_Leave_Farmer1" for m in members)
+
+    def test_leaving_without_active_membership_is_rejected(self):
+        _, farmer_token, fpo_id = self._approved_member("2")
+        client.post("/fpo/leave", params={"fpo_id": fpo_id}, headers=_auth(farmer_token))
+        resp = client.post("/fpo/leave", params={"fpo_id": fpo_id}, headers=_auth(farmer_token))
+        assert resp.status_code == 404
+
+    def test_fpo_can_remove_an_active_member(self):
+        fpo_token, farmer_token, fpo_id = self._approved_member("3")
+        members = client.get("/fpo/members", headers=_auth(fpo_token)).json()
+        farmer_id = next(m["id"] for m in members if m["name"] == "Fpo_Leave_Farmer3")
+
+        resp = client.put(f"/fpo/members/{farmer_id}/remove", headers=_auth(fpo_token))
+        assert resp.status_code == 200
+
+        status = client.get("/farmer/fpo-status", headers=_auth(farmer_token)).json()
+        assert status[0]["status"] == "removed"
+        members_after = client.get("/fpo/members", headers=_auth(fpo_token)).json()
+        assert not any(m["id"] == farmer_id for m in members_after)
+
+    def test_member_detail_endpoint_returns_lots(self):
+        fpo_token, farmer_token, fpo_id = self._approved_member("4")
+        client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 300, "price_per_q": 2100, "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_token))
+        members = client.get("/fpo/members", headers=_auth(fpo_token)).json()
+        farmer_id = next(m["id"] for m in members if m["name"] == "Fpo_Leave_Farmer4")
+
+        detail = client.get(f"/fpo/members/{farmer_id}", headers=_auth(fpo_token))
+        assert detail.status_code == 200
+        body = detail.json()
+        assert body["name"] == "Fpo_Leave_Farmer4"
+        assert len(body["lots"]) == 1
+        assert body["lots"][0]["quantity_kg"] == 300
+
+    def test_another_fpo_cannot_remove_or_view_a_member_not_its_own(self):
+        fpo_token, farmer_token, fpo_id = self._approved_member("5")
+        other_fpo_token = _register_and_login("fpo_leave_other_manager", "fpo")
+        members = client.get("/fpo/members", headers=_auth(fpo_token)).json()
+        farmer_id = next(m["id"] for m in members if m["name"] == "Fpo_Leave_Farmer5")
+
+        remove = client.put(f"/fpo/members/{farmer_id}/remove", headers=_auth(other_fpo_token))
+        assert remove.status_code == 404
+        detail = client.get(f"/fpo/members/{farmer_id}", headers=_auth(other_fpo_token))
+        assert detail.status_code == 404
+
+
 class TestAggregationWithConfirmation:
     def _setup_member(self, suffix):
         fpo_token = _register_and_login(f"fpo_agg_manager{suffix}", "fpo")

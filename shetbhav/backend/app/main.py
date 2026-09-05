@@ -2758,6 +2758,9 @@ def browse_fpos(
             "id": f.id, "name": f.name, "district": f.district, "state": f.state,
             "member_count": f.member_count, "verification_status": f.verification_status,
             "has_storage_facility": f.has_storage_facility,
+            "storage_capacity_quintals": f.storage_capacity_quintals,
+            "address": f.address, "contact_phone": f.contact_phone, "contact_email": f.contact_email,
+            "commission_percentage": f.commission_percentage,
         }
         for f in fpos
     ]
@@ -2880,6 +2883,112 @@ def reject_fpo_member(
                f"{fpo.name} declined your membership request.",
                type="fpo_join_rejected", link="/farmer/fpo")
     return {"status": "rejected"}
+
+
+@app.post("/fpo/leave")
+def leave_fpo(
+    fpo_id: int,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """A farmer voluntarily leaves an FPO they're an active member of."""
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile:
+        raise HTTPException(status_code=400, detail="Farmer profile not found")
+    membership = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo_id, FPOMembership.farmer_id == farmer_profile.id,
+        FPOMembership.status == "active",
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="You are not an active member of this FPO")
+    membership.status = "left"
+    membership.is_active = False
+    fpo = db.query(FPOProfile).filter(FPOProfile.id == fpo_id).first()
+    db.flush()
+    if fpo:
+        fpo.member_count = db.query(FPOMembership).filter(
+            FPOMembership.fpo_id == fpo.id, FPOMembership.status == "active",
+        ).count()
+    db.commit()
+    if fpo:
+        notify(db, fpo.user_id, "Member left", f"{user.full_name} has left {fpo.name}.",
+               type="fpo_member_left", link="/fpo", counterparty_user_id=user.id)
+    return {"status": "left"}
+
+
+@app.put("/fpo/members/{farmer_id}/remove")
+def remove_fpo_member(
+    farmer_id: int,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """The FPO removes an already-active member (distinct from rejecting a
+    still-pending request, which uses the /approve|reject endpoints above)."""
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        raise HTTPException(status_code=400, detail="FPO profile not found")
+    membership = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo.id, FPOMembership.farmer_id == farmer_id,
+        FPOMembership.status == "active",
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Active membership not found")
+    membership.status = "removed"
+    membership.is_active = False
+    db.flush()
+    fpo.member_count = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo.id, FPOMembership.status == "active",
+    ).count()
+    db.commit()
+    farmer = db.query(FarmerProfile).filter(FarmerProfile.id == farmer_id).first()
+    if farmer:
+        notify(db, farmer.user_id, "Removed from FPO",
+               f"{fpo.name} has removed you from its membership.",
+               type="fpo_member_removed", link="/farmer/fpo")
+    return {"status": "removed"}
+
+
+@app.get("/fpo/members/{farmer_id}")
+def fpo_member_detail(
+    farmer_id: int,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Full detail on one active member — contact info plus their individual
+    lots — shown when the FPO clicks into a member from the Members tab."""
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        raise HTTPException(status_code=400, detail="FPO profile not found")
+    membership = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo.id, FPOMembership.farmer_id == farmer_id,
+        FPOMembership.status == "active",
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Member not found")
+    farmer = db.query(FarmerProfile).filter(FarmerProfile.id == farmer_id).first()
+    farmer_user = db.query(User).filter(User.id == farmer.user_id).first() if farmer else None
+    lots = db.query(ProduceLot).filter(ProduceLot.farmer_id == farmer_id).order_by(
+        ProduceLot.created_at.desc()
+    ).all()
+    lot_list = []
+    for lot in lots:
+        crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
+        lot_list.append({
+            "id": lot.id, "crop_name": crop.name if crop else "Unknown",
+            "quantity_kg": lot.quantity_kg, "price_per_q": lot.expected_price_per_q,
+            "status": lot.status, "available_for_fpo": bool(lot.available_for_fpo),
+        })
+    return {
+        "id": farmer.id if farmer else farmer_id,
+        "name": farmer_user.full_name if farmer_user else "Unknown",
+        "phone": farmer_user.phone if farmer_user else None,
+        "email": farmer_user.email if farmer_user else None,
+        "district": farmer.district if farmer else None,
+        "farm_size_acres": farmer.farm_size_acres if farmer else None,
+        "primary_crops": (farmer.primary_crops or []) if farmer else [],
+        "joined_at": membership.joined_at.isoformat() if membership.joined_at else None,
+        "lots": lot_list,
+    }
 
 
 # ── FPO Aggregation (with farmer confirmation) ───────────────────────

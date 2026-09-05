@@ -141,8 +141,10 @@ function FarmerLotsContent() {
     }
   };
 
-  const activeLots = lots.filter(l => ACTIVE_STATUSES.includes(l.status));
-  const inFpoProcessLots = lots.filter(l => l.status === "pending_fpo" || l.status === "fpo_aggregated");
+  const activeLots = lots.filter(l => ACTIVE_STATUSES.includes(l.status) && !l.available_for_fpo);
+  const inFpoProcessLots = lots.filter(l =>
+    (l.status === "active" && l.available_for_fpo) || l.status === "pending_fpo" || l.status === "fpo_aggregated"
+  );
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 3);
@@ -336,25 +338,30 @@ function FarmerLotsContent() {
         ))
       )}
 
-      {/* ── In FPO Process ── */}
+      {/* ── FPO Lots ── */}
       {inFpoProcessLots.length > 0 && (
         <>
-          <p className="heading-sm" style={{ margin: "20px 0 8px" }}>In FPO Storage</p>
-          {inFpoProcessLots.map(lot => (
-            <Card key={lot.id} style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
-                    {cropEmoji(lot.crop_name)} {lot.crop_name} · {lot.quantity_kg}kg
-                  </p>
-                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>
-                    {lot.status === "pending_fpo" ? "Awaiting your confirmation" : "Aggregated with your FPO"}
-                  </p>
+          <p className="heading-sm" style={{ margin: "20px 0 8px" }}>FPO Lots</p>
+          {inFpoProcessLots.map(lot => {
+            const label = lot.status === "pending_fpo" ? "Awaiting your confirmation"
+              : lot.status === "fpo_aggregated" ? "Aggregated with your FPO"
+              : "Listed — waiting for your FPO to pick it up";
+            const badge = lot.status === "pending_fpo" ? "Pending"
+              : lot.status === "fpo_aggregated" ? "In FPO storage" : "Listed";
+            return (
+              <Card key={lot.id} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+                      {cropEmoji(lot.crop_name)} {lot.crop_name} · {lot.quantity_kg}kg
+                    </p>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>{label}</p>
+                  </div>
+                  <span className="badge badge-amber">{badge}</span>
                 </div>
-                <span className="badge badge-amber">{lot.status === "pending_fpo" ? "Pending" : "In FPO storage"}</span>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </>
       )}
 
