@@ -26,20 +26,37 @@ export default function FarmerHome() {
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
-  const [priceIndex, setPriceIndex] = useState(0);
+  // trackIndex counts up past crops.length onto a cloned copy of the first
+  // card, then snaps back to 0 with the transition switched off — the
+  // standard "infinite loop" carousel trick. Without the clone, going from
+  // the last card back to index 0 would animate backwards through every
+  // card in between instead of continuing forward.
+  const [trackIndex, setTrackIndex] = useState(0);
+  const [instantJump, setInstantJump] = useState(false);
+  const priceIndex = crops.length ? trackIndex % crops.length : 0;
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
-  // Auto-rotate the price carousel one full card at a time, looping back
-  // to the first crop after the last — a smooth CSS transform transition,
-  // not a scroll-snap drag, so exactly one card is ever fully in view.
   useEffect(() => {
     if (!sectionsLoaded || crops.length <= 1) return;
     const timer = setInterval(() => {
-      setPriceIndex(i => (i + 1) % crops.length);
+      setTrackIndex(i => i + 1);
     }, 3200);
     return () => clearInterval(timer);
   }, [sectionsLoaded, crops.length]);
+
+  // Once the transition has carried us onto the cloned card (trackIndex ===
+  // crops.length, which looks identical to index 0), jump back to the real
+  // index 0 with no transition — imperceptible since the clone is identical.
+  useEffect(() => {
+    if (crops.length <= 1 || trackIndex !== crops.length) return;
+    const timer = setTimeout(() => {
+      setInstantJump(true);
+      setTrackIndex(0);
+      requestAnimationFrame(() => requestAnimationFrame(() => setInstantJump(false)));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [trackIndex, crops.length]);
 
   const loadDashboardAndLots = () => {
     if (!user) return;
@@ -124,38 +141,48 @@ export default function FarmerHome() {
       ) : (
         <div className="section-gap">
         <div style={{ overflow: "hidden", borderRadius: 14 }}>
-          <div style={{
-            display: "flex",
-            width: `${crops.length * 100}%`,
-            transform: `translateX(-${priceIndex * (100 / crops.length)}%)`,
-            transition: "transform 0.7s cubic-bezier(0.65, 0, 0.35, 1)",
-          }}>
-          {crops.map((crop: any) => {
-            const p = cropPrices[crop.id];
+          {(() => {
+            // Append a clone of the first crop so the track has one extra
+            // slide to slide onto — see the trackIndex effect above for why.
+            const slides = crops.length > 1 ? [...crops, crops[0]] : crops;
+            const totalSlides = slides.length;
             return (
-              <div key={crop.id} className="card" style={{ flex: `0 0 ${100 / crops.length}%`, cursor: "pointer", margin: 0, borderRadius: 0 }}
-                onClick={() => router.push("/farmer/prices")}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
-                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>→</span>
-                </div>
-                {p ? (
-                  <>
-                    <div className="price-big" style={{ fontSize: "clamp(24px, 5.5vw, 30px)" }}>
-                      ₹{p.prices?.modal_price?.toLocaleString("en-IN") || "---"}
+              <div style={{
+                display: "flex",
+                width: `${totalSlides * 100}%`,
+                transform: `translateX(-${trackIndex * (100 / totalSlides)}%)`,
+                transition: instantJump ? "none" : "transform 0.7s cubic-bezier(0.65, 0, 0.35, 1)",
+              }}>
+                {slides.map((crop: any, i: number) => {
+                  const p = cropPrices[crop.id];
+                  const isClone = i === crops.length;
+                  return (
+                    <div key={isClone ? `${crop.id}-clone` : crop.id} className="card"
+                      style={{ flex: `0 0 ${100 / totalSlides}%`, cursor: "pointer", margin: 0, borderRadius: 0 }}
+                      onClick={() => router.push("/farmer/prices")}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
+                        <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>→</span>
+                      </div>
+                      {p ? (
+                        <>
+                          <div className="price-big" style={{ fontSize: "clamp(24px, 5.5vw, 30px)" }}>
+                            ₹{p.prices?.modal_price?.toLocaleString("en-IN") || "---"}
+                          </div>
+                          <p className="text-xs" style={{ margin: "4px 0 8px" }}>
+                            Range ₹{p.prices?.min_price?.toLocaleString("en-IN")} – ₹{p.prices?.max_price?.toLocaleString("en-IN")}
+                          </p>
+                          <DataSourceBadge source={p.data_source_label || "Synthetic demo data"} />
+                        </>
+                      ) : (
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Price unavailable</p>
+                      )}
                     </div>
-                    <p className="text-xs" style={{ margin: "4px 0 8px" }}>
-                      Range ₹{p.prices?.min_price?.toLocaleString("en-IN")} – ₹{p.prices?.max_price?.toLocaleString("en-IN")}
-                    </p>
-                    <DataSourceBadge source={p.data_source_label || "Synthetic demo data"} />
-                  </>
-                ) : (
-                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Price unavailable</p>
-                )}
+                  );
+                })}
               </div>
             );
-          })}
-          </div>
+          })()}
         </div>
         {crops.length > 1 && (
           <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
