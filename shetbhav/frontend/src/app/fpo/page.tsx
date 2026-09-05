@@ -7,6 +7,9 @@ import { useI18n } from "@/lib/i18n";
 import { NotificationBell, EmptyState } from "@/components/ui";
 import { cropEmoji } from "@/lib/cropEmoji";
 import { totalAmount, formatINR } from "@/lib/money";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 type FpoTab = "overview" | "members" | "lots" | "demands" | "available-lots" | "payments";
 
@@ -249,7 +252,7 @@ export default function FPODashboard() {
           {/* Overview Tab */}
           {tab === "overview" && (
             <div className="flex-col gap-3">
-              <div className="card">
+              <Card>
                 <h3 className="heading-sm">📋 FPO Summary</h3>
                 <div className="flex-col gap-2" style={{ marginTop: 8 }}>
                   {[
@@ -267,14 +270,14 @@ export default function FPODashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
 
-              <div className="card" style={{ padding: 16, background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
+              <Card style={{ padding: 16, background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
                 <h3 className="heading-sm" style={{ color: "var(--color-success)" }}>💡 FPO Aggregation</h3>
                 <p className="text-sm" style={{ margin: "8px 0 0 0", color: "var(--color-text-secondary)" }}>
                   Combine individual farmer lots into bulk orders for better prices. Select member lots and aggregate them for buyer demand matching.
                 </p>
-              </div>
+              </Card>
             </div>
           )}
 
@@ -285,7 +288,7 @@ export default function FPODashboard() {
                 <div className="auth-error"><span>⚠️</span><p>{memberActionError}</p></div>
               )}
               {pendingMembers.length > 0 && (
-                <div className="card" style={{ borderLeft: "3px solid var(--color-accent, #d97706)" }}>
+                <Card style={{ borderLeft: "3px solid var(--color-accent, #d97706)" }}>
                   <h3 className="heading-sm" style={{ marginBottom: 8 }}>Pending Join Requests</h3>
                   {pendingMembers.map((p: any) => (
                     <div key={p.membership_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--color-border)" }}>
@@ -294,24 +297,21 @@ export default function FPODashboard() {
                         <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0" }}>{p.district || "—"}</p>
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button className="btn-primary btn-sm" onClick={() => approveMember(p.membership_id)}>Approve</button>
-                        <button style={{
-                          padding: "6px 10px", fontSize: 12, borderRadius: 8,
-                          border: "1px solid var(--color-border)", background: "white", cursor: "pointer",
-                        }} onClick={() => rejectMember(p.membership_id)}>Decline</button>
+                        <Button size="sm" onClick={() => approveMember(p.membership_id)}>Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => rejectMember(p.membership_id)}>Decline</Button>
                       </div>
                     </div>
                   ))}
-                </div>
+                </Card>
               )}
               {members.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 40 }}>
+                <Card style={{ textAlign: "center", padding: 40 }}>
                   <p style={{ fontSize: 32 }}>👥</p>
                   <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No members yet</p>
-                </div>
+                </Card>
               ) : (
                 members.map((m) => (
-                  <div key={m.id} className="card">
+                  <Card key={m.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
                         <h3 className="heading-sm" style={{ margin: 0 }}>{m.name}</h3>
@@ -347,7 +347,7 @@ export default function FPODashboard() {
                         </span>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 ))
               )}
             </div>
@@ -357,16 +357,16 @@ export default function FPODashboard() {
           {tab === "lots" && (
             <div className="flex-col gap-3">
               {lots.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 40 }}>
+                <Card style={{ textAlign: "center", padding: 40 }}>
                   <p style={{ fontSize: 32 }}>📦</p>
                   <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No aggregated lots yet</p>
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "4px 0 0 0" }}>
                     Contact admin to aggregate member lots
                   </p>
-                </div>
+                </Card>
               ) : (
                 lots.map((lot) => (
-                  <div key={lot.id} className="card">
+                  <Card key={lot.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                       onClick={() => router.push(`/lots/${lot.id}`)}>
                       <div>
@@ -395,7 +395,7 @@ export default function FPODashboard() {
                         🔗 Aggregated · {lot.contributor_count} contributors
                       </div>
                     )}
-                  </div>
+                  </Card>
                 ))
               )}
             </div>
@@ -408,16 +408,16 @@ export default function FPODashboard() {
                 <div className="auth-error"><span>⚠️</span><p>{demandError}</p></div>
               )}
               {demands.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 40 }}>
+                <Card style={{ textAlign: "center", padding: 40 }}>
                   <p style={{ fontSize: 32 }}>📋</p>
                   <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No open demands right now</p>
-                </div>
+                </Card>
               ) : (
                 demands.map((demand: any) => {
                   const cropLots = lotsForDemand(demand);
                   const fulfilled = fulfilledIds.has(demand.id);
                   return (
-                    <div key={demand.id} className="card">
+                    <Card key={demand.id}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                         onClick={() => router.push(`/demands/${demand.id}`)}>
                         <div>
@@ -457,27 +457,24 @@ export default function FPODashboard() {
                                 ))}
                               </select>
                               <div style={{ display: "flex", gap: 8 }}>
-                                <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                                <Button className="flex-1"
                                   disabled={fulfilling} onClick={() => fulfil(demand)}>
                                   {fulfilling ? "Locking…" : "Lock & Fulfil"}
-                                </button>
-                                <button style={{
-                                  flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
-                                  border: "1px solid var(--color-border)", background: "white", cursor: "pointer",
-                                }} onClick={() => setRespondingTo(null)}>
+                                </Button>
+                                <Button variant="outline" className="flex-1" onClick={() => setRespondingTo(null)}>
                                   Cancel
-                                </button>
+                                </Button>
                               </div>
                             </>
                           )}
                         </div>
                       ) : (
-                        <button className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px", fontSize: 14 }}
+                        <Button className="w-full" style={{ marginTop: 10 }}
                           onClick={() => openRespond(demand)}>
                           Lock & Fulfil
-                        </button>
+                        </Button>
                       )}
-                    </div>
+                    </Card>
                   );
                 })
               )}
@@ -513,7 +510,7 @@ export default function FPODashboard() {
                     </label>
                   ))}
                   {selectedAvailableLots.size > 0 && (
-                    <div className="card" style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
+                    <Card style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
                       <p className="text-sm" style={{ fontWeight: 600, margin: "0 0 8px" }}>
                         {selectedAvailableLots.size} lot{selectedAvailableLots.size !== 1 ? "s" : ""} selected ·{" "}
                         {availableLots.filter((l: any) => selectedAvailableLots.has(l.lot_id))
@@ -522,15 +519,15 @@ export default function FPODashboard() {
                       <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>
                         Expected price for the aggregated lot (₹/quintal, optional)
                       </label>
-                      <input className="input" type="number" value={aggregatePrice}
+                      <Input type="number" value={aggregatePrice}
                         onChange={e => setAggregatePrice(e.target.value)}
                         placeholder="Falls back to a weighted average of the selected lots"
                         style={{ marginBottom: 10 }} />
-                      <button className="btn-primary" style={{ width: "100%" }}
+                      <Button className="w-full"
                         disabled={aggregating} onClick={requestAggregation}>
                         {aggregating ? "Sending…" : "Request Aggregation"}
-                      </button>
-                    </div>
+                      </Button>
+                    </Card>
                   )}
                 </>
               )}
@@ -544,7 +541,7 @@ export default function FPODashboard() {
                 <div className="auth-error"><span>⚠️</span><p>{distributeError}</p></div>
               )}
               {distributionResult && (
-                <div className="card" style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
+                <Card style={{ background: "#f0fdf4", borderLeft: "3px solid var(--color-success)" }}>
                   <h3 className="heading-sm" style={{ marginBottom: 8 }}>Payment Distributed</h3>
                   <div className="flex-col gap-2" style={{ marginBottom: 12 }}>
                     {[
@@ -564,16 +561,16 @@ export default function FPODashboard() {
                       <span className="text-sm" style={{ fontWeight: 600 }}>{formatINR(b.net_payable)}</span>
                     </div>
                   ))}
-                  <button className="btn-secondary" style={{ width: "100%", marginTop: 12 }}
-                    onClick={() => setDistributionResult(null)}>Close</button>
-                </div>
+                  <Button variant="secondary" className="w-full" style={{ marginTop: 12 }}
+                    onClick={() => setDistributionResult(null)}>Close</Button>
+                </Card>
               )}
               {fpoOrders.length === 0 ? (
                 <EmptyState icon="💰" title="No FPO orders yet"
                   description="Orders buyers place against your aggregated lots will show up here." />
               ) : (
                 fpoOrders.map((o: any) => (
-                  <div key={o.id} className="card">
+                  <Card key={o.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
                         <p className="text-sm" style={{ fontWeight: 700, margin: 0 }}>
@@ -586,17 +583,17 @@ export default function FPODashboard() {
                       <span className={`badge ${o.status === "paid" || o.status === "completed" ? "badge-verified" : ""}`}>{o.status}</span>
                     </div>
                     {o.status === "paid" && !o.payment_distributed && (
-                      <button className="btn-primary" style={{ width: "100%", marginTop: 10 }}
+                      <Button className="w-full" style={{ marginTop: 10 }}
                         disabled={distributingOrderId === o.id} onClick={() => distributePayment(o.id)}>
                         {distributingOrderId === o.id ? "Distributing…" : "Distribute Payment"}
-                      </button>
+                      </Button>
                     )}
                     {o.payment_distributed && (
                       <p className="text-xs" style={{ color: "var(--color-success)", fontWeight: 600, marginTop: 8 }}>
                         ✓ Payment distributed to farmers
                       </p>
                     )}
-                  </div>
+                  </Card>
                 ))
               )}
             </div>
