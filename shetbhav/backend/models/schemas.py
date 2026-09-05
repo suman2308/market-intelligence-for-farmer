@@ -104,6 +104,14 @@ class BuyerProfileCreate(BaseModel):
     state: str = "Maharashtra"
     required_crops: Optional[List[str]] = None
 
+class BuyerProfileUpdate(BaseModel):
+    business_name: Optional[str] = None
+    business_type: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+
 class BuyerProfileResponse(BaseModel):
     id: int
     user_id: int
@@ -111,6 +119,8 @@ class BuyerProfileResponse(BaseModel):
     business_type: Optional[str] = None
     district: Optional[str] = None
     state: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
     required_crops: Optional[list] = None
     verification_status: VerificationStatus
     trust_score: float
@@ -258,6 +268,12 @@ class OfferCounter(BaseModel):
     price_per_q: float = Field(gt=0)
     notes: Optional[str] = None
 
+class OfferAccept(BaseModel):
+    # Hours the buyer has to pay before this order is auto-cancelled and the
+    # lot becomes available again. Farmer-chosen at accept time; a sane
+    # default applies if omitted.
+    payment_window_hours: Optional[int] = Field(default=None, gt=0, le=168)
+
 class OfferResponse(BaseModel):
     id: int
     lot_id: int
@@ -272,6 +288,13 @@ class OfferResponse(BaseModel):
     notes: Optional[str] = None
     expires_at: Optional[datetime] = None
     created_at: datetime
+    # Enrichment (populated by list/detail endpoints only — see
+    # _offer_to_response in app.main) so the UI can show the lot's crop and
+    # counterparty without a second round-trip.
+    crop_name: Optional[str] = None
+    quality_grade: Optional[str] = None
+    lot_address: Optional[str] = None
+    farmer_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -289,8 +312,17 @@ class OrderResponse(BaseModel):
     total_value: float
     status: OrderStatus
     delivery_date: Optional[datetime] = None
+    payment_deadline: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    # Enrichment (populated by list/detail endpoints only — see
+    # _order_to_response in app.main) so the UI can show the lot's crop and
+    # counterparty without a second round-trip.
+    crop_name: Optional[str] = None
+    quality_grade: Optional[str] = None
+    address: Optional[str] = None
+    farmer_name: Optional[str] = None
+    buyer_name: Optional[str] = None
 
     class Config:
         from_attributes = True

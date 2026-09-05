@@ -719,6 +719,12 @@ class Order(Base):
     pickup_lng = Column(Float)
     delivery_lat = Column(Float)
     delivery_lng = Column(Float)
+    # If set and still unpaid past this time, the order is lazily cancelled
+    # and its lot reverts to "active" so other buyers can book/offer on it
+    # again — see app.main._expire_unpaid_orders. For an accepted negotiated
+    # offer the farmer picks this window at accept time; direct book/fulfil
+    # paths use a fixed default.
+    payment_deadline = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

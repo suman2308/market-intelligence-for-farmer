@@ -34,11 +34,11 @@ from models.database import (
 from models.schemas import (
     LoginRequest, TokenResponse, RegisterRequest,
     UserResponse, CounterpartyProfileResponse, FarmerProfileCreate, FarmerProfileResponse,
-    BuyerProfileResponse,
+    BuyerProfileResponse, BuyerProfileUpdate,
     CropResponse, MarketResponse,
     ProduceLotCreate, ProduceLotResponse,
     DemandRequestCreate, DemandRequestResponse, FulfilDemandRequest,
-    OfferCreate, OfferCounter, OfferResponse,
+    OfferCreate, OfferCounter, OfferAccept, OfferResponse,
     OrderResponse, OrderStatusUpdate,
     PaymentResponse,
     GrievanceCreate, GrievanceResponse, GrievanceResolution, GrievanceStatusEventResponse,
@@ -403,6 +403,37 @@ def update_farmer_profile(
     return profile
 
 
+@app.get("/buyers/profile", response_model=BuyerProfileResponse)
+def get_buyer_profile(
+    user: User = Depends(require_role(UserRole.BUYER)),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(BuyerProfile).filter(BuyerProfile.user_id == user.id).first()
+    if not profile:
+        profile = BuyerProfile(user_id=user.id, business_name=user.full_name)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
+
+
+@app.put("/buyers/profile", response_model=BuyerProfileResponse)
+def update_buyer_profile(
+    data: BuyerProfileUpdate,
+    user: User = Depends(require_role(UserRole.BUYER)),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(BuyerProfile).filter(BuyerProfile.user_id == user.id).first()
+    if not profile:
+        profile = BuyerProfile(user_id=user.id, business_name=user.full_name)
+        db.add(profile)
+    for key, val in data.model_dump(exclude_unset=True).items():
+        setattr(profile, key, val)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
 @app.get("/farmers/dashboard")
 def farmer_dashboard(
     user: User = Depends(require_role(UserRole.FARMER)),
@@ -495,6 +526,64 @@ def _reject_stale_offers(
                type="offer_auto_rejected", link="/buyer", counterparty_user_id=winner_user_id)
 
 
+# Default payment window for flows with no farmer-chosen deadline (direct
+# book/fulfil/accept-demand — there's no separate "farmer accepts" step to
+# ask at). accept_offer lets the farmer pick their own via OfferAccept.
+DEFAULT_PAYMENT_WINDOW_HOURS = 24
+
+
+def _expire_unpaid_orders(db: Session) -> None:
+    """Lazily cancel any order whose payment window has passed with no
+    payment made, and free up its lot for other buyers — no background
+    scheduler, checked opportunistically whenever lots are read (mirrors the
+    existing lazy offer-expiry pattern)."""
+    now = datetime.utcnow()
+    stale_orders = db.query(Order).filter(
+        Order.payment_deadline.isnot(None),
+        Order.payment_deadline < now,
+        Order.status.in_([OrderStatus.ACCEPTED, OrderStatus.PAYMENT_PENDING]),
+    ).all()
+    if not stale_orders:
+        return
+    for order in stale_orders:
+        order.status = OrderStatus.CANCELLED
+        lot, offer = None, None
+        if order.offer_id:
+            offer = db.query(Offer).filter(Offer.id == order.offer_id).first()
+            if offer:
+                lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+        if lot and not lot.is_demand_offer and lot.status in ("sold", "booked"):
+            # A real farmer-posted lot (booked directly, or fulfilling a
+            # demand) — re-list it so other buyers can book/offer on it.
+            lot.status = "active"
+        if offer and offer.demand_id:
+            # Whether via a real lot or an auto-created bookkeeping one,
+            # the underlying demand this was answering should reopen for
+            # other farmers/FPOs too.
+            demand = db.query(DemandRequest).filter(DemandRequest.id == offer.demand_id).first()
+            if demand and demand.status == "filled":
+                demand.status = "open"
+        db.add(OrderEvent(
+            order_id=order.id, event_type="payment_window_expired", title="Payment window expired",
+            description="The buyer did not pay within the selected window — the lot is available again.",
+        ))
+        seller_user_id = _order_seller_user_id(db, order)
+        buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == order.buyer_id).first()
+        notify(
+            db, seller_user_id, "Payment window expired",
+            f"Order #{order.id} was cancelled — the buyer didn't pay in time. Your lot is listed again.",
+            type="payment_expired", link="/farmer/lots",
+            counterparty_user_id=buyer_profile.user_id if buyer_profile else None,
+        )
+        if buyer_profile:
+            notify(
+                db, buyer_profile.user_id, "Payment window expired",
+                f"Order #{order.id} was cancelled because payment wasn't made in time.",
+                type="payment_expired", link="/buyer",
+            )
+    db.commit()
+
+
 def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
     crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
     farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
@@ -513,6 +602,61 @@ def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
         address=lot.address, harvest_date=lot.harvest_date,
         storage_available=lot.storage_available, urgency=lot.urgency,
         status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
+    )
+
+
+def _offer_to_response(db: Session, offer: Offer) -> OfferResponse:
+    """Enriches an Offer with its lot's crop/grade/address and the farmer's
+    name, so a buyer's Offers list shows what's actually being negotiated
+    instead of a bare offer number."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+    crop = db.query(Crop).filter(Crop.id == lot.crop_id).first() if lot else None
+    farmer_name = None
+    if lot:
+        farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+        farmer_user = db.query(User).filter(User.id == farmer_profile.user_id).first() if farmer_profile else None
+        farmer_name = farmer_user.full_name if farmer_user else None
+    return OfferResponse(
+        id=offer.id, lot_id=offer.lot_id, demand_id=offer.demand_id,
+        from_user_id=offer.from_user_id, to_user_id=offer.to_user_id,
+        price_per_q=offer.price_per_q, quantity_kg=offer.quantity_kg,
+        delivery_date=offer.delivery_date, status=offer.status,
+        negotiation_round=offer.negotiation_round, notes=offer.notes,
+        expires_at=offer.expires_at, created_at=offer.created_at,
+        crop_name=crop.name if crop else None,
+        quality_grade=lot.quality_grade.value if lot and lot.quality_grade else None,
+        lot_address=lot.address if lot else None,
+        farmer_name=farmer_name,
+    )
+
+
+def _order_to_response(db: Session, order: Order) -> OrderResponse:
+    """Enriches an Order with its crop/grade and both parties' names, so an
+    orders list shows what was actually bought/sold rather than just an
+    order number and a raw ₹/q figure."""
+    crop = db.query(Crop).filter(Crop.id == order.crop_id).first()
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == order.farmer_id).first()
+    farmer_user = db.query(User).filter(User.id == farmer_profile.user_id).first() if farmer_profile else None
+    buyer_profile = db.query(BuyerProfile).filter(BuyerProfile.id == order.buyer_id).first()
+    address = None
+    quality_grade = None
+    if order.offer_id:
+        offer = db.query(Offer).filter(Offer.id == order.offer_id).first()
+        lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first() if offer else None
+        if lot:
+            address = lot.address
+            quality_grade = lot.quality_grade.value if lot.quality_grade else None
+    return OrderResponse(
+        id=order.id, offer_id=order.offer_id, farmer_id=order.farmer_id,
+        fpo_id=order.fpo_id, buyer_id=order.buyer_id, crop_id=order.crop_id,
+        quantity_kg=order.quantity_kg, price_per_q=order.price_per_q,
+        total_value=order.total_value, status=order.status,
+        delivery_date=order.delivery_date, payment_deadline=order.payment_deadline,
+        created_at=order.created_at, updated_at=order.updated_at,
+        crop_name=crop.name if crop else None,
+        quality_grade=quality_grade, address=address,
+        farmer_name=farmer_user.full_name if farmer_user else None,
+        buyer_name=buyer_profile.business_name if buyer_profile else None,
     )
 
 
@@ -554,6 +698,7 @@ def list_lots(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    _expire_unpaid_orders(db)
     # isnot(True) rather than == False: existing rows from before this column
     # existed have NULL here, and `== False` is NULL-unsafe (would wrongly
     # exclude every lot created before this migration ran).
@@ -568,6 +713,7 @@ def list_lots(
 
 @app.get("/lots/{lot_id}", response_model=ProduceLotResponse)
 def get_lot(lot_id: int, db: Session = Depends(get_db)):
+    _expire_unpaid_orders(db)
     lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
     if not lot:
         raise HTTPException(status_code=404, detail="Lot not found")
@@ -619,6 +765,7 @@ def book_lot(
         price_per_q=lot.expected_price_per_q,
         total_value=lot.expected_price_per_q * lot.quantity_kg / 100,
         status=OrderStatus.PAYMENT_PENDING,
+        payment_deadline=datetime.utcnow() + timedelta(hours=DEFAULT_PAYMENT_WINDOW_HOURS),
     )
     db.add(order)
     lot.status = "booked"
@@ -897,6 +1044,7 @@ def list_demand(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    _expire_unpaid_orders(db)
     query = db.query(DemandRequest)
     if user.role == UserRole.BUYER and user.buyer_profile:
         query = query.filter(DemandRequest.buyer_id == user.buyer_profile.id)
@@ -954,6 +1102,7 @@ def accept_demand(
         crop_id=demand.crop_id, quantity_kg=demand.quantity_kg, price_per_q=demand.offered_price_per_q,
         total_value=demand.offered_price_per_q * demand.quantity_kg / 100,
         status=OrderStatus.PAYMENT_PENDING,
+        payment_deadline=datetime.utcnow() + timedelta(hours=DEFAULT_PAYMENT_WINDOW_HOURS),
     )
     db.add(order)
     demand.status = "filled"
@@ -1062,6 +1211,7 @@ def fulfil_demand(
         price_per_q=demand.offered_price_per_q,
         total_value=demand.offered_price_per_q * demand.quantity_kg / 100,
         status=OrderStatus.PAYMENT_PENDING,
+        payment_deadline=datetime.utcnow() + timedelta(hours=DEFAULT_PAYMENT_WINDOW_HOURS),
     )
     db.add(order)
     lot.status = "booked"
@@ -1177,12 +1327,13 @@ def list_offers(
     offers = db.query(Offer).filter(
         (Offer.from_user_id == user.id) | (Offer.to_user_id == user.id)
     ).order_by(Offer.created_at.desc()).limit(50).all()
-    return offers
+    return [_offer_to_response(db, o) for o in offers]
 
 
 @app.post("/offers/{offer_id}/accept", response_model=OfferResponse)
 def accept_offer(
     offer_id: int,
+    data: OfferAccept = OfferAccept(),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1222,6 +1373,7 @@ def accept_offer(
             total_value=offer.price_per_q * offer.quantity_kg / 100,
             delivery_date=offer.delivery_date,
             status=OrderStatus.ACCEPTED,
+            payment_deadline=datetime.utcnow() + timedelta(hours=data.payment_window_hours or DEFAULT_PAYMENT_WINDOW_HOURS),
         )
         db.add(order)
         db.flush()
@@ -1411,7 +1563,7 @@ def list_orders(
         orders = db.query(Order).all()
     else:
         orders = []
-    return orders[:50]
+    return [_order_to_response(db, o) for o in orders[:50]]
 
 
 @app.put("/orders/{order_id}/status", response_model=OrderResponse)
@@ -1551,9 +1703,12 @@ def simulate_payment(
     db: Session = Depends(get_db),
 ):
     """§33: Simulate payment. Clearly not a real financial transaction."""
+    _expire_unpaid_orders(db)
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order.status == OrderStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="This order was cancelled — the payment window expired.")
     payment = db.query(Payment).filter(Payment.order_id == order_id).first()
     if not payment:
         payment = Payment(order_id=order_id, amount=order.total_value)
