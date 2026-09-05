@@ -5,6 +5,9 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { ProgressBar } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 import { cropEmoji } from "@/lib/cropEmoji";
@@ -85,11 +88,10 @@ export default function SmartSellPage() {
       <FarmerHeader />
       {/* Header */}
       <div className="page-header">
-        <button onClick={() => step > 0 ? setStep(step - 1) : router.back()}
-          aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          ←
-        </button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => step > 0 ? setStep(step - 1) : router.back()}
+          aria-label="Go back">
+          <ArrowLeft className="size-5" />
+        </Button>
         <div style={{ flex: 1 }}>
           <h1 className="heading-md" style={{ margin: 0 }}>{t("sell_my_produce")}</h1>
           <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
@@ -172,10 +174,10 @@ export default function SmartSellPage() {
           </div>
 
           <div style={{ marginTop: 24, textAlign: "center" }}>
-            <button className="btn-primary" style={{ maxWidth: 300, margin: "0 auto" }}
+            <Button style={{ maxWidth: 300, margin: "0 auto" }}
               onClick={() => setStep(2)} disabled={form.quantity_kg <= 0}>
               {t("next")} →
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -281,7 +283,7 @@ export default function SmartSellPage() {
           </p>
 
           {/* Summary Card */}
-          <div className="card" style={{ marginBottom: 20, padding: 20 }}>
+          <Card style={{ marginBottom: 20, padding: 20 }}>
             <h3 className="heading-sm" style={{ margin: "0 0 12px 0" }}>Your details</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
@@ -297,12 +299,12 @@ export default function SmartSellPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <button className="btn-primary" onClick={analyzeOptions}
+          <Button onClick={analyzeOptions}
             style={{ fontSize: 18, padding: "16px 24px", minHeight: 56 }}>
             🔍 {t("find_best_options")}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -455,7 +457,7 @@ export default function SmartSellPage() {
                 };
                 const meta = typeMeta[alt.option_type] || { icon: "📍", border: "var(--stone-300)" };
                 return (
-                  <div key={i} className="card" style={{ marginBottom: 8, padding: 14, borderLeft: `3px solid ${meta.border}` }}>
+                  <Card key={i} style={{ marginBottom: 8, padding: 14, borderLeft: `3px solid ${meta.border}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ minWidth: 0 }}>
                         <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>{meta.icon} {alt.target_name}</p>
@@ -472,7 +474,7 @@ export default function SmartSellPage() {
                         {alt.score}/100
                       </span>
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -483,7 +485,7 @@ export default function SmartSellPage() {
             <div style={{ marginBottom: 16 }}>
               <h3 className="heading-sm" style={{ marginBottom: 10 }}>What if you wait?</h3>
               {result.what_if_scenarios.map((s: any, i: number) => (
-                <div key={i} className="card" style={{ marginBottom: 8, padding: 14 }}>
+                <Card key={i} style={{ marginBottom: 8, padding: 14 }}>
                   <p className="text-sm" style={{ fontWeight: 600, margin: 0 }}>{s.scenario}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
                     <span className="text-sm">Net: <strong>₹{s.net?.toLocaleString("en-IN")}</strong></span>
@@ -494,7 +496,7 @@ export default function SmartSellPage() {
                       Risk: {s.risk}
                     </span>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -508,23 +510,23 @@ export default function SmartSellPage() {
           </div>
 
           {/* Actions */}
-          <button className="btn-primary" onClick={goToCreateLot}
+          <Button className="w-full" onClick={goToCreateLot}
             style={{ fontSize: 16, marginBottom: 12 }}>
             📦 {t("create_lot")}
-          </button>
-          <button className="btn-secondary" onClick={() => router.push("/farmer")}>
+          </Button>
+          <Button variant="secondary" className="w-full" onClick={() => router.push("/farmer")}>
             {t("home")}
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="card" style={{ borderLeft: "3px solid var(--color-danger)", marginTop: 12 }}>
+        <Card style={{ borderLeft: "3px solid var(--color-danger)", marginTop: 12 }}>
           <p style={{ color: "var(--color-danger)", fontSize: 14, fontWeight: 500, margin: 0 }}>
             ⚠️ {error}
           </p>
-        </div>
+        </Card>
       )}
       </div>
 
