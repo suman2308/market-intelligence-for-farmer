@@ -181,7 +181,21 @@ class FPOProfile(Base):
     district = Column(String(100))
     state = Column(String(100), default="Maharashtra")
     member_count = Column(Integer, default=0)
+    # New fields for FPO onboarding/verification and payment distribution —
+    # all additive, existing rows just get the column defaults.
+    address = Column(String(500))
+    contact_phone = Column(String(20))
+    contact_email = Column(String(255))
+    has_storage_facility = Column(Boolean, default=True)
+    storage_capacity_quintals = Column(Float)
+    verification_status = Column(String(20), default="pending")
+    # % deducted from an order's total before distributing to member
+    # farmers. A dedicated commission-rates table would be overkill while
+    # every FPO has exactly one active rate — a column here covers the
+    # same need with an existing table.
+    commission_percentage = Column(Float, default=3.0)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="fpo_profile")
     members = relationship("FPOMembership", back_populates="fpo")
@@ -194,6 +208,11 @@ class FPOMembership(Base):
     farmer_id = Column(Integer, ForeignKey("farmer_profiles.id"), nullable=False)
     joined_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
+    # Farmer self-service join requests start "pending" until the FPO
+    # manager approves; existing/seeded rows (created directly as members,
+    # never through a request) default to "active" so nothing already in
+    # the database needs backfilling.
+    status = Column(String(20), default="active")
 
     fpo = relationship("FPOProfile", back_populates="members")
     farmer = relationship("FarmerProfile")
@@ -454,6 +473,10 @@ class ProduceLot(Base):
     # farmer/FPO accepts or negotiates a buyer demand directly, with no lot
     # of their own — bookkeeping only, hidden from the farmer's own lot list.
     is_demand_offer = Column(Boolean, default=False)
+    # Farmer opt-in: whether this lot may be picked up by an FPO's
+    # aggregation pool. Purely additive — doesn't affect the farmer's
+    # existing ability to sell the lot directly to a buyer.
+    available_for_fpo = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -475,6 +498,13 @@ class LotMemberContribution(Base):
     quality_grade = Column(Enum(QualityGrade))
     expected_payout = Column(Float)
     confirmed = Column(Boolean, default=False)
+    # pending (awaiting the farmer's confirm/decline) -> confirmed/declined
+    # -> in_storage (folded into a sellable aggregated lot) -> sold ->
+    # payment_distributed. `confirmed` above predates this and is no longer
+    # written to — kept only so any existing row still has a value.
+    status = Column(String(20), default="pending")
+    net_payable_amount = Column(Float)
+    payment_distributed_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     aggregated_lot = relationship("ProduceLot", foreign_keys=[aggregated_lot_id])
@@ -725,6 +755,10 @@ class Order(Base):
     # offer the farmer picks this window at accept time; direct book/fulfil
     # paths use a fixed default.
     payment_deadline = Column(DateTime)
+    # Set once an FPO seller has distributed a paid order's proceeds to its
+    # member farmers (see app.main distribute_fpo_payment) — irrelevant for
+    # a direct farmer sale, which has no distribution step.
+    payment_distributed_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -35,6 +35,7 @@ from models.schemas import (
     LoginRequest, TokenResponse, RegisterRequest,
     UserResponse, CounterpartyProfileResponse, FarmerProfileCreate, FarmerProfileResponse,
     BuyerProfileResponse, BuyerProfileUpdate,
+    FPOProfileUpdate, FPOAggregateRequest,
     CropResponse, MarketResponse,
     ProduceLotCreate, ProduceLotResponse,
     DemandRequestCreate, DemandRequestResponse, FulfilDemandRequest,
@@ -317,7 +318,10 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         profile = BuyerProfile(user_id=user.id, business_name=req.full_name)
         db.add(profile)
     elif req.role == UserRole.FPO:
-        profile = FPOProfile(user_id=user.id, name=req.full_name)
+        # Auto-verified for demo purposes (an admin can still flip this via
+        # PUT /admin/fpo/{id}/verify) — nothing in the FPO flows is gated on
+        # verification_status today, it's tracked for future use.
+        profile = FPOProfile(user_id=user.id, name=req.full_name, verification_status="verified")
         db.add(profile)
 
     db.commit()
@@ -531,6 +535,10 @@ def _reject_stale_offers(
 # ask at). accept_offer lets the farmer pick their own via OfferAccept.
 DEFAULT_PAYMENT_WINDOW_HOURS = 24
 
+# Platform-wide cut of an FPO order's proceeds, on top of the FPO's own
+# commission_percentage, deducted before distributing to member farmers.
+PLATFORM_FEE_PERCENTAGE = 2.0
+
 
 def _expire_unpaid_orders(db: Session) -> None:
     """Lazily cancel any order whose payment window has passed with no
@@ -601,7 +609,8 @@ def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
         quality_grade=lot.quality_grade,
         address=lot.address, harvest_date=lot.harvest_date,
         storage_available=lot.storage_available, urgency=lot.urgency,
-        status=lot.status, offers_close_at=lot.offers_close_at, created_at=lot.created_at,
+        status=lot.status, available_for_fpo=bool(lot.available_for_fpo),
+        offers_close_at=lot.offers_close_at, created_at=lot.created_at,
     )
 
 
@@ -684,9 +693,34 @@ def create_lot(
         harvest_date=data.harvest_date,
         storage_available=data.storage_available,
         urgency=data.urgency,
+        available_for_fpo=data.available_for_fpo,
         offers_close_at=datetime.utcnow() + timedelta(hours=OFFER_WINDOW_HOURS[data.urgency]),
     )
     db.add(lot)
+    db.commit()
+    db.refresh(lot)
+    return _lot_to_response(db, lot)
+
+
+@app.put("/lots/{lot_id}/fpo-availability", response_model=ProduceLotResponse)
+def set_lot_fpo_availability(
+    lot_id: int,
+    available: bool,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """Toggle an existing lot's FPO-aggregation opt-in after the fact —
+    the checkbox on the create-lot form covers the common case, this
+    covers changing your mind on a lot you already listed."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile or lot.farmer_id != farmer_profile.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is not active (status: {lot.status})")
+    lot.available_for_fpo = available
     db.commit()
     db.refresh(lot)
     return _lot_to_response(db, lot)
@@ -696,6 +730,7 @@ def create_lot(
 def list_lots(
     user: User = Depends(get_current_user),
     status: Optional[str] = None,
+    seller_type: Optional[str] = None,  # "farmer" | "fpo" — buyer browse filter, additive
     db: Session = Depends(get_db),
 ):
     _expire_unpaid_orders(db)
@@ -707,6 +742,10 @@ def list_lots(
         query = query.filter(ProduceLot.farmer_id == user.farmer_profile.id)
     if status:
         query = query.filter(ProduceLot.status == status)
+    if seller_type == "farmer":
+        query = query.filter(ProduceLot.fpo_id.is_(None))
+    elif seller_type == "fpo":
+        query = query.filter(ProduceLot.fpo_id.isnot(None))
     lots = query.order_by(ProduceLot.created_at.desc()).limit(50).all()
     return [_lot_to_response(db, lot) for lot in lots]
 
@@ -2588,6 +2627,498 @@ def fpo_aggregate(
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+# ── FPO Profile ──────────────────────────────────────────────────────
+@app.get("/fpo/profile")
+def get_fpo_profile(
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        raise HTTPException(status_code=400, detail="FPO profile not found")
+    return {
+        "id": fpo.id, "name": fpo.name, "registration_number": fpo.registration_number,
+        "district": fpo.district, "state": fpo.state, "address": fpo.address,
+        "contact_phone": fpo.contact_phone, "contact_email": fpo.contact_email,
+        "has_storage_facility": fpo.has_storage_facility,
+        "storage_capacity_quintals": fpo.storage_capacity_quintals,
+        "verification_status": fpo.verification_status,
+        "commission_percentage": fpo.commission_percentage,
+        "member_count": fpo.member_count,
+    }
+
+
+@app.put("/fpo/profile")
+def update_fpo_profile(
+    data: FPOProfileUpdate,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        raise HTTPException(status_code=400, detail="FPO profile not found")
+    for key, val in data.model_dump(exclude_unset=True).items():
+        setattr(fpo, key, val)
+    db.commit()
+    db.refresh(fpo)
+    return {"status": "updated", "id": fpo.id}
+
+
+@app.put("/admin/fpo/{fpo_id}/verify")
+def admin_verify_fpo(
+    fpo_id: int,
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.id == fpo_id).first()
+    if not fpo:
+        raise HTTPException(status_code=404, detail="FPO not found")
+    fpo.verification_status = "verified"
+    db.commit()
+    return {"status": "verified", "id": fpo.id}
+
+
+# ── Farmer <-> FPO Membership (self-service) ─────────────────────────
+@app.get("/fpo/browse")
+def browse_fpos(
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """FPOs a farmer can request to join — the pool for Section 3.1's
+    'Browse FPOs'. Does not require/imply verification to appear; that's
+    tracked but not gated on, matching the rest of this feature."""
+    fpos = db.query(FPOProfile).all()
+    return [
+        {
+            "id": f.id, "name": f.name, "district": f.district, "state": f.state,
+            "member_count": f.member_count, "verification_status": f.verification_status,
+            "has_storage_facility": f.has_storage_facility,
+        }
+        for f in fpos
+    ]
+
+
+@app.get("/farmer/fpo-status")
+def farmer_fpo_status(
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """This farmer's own membership(s) — active or pending — across FPOs.
+    Powers the 'Current status' line on the farmer dashboard's FPO card."""
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile:
+        return []
+    memberships = db.query(FPOMembership).filter(FPOMembership.farmer_id == farmer_profile.id).all()
+    result = []
+    for m in memberships:
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == m.fpo_id).first()
+        result.append({
+            "membership_id": m.id, "fpo_id": m.fpo_id,
+            "fpo_name": fpo.name if fpo else "Unknown",
+            "status": m.status, "joined_at": m.joined_at.isoformat() if m.joined_at else None,
+        })
+    return result
+
+
+@app.post("/fpo/join-request")
+def request_to_join_fpo(
+    fpo_id: int,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile:
+        raise HTTPException(status_code=400, detail="Farmer profile not found")
+    fpo = db.query(FPOProfile).filter(FPOProfile.id == fpo_id).first()
+    if not fpo:
+        raise HTTPException(status_code=404, detail="FPO not found")
+    existing = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo_id, FPOMembership.farmer_id == farmer_profile.id,
+        FPOMembership.status.in_(["pending", "active"]),
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"You already have a {existing.status} membership with this FPO")
+    membership = FPOMembership(fpo_id=fpo_id, farmer_id=farmer_profile.id, status="pending", is_active=False)
+    db.add(membership)
+    db.commit()
+    notify(
+        db, fpo.user_id, "New membership request",
+        f"{user.full_name} wants to join {fpo.name}.",
+        type="fpo_join_request", link="/fpo", counterparty_user_id=user.id,
+    )
+    return {"status": "requested", "membership_id": membership.id}
+
+
+@app.get("/fpo/members/pending")
+def fpo_pending_members(
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        return []
+    pending = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo.id, FPOMembership.status == "pending",
+    ).all()
+    result = []
+    for m in pending:
+        farmer = db.query(FarmerProfile).filter(FarmerProfile.id == m.farmer_id).first()
+        farmer_user = db.query(User).filter(User.id == farmer.user_id).first() if farmer else None
+        result.append({
+            "membership_id": m.id, "farmer_name": farmer_user.full_name if farmer_user else "Unknown",
+            "district": farmer.district if farmer else None,
+            "requested_at": m.joined_at.isoformat() if m.joined_at else None,
+        })
+    return result
+
+
+@app.put("/fpo/members/{membership_id}/approve")
+def approve_fpo_member(
+    membership_id: int,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    membership = db.query(FPOMembership).filter(FPOMembership.id == membership_id).first()
+    if not membership or not fpo or membership.fpo_id != fpo.id:
+        raise HTTPException(status_code=404, detail="Membership request not found")
+    membership.status = "active"
+    membership.is_active = True
+    membership.joined_at = datetime.utcnow()
+    db.flush()  # so the count below sees this row's new status
+    fpo.member_count = db.query(FPOMembership).filter(
+        FPOMembership.fpo_id == fpo.id, FPOMembership.status == "active",
+    ).count()
+    db.commit()
+    farmer = db.query(FarmerProfile).filter(FarmerProfile.id == membership.farmer_id).first()
+    if farmer:
+        notify(db, farmer.user_id, "Membership approved", f"You're now a member of {fpo.name}.",
+               type="fpo_join_approved", link="/farmer/fpo")
+    return {"status": "approved"}
+
+
+@app.put("/fpo/members/{membership_id}/reject")
+def reject_fpo_member(
+    membership_id: int,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    membership = db.query(FPOMembership).filter(FPOMembership.id == membership_id).first()
+    if not membership or not fpo or membership.fpo_id != fpo.id:
+        raise HTTPException(status_code=404, detail="Membership request not found")
+    membership.status = "rejected"
+    db.commit()
+    farmer = db.query(FarmerProfile).filter(FarmerProfile.id == membership.farmer_id).first()
+    if farmer:
+        notify(db, farmer.user_id, "Membership request declined",
+               f"{fpo.name} declined your membership request.",
+               type="fpo_join_rejected", link="/farmer/fpo")
+    return {"status": "rejected"}
+
+
+# ── FPO Aggregation (with farmer confirmation) ───────────────────────
+def _finalize_aggregation_if_ready(db: Session, agg_lot: ProduceLot) -> None:
+    """Once every contribution to a pending aggregated lot has been
+    confirmed or declined, either open it up for sale (if anything was
+    confirmed) or cancel it (if every farmer declined)."""
+    contributions = db.query(LotItem).filter(LotItem.aggregated_lot_id == agg_lot.id).all()
+    if any(c.status == "pending" for c in contributions):
+        return
+    confirmed = [c for c in contributions if c.status == "confirmed"]
+    if not confirmed:
+        agg_lot.status = "cancelled"
+        return
+    total_qty = sum(c.quantity_kg for c in confirmed)
+    priced = [(c, db.query(ProduceLot).filter(ProduceLot.id == c.farmer_lot_id).first()) for c in confirmed]
+    priced = [(c, l) for c, l in priced if l and l.expected_price_per_q]
+    if priced and not agg_lot.expected_price_per_q:
+        agg_lot.expected_price_per_q = round(
+            sum(c.quantity_kg * l.expected_price_per_q for c, l in priced) / sum(c.quantity_kg for c, l in priced), 2
+        )
+    agg_lot.quantity_kg = total_qty
+    agg_lot.status = "active"
+    for c in confirmed:
+        c.status = "in_storage"
+
+
+@app.get("/fpo/available-lots")
+def fpo_available_lots(
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """The pool an FPO manager can pick from — active lots its own member
+    farmers have opted into FPO aggregation (Section 4.1)."""
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        return []
+    member_farmer_ids = [
+        m.farmer_id for m in db.query(FPOMembership).filter(
+            FPOMembership.fpo_id == fpo.id, FPOMembership.status == "active",
+        ).all()
+    ]
+    if not member_farmer_ids:
+        return []
+    lots = db.query(ProduceLot).filter(
+        ProduceLot.farmer_id.in_(member_farmer_ids),
+        ProduceLot.available_for_fpo == True,
+        ProduceLot.status == "active",
+    ).order_by(ProduceLot.created_at.desc()).all()
+    result = []
+    for lot in lots:
+        farmer = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+        farmer_user = db.query(User).filter(User.id == farmer.user_id).first() if farmer else None
+        crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
+        result.append({
+            "lot_id": lot.id, "farmer_name": farmer_user.full_name if farmer_user else "Unknown",
+            "district": farmer.district if farmer else None,
+            "crop_name": crop.name if crop else None,
+            "quantity_kg": lot.quantity_kg,
+            "quality_grade": lot.quality_grade.value if lot.quality_grade else "unrated",
+            "price_per_q": lot.expected_price_per_q,
+        })
+    return result
+
+
+@app.post("/fpo/aggregate-request")
+def fpo_aggregate_request(
+    data: FPOAggregateRequest,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Section 4.2: FPO selects lots from its available pool and sends
+    each contributing farmer a confirm/decline request — nothing is
+    committed until the farmers respond (contrast with the older, still-
+    supported /fpo/aggregate which aggregates immediately with no
+    confirmation step)."""
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        raise HTTPException(status_code=400, detail="FPO profile not found")
+    member_farmer_ids = {
+        m.farmer_id for m in db.query(FPOMembership).filter(
+            FPOMembership.fpo_id == fpo.id, FPOMembership.status == "active",
+        ).all()
+    }
+    lots = db.query(ProduceLot).filter(ProduceLot.id.in_(data.lot_ids)).all()
+    if not lots:
+        raise HTTPException(status_code=404, detail="No such lots")
+    for lot in lots:
+        if lot.farmer_id not in member_farmer_ids:
+            raise HTTPException(status_code=403, detail=f"Lot #{lot.id} doesn't belong to one of your members")
+        if not lot.available_for_fpo or lot.status != "active":
+            raise HTTPException(status_code=400, detail=f"Lot #{lot.id} isn't available for aggregation")
+    crop_ids = {l.crop_id for l in lots}
+    if len(crop_ids) > 1:
+        raise HTTPException(status_code=400, detail="Selected lots must all be the same crop")
+
+    agg_lot = ProduceLot(
+        farmer_id=lots[0].farmer_id,  # primary contact, same convention as services.fpo_aggregation
+        fpo_id=fpo.id, crop_id=lots[0].crop_id,
+        quantity_kg=sum(l.quantity_kg for l in lots),
+        expected_price_per_q=data.expected_price_per_q,
+        quality_grade=lots[0].quality_grade,
+        location_lat=fpo.location_lat, location_lng=fpo.location_lng,
+        address=f"{fpo.name}, {fpo.district}",
+        is_aggregated=True, status="pending",
+    )
+    db.add(agg_lot)
+    db.flush()
+
+    crop = db.query(Crop).filter(Crop.id == lots[0].crop_id).first()
+    for lot in lots:
+        db.add(LotItem(
+            aggregated_lot_id=agg_lot.id, farmer_lot_id=lot.id, farmer_id=lot.farmer_id,
+            quantity_kg=lot.quantity_kg, quality_grade=lot.quality_grade, status="pending",
+        ))
+        lot.status = "pending_fpo"
+        farmer = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
+        if farmer:
+            price_note = f" Expected price: ₹{data.expected_price_per_q:,.0f}/q." if data.expected_price_per_q else ""
+            notify(
+                db, farmer.user_id, "FPO wants your produce",
+                f"{fpo.name} wants to aggregate your {lot.quantity_kg:,.0f}kg of "
+                f"{crop.name if crop else 'produce'}.{price_note}",
+                type="fpo_aggregation_request", link="/farmer/fpo",
+            )
+    db.commit()
+    db.refresh(agg_lot)
+    return {"aggregated_lot_id": agg_lot.id, "farmer_count": len(lots), "status": "pending"}
+
+
+@app.get("/farmer/fpo-requests")
+def farmer_fpo_requests(
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """This farmer's own pending aggregation requests to confirm/decline."""
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile:
+        return []
+    pending = db.query(LotItem).filter(
+        LotItem.farmer_id == farmer_profile.id, LotItem.status == "pending",
+    ).all()
+    result = []
+    for c in pending:
+        agg_lot = db.query(ProduceLot).filter(ProduceLot.id == c.aggregated_lot_id).first()
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == agg_lot.fpo_id).first() if agg_lot else None
+        farmer_lot = db.query(ProduceLot).filter(ProduceLot.id == c.farmer_lot_id).first()
+        crop = db.query(Crop).filter(Crop.id == farmer_lot.crop_id).first() if farmer_lot else None
+        result.append({
+            "contribution_id": c.id, "fpo_name": fpo.name if fpo else "Unknown",
+            "crop_name": crop.name if crop else None, "quantity_kg": c.quantity_kg,
+            "expected_price_per_q": agg_lot.expected_price_per_q if agg_lot else None,
+        })
+    return result
+
+
+@app.post("/fpo/aggregation/{contribution_id}/confirm")
+def confirm_fpo_aggregation(
+    contribution_id: int,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    contribution = db.query(LotItem).filter(LotItem.id == contribution_id).first()
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not contribution or not farmer_profile or contribution.farmer_id != farmer_profile.id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if contribution.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Already {contribution.status}")
+    contribution.status = "confirmed"
+    farmer_lot = db.query(ProduceLot).filter(ProduceLot.id == contribution.farmer_lot_id).first()
+    agg_lot = db.query(ProduceLot).filter(ProduceLot.id == contribution.aggregated_lot_id).first()
+    if farmer_lot:
+        farmer_lot.status = "fpo_aggregated"
+        farmer_lot.fpo_id = agg_lot.fpo_id if agg_lot else farmer_lot.fpo_id
+    if agg_lot:
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == agg_lot.fpo_id).first()
+        if fpo:
+            notify(db, fpo.user_id, "Farmer confirmed aggregation",
+                   f"{user.full_name} confirmed {contribution.quantity_kg:,.0f}kg for aggregated lot #{agg_lot.id}.",
+                   type="fpo_aggregation_confirmed", link="/fpo", counterparty_user_id=user.id)
+        _finalize_aggregation_if_ready(db, agg_lot)
+    db.commit()
+    return {"status": "confirmed"}
+
+
+@app.post("/fpo/aggregation/{contribution_id}/decline")
+def decline_fpo_aggregation(
+    contribution_id: int,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    contribution = db.query(LotItem).filter(LotItem.id == contribution_id).first()
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not contribution or not farmer_profile or contribution.farmer_id != farmer_profile.id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if contribution.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Already {contribution.status}")
+    contribution.status = "declined"
+    farmer_lot = db.query(ProduceLot).filter(ProduceLot.id == contribution.farmer_lot_id).first()
+    agg_lot = db.query(ProduceLot).filter(ProduceLot.id == contribution.aggregated_lot_id).first()
+    if farmer_lot:
+        farmer_lot.status = "active"  # back on the market individually
+    if agg_lot:
+        fpo = db.query(FPOProfile).filter(FPOProfile.id == agg_lot.fpo_id).first()
+        if fpo:
+            notify(db, fpo.user_id, "Farmer declined aggregation",
+                   f"{user.full_name} declined to contribute to aggregated lot #{agg_lot.id}.",
+                   type="fpo_aggregation_declined", link="/fpo", counterparty_user_id=user.id)
+        _finalize_aggregation_if_ready(db, agg_lot)
+    db.commit()
+    return {"status": "declined"}
+
+
+# ── FPO Orders & Payment Distribution ─────────────────────────────────
+@app.get("/fpo/orders")
+def fpo_orders(
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    if not fpo:
+        return []
+    orders = db.query(Order).filter(Order.fpo_id == fpo.id).order_by(Order.created_at.desc()).all()
+    result = []
+    for o in orders:
+        resp = _order_to_response(db, o).model_dump()
+        resp["payment_distributed"] = o.payment_distributed_at is not None
+        result.append(resp)
+    return result
+
+
+@app.post("/fpo/orders/{order_id}/distribute-payment")
+def distribute_fpo_payment(
+    order_id: int,
+    user: User = Depends(require_role(UserRole.FPO)),
+    db: Session = Depends(get_db),
+):
+    """Section 6.2: split a paid FPO order's proceeds among the farmers who
+    actually contributed to the aggregated lot behind it, after commission
+    + platform fee — simulated bookkeeping, same spirit as the platform's
+    other simulated payments, no real bank transfer."""
+    fpo = db.query(FPOProfile).filter(FPOProfile.user_id == user.id).first()
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order or not fpo or order.fpo_id != fpo.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status != OrderStatus.PAID:
+        raise HTTPException(status_code=400, detail=f"Order isn't paid yet (status: {order.status.value})")
+    if order.payment_distributed_at:
+        raise HTTPException(status_code=400, detail="Payment already distributed for this order")
+
+    offer = db.query(Offer).filter(Offer.id == order.offer_id).first() if order.offer_id else None
+    agg_lot_id = offer.lot_id if offer else None
+    contributions = db.query(LotItem).filter(
+        LotItem.aggregated_lot_id == agg_lot_id, LotItem.status == "in_storage",
+    ).all() if agg_lot_id else []
+    if not contributions:
+        raise HTTPException(status_code=400, detail="No confirmed farmer contributions found for this order")
+
+    total_qty = sum(c.quantity_kg for c in contributions)
+    commission_pct = fpo.commission_percentage or 0
+    breakdown = []
+    for c in contributions:
+        share = c.quantity_kg / total_qty if total_qty else 0
+        gross = round(order.total_value * share, 2)
+        commission = round(gross * commission_pct / 100, 2)
+        platform_fee = round(gross * PLATFORM_FEE_PERCENTAGE / 100, 2)
+        net = round(gross - commission - platform_fee, 2)
+        c.net_payable_amount = net
+        c.payment_distributed_at = datetime.utcnow()
+        c.status = "payment_distributed"
+        farmer_lot = db.query(ProduceLot).filter(ProduceLot.id == c.farmer_lot_id).first()
+        if farmer_lot:
+            farmer_lot.status = "sold"
+        farmer = db.query(FarmerProfile).filter(FarmerProfile.id == c.farmer_id).first()
+        farmer_user = db.query(User).filter(User.id == farmer.user_id).first() if farmer else None
+        if farmer_user:
+            notify(
+                db, farmer_user.id, "Payment distributed",
+                f"₹{net:,.0f} credited for {c.quantity_kg:,.0f}kg sold via {fpo.name} (order #{order.id}).",
+                type="fpo_payment_distributed", link="/farmer/earnings",
+            )
+        breakdown.append({
+            "farmer_name": farmer_user.full_name if farmer_user else "Unknown",
+            "quantity_kg": c.quantity_kg, "gross_amount": gross,
+            "commission": commission, "platform_fee": platform_fee, "net_payable": net,
+        })
+
+    order.payment_distributed_at = datetime.utcnow()
+    db.add(OrderEvent(
+        order_id=order.id, event_type="fpo_payment_distributed", title="Payment distributed to farmers",
+        description=f"₹{order.total_value:,.0f} distributed across {len(contributions)} farmer(s).",
+        created_by=user.id,
+    ))
+    db.commit()
+    total_commission = sum(b["commission"] for b in breakdown)
+    total_platform_fee = sum(b["platform_fee"] for b in breakdown)
+    return {
+        "order_id": order.id, "total_received": order.total_value,
+        "total_commission": round(total_commission, 2), "total_platform_fee": round(total_platform_fee, 2),
+        "net_distributed": round(order.total_value - total_commission - total_platform_fee, 2),
+        "breakdown": breakdown,
+    }
 
 
 # ── Quality Grading Routes ──────────────────────────────────────────

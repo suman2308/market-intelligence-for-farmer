@@ -195,6 +195,9 @@ class ProduceLotCreate(BaseModel):
     harvest_date: Optional[datetime] = None
     storage_available: bool = False
     urgency: UrgencyLevel = UrgencyLevel.FLEXIBLE
+    # Opt-in: let an FPO the farmer belongs to pick this lot up for
+    # aggregation. Purely additive — omitting it behaves exactly as before.
+    available_for_fpo: bool = False
 
 class ProduceLotResponse(BaseModel):
     id: int
@@ -215,11 +218,32 @@ class ProduceLotResponse(BaseModel):
     storage_available: bool
     urgency: UrgencyLevel
     status: str
+    available_for_fpo: bool = False
     offers_close_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+# ── FPO ──────────────────────────────────────────────────────────────
+class FPOProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    registration_number: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    address: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    has_storage_facility: Optional[bool] = None
+    storage_capacity_quintals: Optional[float] = Field(default=None, ge=0)
+    commission_percentage: Optional[float] = Field(default=None, ge=0, le=20)
+
+class FPOAggregateRequest(BaseModel):
+    lot_ids: List[int]
+    # The FPO's own asking price for the aggregated lot once it goes live —
+    # if omitted, falls back to the quantity-weighted average of the
+    # selected lots' own asking prices (same math as manual aggregation).
+    expected_price_per_q: Optional[float] = Field(default=None, gt=0)
 
 class FulfilDemandRequest(BaseModel):
     lot_id: int
