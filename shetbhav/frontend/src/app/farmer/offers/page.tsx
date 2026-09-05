@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EmptyState, Skeleton } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -99,8 +103,9 @@ export default function FarmerOffers() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()} aria-label="Go back"
-            style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+          <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+            <ArrowLeft className="size-5" />
+          </Button>
           <h1 className="heading-md" style={{ margin: 0 }}>Offers</h1>
         </div>
 
@@ -120,7 +125,7 @@ export default function FarmerOffers() {
           groups.map(({ lot, offers }) => {
             const countdown = formatCountdown(lot.offers_close_at);
             return (
-              <div key={lot.id} className="card" style={{ marginBottom: 16 }}>
+              <Card key={lot.id} style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
@@ -167,23 +172,21 @@ export default function FarmerOffers() {
 
                       {actionable && counterOfferId !== offer.id && acceptingOfferId !== offer.id && (
                         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                          <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                          <Button className="flex-1"
                             disabled={busyOfferId === offer.id}
                             onClick={() => { setPaymentWindowHours(24); setAcceptingOfferId(offer.id); }}>
                             Accept
-                          </button>
-                          <button className="btn-secondary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                          </Button>
+                          <Button variant="secondary" className="flex-1"
                             disabled={busyOfferId === offer.id}
                             onClick={() => setCounterOfferId(offer.id)}>
                             Counter
-                          </button>
-                          <button style={{
-                            flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
-                            border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                          }} disabled={busyOfferId === offer.id}
+                          </Button>
+                          <Button variant="outline" className="flex-1"
+                            disabled={busyOfferId === offer.id}
                             onClick={() => act(offer.id, "reject")}>
                             Reject
-                          </button>
+                          </Button>
                         </div>
                       )}
 
@@ -202,17 +205,14 @@ export default function FarmerOffers() {
                             <option value={72}>3 days</option>
                           </select>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                            <Button className="flex-1"
                               disabled={busyOfferId === offer.id}
                               onClick={() => act(offer.id, "accept")}>
                               {busyOfferId === offer.id ? "…" : "Confirm Accept"}
-                            </button>
-                            <button style={{
-                              padding: "8px 14px", fontSize: 13, borderRadius: 8,
-                              border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                            }} onClick={() => setAcceptingOfferId(null)}>
+                            </Button>
+                            <Button variant="outline" onClick={() => setAcceptingOfferId(null)}>
                               Cancel
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -220,20 +220,16 @@ export default function FarmerOffers() {
                       {counterOfferId === offer.id && (
                         <div style={{ marginTop: 8 }}>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <input className="input" type="number" placeholder="Your price ₹/q"
+                            <Input type="number" placeholder="Your price ₹/q"
                               value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
-                              style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
-                            <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
-                              disabled={!counterPrice || busyOfferId === offer.id}
+                              className="flex-1 h-9 text-[13px]" />
+                            <Button disabled={!counterPrice || busyOfferId === offer.id}
                               onClick={() => act(offer.id, "counter", counterPrice)}>
                               Send
-                            </button>
-                            <button style={{
-                              padding: "8px 10px", fontSize: 13, borderRadius: 8,
-                              border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                            }} onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
+                            </Button>
+                            <Button variant="outline" onClick={() => { setCounterOfferId(null); setCounterPrice(""); }}>
                               ✕
-                            </button>
+                            </Button>
                           </div>
                           {!counterPrice && (
                             <p className="text-xs" style={{ color: "var(--text-secondary)", margin: "4px 0 0" }}>
@@ -245,7 +241,7 @@ export default function FarmerOffers() {
                     </div>
                   );
                 })}
-              </div>
+              </Card>
             );
           })
         )}

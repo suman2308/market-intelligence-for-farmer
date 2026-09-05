@@ -5,6 +5,10 @@ import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { Skeleton } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -76,7 +80,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <div style={{ padding: 40, textAlign: "center" }}>
         <p style={{ fontSize: 28 }}>❌</p>
         <p style={{ color: "var(--color-text-secondary)" }}>{error}</p>
-        <button className="btn-primary" style={{ marginTop: 16 }} onClick={() => router.push("/farmer/orders")}>← Back to Orders</button>
+        <Button style={{ marginTop: 16 }} onClick={() => router.push("/farmer/orders")}>← Back to Orders</Button>
       </div>
       <FarmerBottomNav />
     </div>
@@ -89,11 +93,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <FarmerHeader />
       {/* Header */}
       <div className="page-header">
-        <button onClick={() => router.push("/farmer/orders")}
-          aria-label="Back to orders"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>
-          ←
-        </button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.push("/farmer/orders")} aria-label="Back to orders">
+          <ArrowLeft className="size-5" />
+        </Button>
         <div style={{ flex: 1 }}>
           <h1 className="heading-md" style={{ margin: 0 }}>Order #{order.id}</h1>
           <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
@@ -104,11 +106,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
       <div className="page-body">
       {/* Order Summary Card */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <span className="badge" style={{ background: order.status === "paid" || order.status === "completed" ? "var(--color-success-bg)" : "var(--color-accent-bg)", color: order.status === "paid" || order.status === "completed" ? "var(--color-success)" : "var(--color-accent)", padding: "6px 12px", borderRadius: 20, fontWeight: 600, fontSize: 13 }}>
+          <Badge variant={order.status === "paid" || order.status === "completed" ? "default" : "secondary"} className="px-3 py-1.5 text-[13px]">
             {STATUS_LABELS[order.status] || order.status}
-          </span>
+          </Badge>
           <span style={{ fontSize: 24, fontWeight: 800, color: "var(--color-primary)" }}>
             ₹{order.total_value?.toLocaleString("en-IN")}
           </span>
@@ -135,11 +137,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Payment Info */}
       {payment && (
-        <div className="card" style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 16 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: 8 }}>
             💰 Payment Details
           </h3>
@@ -164,12 +166,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           <p className="text-xs" style={{ color: "var(--color-accent)", marginTop: 8, fontStyle: "italic" }}>
             ⚠️ This is a demo simulation. No real money movement has occurred.
           </p>
-        </div>
+        </Card>
       )}
 
       {/* Logistics */}
       {logistics && (
-        <div className="card" style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 16 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: 8 }}>
             🚚 Transport
           </h3>
@@ -183,11 +185,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <p style={{ fontSize: 14, fontWeight: 600, margin: "2px 0 0 0" }}>{logistics.cost ? `₹${logistics.cost}` : "—"}</p>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Timeline */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px 0", display: "flex", alignItems: "center", gap: 8 }}>
           📋 Order Timeline
         </h3>
@@ -227,14 +229,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             No timeline events yet. Events will appear as the order progresses.
           </p>
         )}
-      </div>
+      </Card>
 
       {/* Quick Actions */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && (
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={() => router.push("/farmer/orders")}>
+          <Button variant="outline" className="flex-1" onClick={() => router.push("/farmer/orders")}>
             ← Back to Orders
-          </button>
+          </Button>
         )}
       </div>
       </div>

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -124,8 +127,9 @@ export default function QualityPage() {
       <div className="farmer-page">
       {/* Header */}
       <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => router.back()} aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+          <ArrowLeft className="size-5" />
+        </Button>
         <div>
           <h1 className="heading-md" style={{ margin: 0 }}>{t("quality") || "Quality Grading"}</h1>
           <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>AI-powered crop quality analysis</p>
@@ -145,16 +149,16 @@ export default function QualityPage() {
         {fetchingLots ? (
           <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 56, marginBottom: 8 }} />)}</div>
         ) : lots.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 28 }}>
+          <Card style={{ textAlign: "center", padding: 28 }}>
             <p style={{ fontSize: 28, margin: 0 }}>📦</p>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "8px 0 0 0" }}>No lots to grade. Create a lot first.</p>
-            <button className="btn-primary" style={{ marginTop: 12, fontSize: 14 }}
-              onClick={() => router.push("/farmer/lots")}>{t("create_lot") || "Create a Lot"}</button>
-          </div>
+            <Button style={{ marginTop: 12 }}
+              onClick={() => router.push("/farmer/lots")}>{t("create_lot") || "Create a Lot"}</Button>
+          </Card>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {lots.map((lot: any) => (
-              <div key={lot.id} className="card" style={{
+              <Card key={lot.id} style={{
                 cursor: "pointer",
                 border: selectedLot?.id === lot.id ? "2px solid #166534" : "1.5px solid #e5e7eb",
                 padding: "12px 14px",
@@ -177,7 +181,7 @@ export default function QualityPage() {
                     }}>🤖 AI</span>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
@@ -256,11 +260,11 @@ export default function QualityPage() {
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <button className="btn-primary" onClick={assessAI} disabled={analyzing || loading}
+            <Button onClick={assessAI} disabled={analyzing || loading}
               style={{
                 background: "linear-gradient(135deg, #1e40af, #2563eb)",
                 boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
-                fontSize: 14, fontWeight: 700,
+                fontWeight: 700,
               }}>
               {analyzing ? (
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -268,7 +272,7 @@ export default function QualityPage() {
                   Analyzing...
                 </span>
               ) : "🤖 AI Grade"}
-            </button>
+            </Button>
             <div>
               <select className="select" value={grade} onChange={e => setGrade(e.target.value)}
                 style={{ marginBottom: 8, fontSize: 13, borderRadius: 10, minHeight: 40 }}>
@@ -276,10 +280,10 @@ export default function QualityPage() {
                 <option value="B">Grade B — Standard</option>
                 <option value="C">Grade C — Below Standard</option>
               </select>
-              <button className="btn-primary" onClick={assessManual} disabled={loading || !grade}
-                style={{ fontSize: 14, fontWeight: 700, minHeight: 42 }}>
+              <Button className="w-full" onClick={assessManual} disabled={loading || !grade}
+                style={{ fontWeight: 700, minHeight: 42 }}>
                 {loading ? "Saving..." : "✋ Manual Grade"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -337,7 +341,7 @@ export default function QualityPage() {
 
           {/* Factor Breakdown */}
           {result.factors && Object.keys(result.factors).length > 0 && (
-            <div className="card" style={{ marginBottom: 12, padding: 16 }}>
+            <Card style={{ marginBottom: 12, padding: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Analysis Breakdown</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {Object.entries(result.factors).map(([key, factor]: [string, any]) => (
@@ -362,12 +366,12 @@ export default function QualityPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Color & Defect Analysis */}
           {(result.color_analysis || result.defect_analysis) && (
-            <div className="card" style={{ padding: 16 }}>
+            <Card style={{ padding: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Detailed Analysis</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {result.color_analysis && (
@@ -393,26 +397,26 @@ export default function QualityPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
       {/* Error */}
       {result?.error && (
-        <div className="card" style={{ borderLeft: "3px solid var(--danger)", marginBottom: 16 }}>
+        <Card style={{ borderLeft: "3px solid var(--danger)", marginBottom: 16 }}>
           <p style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500 }}>⚠️ {result.error}</p>
-        </div>
+        </Card>
       )}
 
       {/* Info */}
-      <div className="card" style={{ marginBottom: 20, padding: 14 }}>
+      <Card style={{ marginBottom: 20, padding: 14 }}>
         <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
           🤖 AI grading analyzes color vibrancy, surface uniformity, freshness, and blemish detection.
           Supported: Tomato, Onion, Soybean. Upload a clear, well-lit photo for best results.
           Final grade is subject to buyer verification.
         </p>
-      </div>
+      </Card>
       </div>
       <FarmerBottomNav />
     </div>

@@ -5,6 +5,9 @@ import api from "@/lib/api";
 import { EmptyState, Skeleton } from "@/components/ui";
 import { cropEmoji } from "@/lib/cropEmoji";
 import { totalAmount, formatINR } from "@/lib/money";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -110,8 +113,9 @@ export default function FarmerDemands() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()} aria-label="Go back"
-            style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+          <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+            <ArrowLeft className="size-5" />
+          </Button>
           <h1 className="heading-md" style={{ margin: 0 }}>Buyer Demands</h1>
         </div>
 
@@ -134,7 +138,7 @@ export default function FarmerDemands() {
             const pendingOffer = myOfferOn(demand.id);
             const busy = busyId === demand.id;
             return (
-              <div key={demand.id} className="card" style={{ marginBottom: 12 }}>
+              <Card key={demand.id} className="card" style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                   onClick={() => router.push(`/demands/${demand.id}`)}>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -169,39 +173,32 @@ export default function FarmerDemands() {
                       onChange={e => setNegotiatePrice(e.target.value)}
                       style={{ width: "100%", padding: "10px 12px", fontSize: 16, marginBottom: 8 }} />
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn-primary" style={{ flex: 1, padding: "10px", fontSize: 13 }}
+                      <Button className="flex-1"
                         disabled={!negotiatePrice || busy} onClick={() => sendNegotiate(demand)}>
                         {busy ? "Sending…" : "Send"}
-                      </button>
-                      <button style={{
-                        padding: "10px 16px", fontSize: 13, borderRadius: 8,
-                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                      }} onClick={() => { setNegotiatingId(null); setNegotiatePrice(""); }}>
+                      </Button>
+                      <Button variant="outline" onClick={() => { setNegotiatingId(null); setNegotiatePrice(""); }}>
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button className="btn-primary" style={{ flex: 1, padding: "10px", fontSize: 13 }}
+                    <Button className="flex-1"
                       disabled={busy} onClick={() => accept(demand)}>
                       {busy ? "…" : "✅ Accept"}
-                    </button>
-                    <button style={{
-                      flex: 1, padding: "10px", fontSize: 13, borderRadius: 8,
-                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                    }} disabled={busy} onClick={() => openNegotiate(demand)}>
+                    </Button>
+                    <Button variant="outline" className="flex-1"
+                      disabled={busy} onClick={() => openNegotiate(demand)}>
                       🤝 Negotiate
-                    </button>
-                    <button style={{
-                      flex: 1, padding: "10px", fontSize: 13, borderRadius: 8,
-                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer", color: "var(--danger)",
-                    }} disabled={busy} onClick={() => reject(demand)}>
+                    </Button>
+                    <Button variant="outline" className="flex-1 text-destructive"
+                      disabled={busy} onClick={() => reject(demand)}>
                       ✕ Reject
-                    </button>
+                    </Button>
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })
         )}
