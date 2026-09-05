@@ -43,7 +43,7 @@ export default function EarningsPage() {
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => router.back()} aria-label="Go back"
           style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("my_earnings")}</h1>
+        <h1 className="heading-md" style={{ margin: 0 }}>{t("my_earnings")}</h1>
       </div>
 
       {/* Total Earnings Hero */}
@@ -63,16 +63,16 @@ export default function EarningsPage() {
       {/* Stats Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div className="card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--warning)" }}>
             ₹{totalPending > 0 ? totalPending.toLocaleString("en-IN") : "0"}
           </div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Pending</div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pending</div>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#16a34a" }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--success)" }}>
             ₹{avgPrice > 0 ? avgPrice.toLocaleString("en-IN") : "---"}
           </div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Avg ₹/quintal</div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Avg ₹/quintal</div>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export default function EarningsPage() {
       ) : orders.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: 32 }}>
           <p style={{ fontSize: 28, margin: 0 }}>💰</p>
-          <p style={{ fontSize: 14, color: "#6b7280", margin: "8px 0 0 0" }}>No transactions yet. Sell your produce to start earning!</p>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "8px 0 0 0" }}>No transactions yet. Sell your produce to start earning!</p>
           <button className="btn-primary" style={{ marginTop: 12 }}
             onClick={() => router.push("/farmer/sell")}>
             {t("sell_my_produce")}
@@ -93,14 +93,14 @@ export default function EarningsPage() {
         orders.map((o: any) => (
           <div key={o.id} className="card" style={{
             marginBottom: 8, borderLeft: `3px solid ${
-              ["paid", "completed"].includes(o.status) ? "#16a34a" :
-              o.status === "cancelled" ? "#ef4444" : "#f59e0b"
+              ["paid", "completed"].includes(o.status) ? "var(--success)" :
+              o.status === "cancelled" ? "var(--danger)" : "var(--warning)"
             }`
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Order #{o.id}</p>
-                <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0 0" }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
                   {o.quantity_kg}kg · ₹{o.price_per_q?.toLocaleString("en-IN")}/q
                 </p>
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
@@ -110,16 +110,16 @@ export default function EarningsPage() {
               <div style={{ textAlign: "right" }}>
                 <span style={{
                   fontWeight: 700,
-                  color: ["paid", "completed"].includes(o.status) ? "#16a34a" :
-                         o.status === "cancelled" ? "#ef4444" : "#f59e0b",
+                  color: ["paid", "completed"].includes(o.status) ? "var(--success)" :
+                         o.status === "cancelled" ? "var(--danger)" : "var(--warning)",
                   fontSize: 16,
                 }}>
                   {["paid", "completed"].includes(o.status) ? "+" : ""}₹{o.total_value?.toLocaleString("en-IN")}
                 </span>
                 <p style={{
                   fontSize: 11, margin: "2px 0 0 0",
-                  color: ["paid", "completed"].includes(o.status) ? "#16a34a" :
-                         o.status === "cancelled" ? "#ef4444" : "#6b7280",
+                  color: ["paid", "completed"].includes(o.status) ? "var(--success)" :
+                         o.status === "cancelled" ? "var(--danger)" : "var(--text-secondary)",
                   fontWeight: 500,
                 }}>
                   {o.status === "paid" || o.status === "completed" ? "✅ Received" :

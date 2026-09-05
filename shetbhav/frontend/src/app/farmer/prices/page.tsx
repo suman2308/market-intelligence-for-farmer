@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import MapView, { MapPoint } from "@/components/MapView";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
+import { cropEmoji } from "@/lib/cropEmoji";
 
 export default function PricesPage() {
   const router = useRouter();
@@ -55,8 +56,6 @@ export default function PricesPage() {
     return () => { cancelled = true; };
   }, [selectedCrop, selectedMarket, retry]);
 
-  const cropEmojis: Record<string, string> = { tomato: "🍅", onion: "🧅", soybean: "🫘" };
-
   // Build map points from markets
   const mapPoints: MapPoint[] = markets
     .filter((m: any) => m.location_lat && m.location_lng)
@@ -87,7 +86,7 @@ export default function PricesPage() {
             className={`toggle-btn ${selectedCrop === crop.id ? "selected" : ""}`}
             onClick={() => setSelectedCrop(crop.id)}
             style={{ whiteSpace: "nowrap", flex: "none" }}>
-            {cropEmojis[crop.name.toLowerCase()] || "🌾"} {crop.name}
+            {cropEmoji(crop.name)} {crop.name}
           </button>
         ))}
       </div>

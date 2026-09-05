@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { NotificationBell } from "@/components/ui";
+import { cropEmoji } from "@/lib/cropEmoji";
 
 export default function FPODashboard() {
   const router = useRouter();
@@ -231,7 +232,7 @@ export default function FPODashboard() {
                           padding: "2px 8px", borderRadius: 8, fontSize: 11,
                           background: "var(--color-success-light)", color: "var(--color-success)",
                         }}>
-                          {crop === "tomato" ? "🍅" : crop === "onion" ? "🧅" : "🫘"} {crop}
+                          {cropEmoji(crop)} {crop}
                         </span>
                       ))}
                     </div>
@@ -259,7 +260,7 @@ export default function FPODashboard() {
                       onClick={() => router.push(`/lots/${lot.id}`)}>
                       <div>
                         <h3 className="heading-sm" style={{ margin: 0 }}>
-                          {lot.crop_name === "tomato" ? "🍅" : lot.crop_name === "onion" ? "🧅" : "🫘"} {lot.crop_name}
+                          {cropEmoji(lot.crop_name)} {lot.crop_name}
                         </h3>
                         <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
                           Grade {lot.quality_grade} · {lot.quantity_kg?.toLocaleString("en-IN")} kg

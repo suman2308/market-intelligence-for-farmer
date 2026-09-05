@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { ProgressBar } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
+import { cropEmoji } from "@/lib/cropEmoji";
 
 /**
  * Smart Sell Wizard — Redesigned
@@ -84,11 +85,6 @@ export default function SmartSellPage() {
       setError(e.response?.data?.detail || t("error_generic"));
       setCreatingLot(false);
     }
-  };
-
-  const cropEmoji = (name: string) => {
-    const n = name.toLowerCase();
-    return n === "tomato" ? "🍅" : n === "onion" ? "🧅" : n === "soybean" ? "🫘" : "🌾";
   };
 
   if (!user) return null;

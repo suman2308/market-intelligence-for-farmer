@@ -115,8 +115,8 @@ export default function QualityPage() {
     }
   };
 
-  const gradeColor = (g: string) => g === "A" ? "#16a34a" : g === "B" ? "#d97706" : "#dc2626";
-  const gradeBg = (g: string) => g === "A" ? "#f0fdf4" : g === "B" ? "#fffbeb" : "#fef2f2";
+  const gradeColor = (g: string) => g === "A" ? "var(--success)" : g === "B" ? "var(--warning)" : "var(--danger)";
+  const gradeBg = (g: string) => `color-mix(in srgb, ${gradeColor(g)} 8%, white)`;
 
   return (
     <div className="farmer-shell">
@@ -127,7 +127,7 @@ export default function QualityPage() {
         <button onClick={() => router.back()} aria-label="Go back"
           style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("quality") || "Quality Grading"}</h1>
+          <h1 className="heading-md" style={{ margin: 0 }}>{t("quality") || "Quality Grading"}</h1>
           <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>AI-powered crop quality analysis</p>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function QualityPage() {
               <div>
                 <img src={previewUrl || uploadedImage || ""} alt="Uploaded produce"
                   style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 12, marginBottom: 8, objectFit: "cover" }} />
-                <p style={{ fontSize: 12, color: "#16a34a", margin: 0, fontWeight: 500 }}>
+                <p style={{ fontSize: 12, color: "var(--success)", margin: 0, fontWeight: 500 }}>
                   ✅ Photo ready for analysis
                 </p>
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>Tap to change photo</p>
@@ -291,7 +291,7 @@ export default function QualityPage() {
           {/* Grade Hero Card */}
           <div style={{
             background: `linear-gradient(135deg, ${gradeBg(result.grade)}, white)`,
-            border: `2px solid ${gradeColor(result.grade)}30`,
+            border: `2px solid color-mix(in srgb, ${gradeColor(result.grade)} 30%, transparent)`,
             borderRadius: 20, padding: "24px 20px", marginBottom: 12,
             position: "relative", overflow: "hidden",
           }}>
@@ -324,7 +324,7 @@ export default function QualityPage() {
             <div style={{ marginTop: 16, background: "#e5e7eb", borderRadius: 4, height: 6, overflow: "hidden" }}>
               <div style={{
                 width: `${result.confidence}%`, height: "100%", borderRadius: 4,
-                background: `linear-gradient(90deg, ${gradeColor(result.grade)}80, ${gradeColor(result.grade)})`,
+                background: `linear-gradient(90deg, color-mix(in srgb, ${gradeColor(result.grade)} 80%, transparent), ${gradeColor(result.grade)})`,
                 transition: "width 0.5s ease",
               }} />
             </div>
@@ -348,13 +348,13 @@ export default function QualityPage() {
                       </span>
                       <span style={{
                         fontSize: 13, fontWeight: 700,
-                        color: factor.score >= 80 ? "#16a34a" : factor.score >= 60 ? "#d97706" : "#dc2626",
+                        color: factor.score >= 80 ? "var(--success)" : factor.score >= 60 ? "var(--warning)" : "var(--danger)",
                       }}>{factor.score}/100</span>
                     </div>
                     <div style={{ background: "#f3f4f6", borderRadius: 4, height: 5, overflow: "hidden" }}>
                       <div style={{
                         width: `${factor.score}%`, height: "100%", borderRadius: 4,
-                        background: factor.score >= 80 ? "#16a34a" : factor.score >= 60 ? "#d97706" : "#dc2626",
+                        background: factor.score >= 80 ? "var(--success)" : factor.score >= 60 ? "var(--warning)" : "var(--danger)",
                         transition: "width 0.5s ease",
                       }} />
                     </div>
@@ -384,7 +384,7 @@ export default function QualityPage() {
                 {result.defect_analysis && (
                   <div style={{ padding: 10, borderRadius: 12, background: "#fafafa" }}>
                     <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Defects</p>
-                    <p style={{ fontSize: 13, color: result.defect_analysis.has_visible_defects ? "#dc2626" : "#16a34a", margin: "4px 0 0 0", fontWeight: 500 }}>
+                    <p style={{ fontSize: 13, color: result.defect_analysis.has_visible_defects ? "var(--danger)" : "var(--success)", margin: "4px 0 0 0", fontWeight: 500 }}>
                       {result.defect_analysis.has_visible_defects ? "⚠️ Spots detected" : "✅ Clean surface"}
                     </p>
                     <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
@@ -400,8 +400,8 @@ export default function QualityPage() {
 
       {/* Error */}
       {result?.error && (
-        <div className="card" style={{ borderLeft: "3px solid #dc2626", marginBottom: 16 }}>
-          <p style={{ color: "#dc2626", fontSize: 13, fontWeight: 500 }}>⚠️ {result.error}</p>
+        <div className="card" style={{ borderLeft: "3px solid var(--danger)", marginBottom: 16 }}>
+          <p style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500 }}>⚠️ {result.error}</p>
         </div>
       )}
 

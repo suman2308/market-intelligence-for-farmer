@@ -83,7 +83,7 @@ export default function GrievancePage() {
           <button onClick={() => router.back()} aria-label="Go back"
             style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Help & Grievance</h1>
+            <h1 className="heading-md" style={{ margin: 0 }}>Help & Grievance</h1>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>Report an issue or get help</p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function GrievancePage() {
                 )}
               </div>
               <div style={{ textAlign: "right" }}>
-                <span className="badge" style={{ background: `${statusColor(g.status)}15`, color: statusColor(g.status), padding: "4px 10px", borderRadius: 12, fontSize: 11 }}>
+                <span className="badge" style={{ background: `color-mix(in srgb, ${statusColor(g.status)} 15%, white)`, color: statusColor(g.status), padding: "4px 10px", borderRadius: 12, fontSize: 11 }}>
                   {g.status?.replace(/_/g, " ")}
                 </span>
                 <p className="text-xs" style={{ color: "var(--color-text-tertiary, #9ca3af)", margin: "4px 0 0 0" }}>

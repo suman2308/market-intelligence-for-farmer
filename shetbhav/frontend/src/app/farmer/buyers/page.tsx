@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import MapView, { MapPoint } from "@/components/MapView";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
+import { cropEmoji } from "@/lib/cropEmoji";
 
 export default function BuyersPage() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function BuyersPage() {
                     padding: "3px 8px", borderRadius: 8, fontSize: 12,
                     background: "var(--color-success-light)", color: "var(--color-success)",
                   }}>
-                    {crop === "tomato" ? "🍅" : crop === "onion" ? "🧅" : "🫘"} {crop}
+                    {cropEmoji(crop)} {crop}
                   </span>
                 ))}
               </div>

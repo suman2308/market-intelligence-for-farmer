@@ -10,6 +10,7 @@ import {
 } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
+import { cropEmoji } from "@/lib/cropEmoji";
 
 /**
  * Farmer Dashboard — शेतभाव
@@ -277,7 +278,7 @@ export default function FarmerHome() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <span style={{ fontSize: 24 }}>
-                    {lot.crop_name?.toLowerCase() === "tomato" ? "🍅" : lot.crop_name?.toLowerCase() === "onion" ? "🧅" : "🫘"}
+                    {cropEmoji(lot.crop_name)}
                   </span>
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{lot.crop_name} · {lot.quantity_kg}kg</p>

@@ -515,7 +515,7 @@ body {
 }
 .page-body {
   padding: 0 var(--page-padding);
-  padding-bottom: 100px; /* Space for bottom nav */
+  padding-bottom: calc(100px + env(safe-area-inset-bottom)); /* Space for bottom nav */
 }
 
 /* ── Desktop Sidebar ──────────────────────────────────────────────── */

@@ -11,24 +11,24 @@ import FarmerBottomNav from "@/components/FarmerBottomNav";
  * Order status to human-readable mapping
  */
 const STATUS_MAP: Record<string, { label: string; icon: string; color: string }> = {
-  created: { label: "Order created", icon: "📝", color: "#667085" },
-  matched: { label: "Matched with buyer", icon: "🤝", color: "#2563eb" },
-  offer_received: { label: "Offer received", icon: "📨", color: "#D97706" },
-  negotiating: { label: "Negotiating", icon: "💬", color: "#D97706" },
-  accepted: { label: "Offer accepted", icon: "✅", color: "#16a34a" },
-  pickup_scheduled: { label: "Pickup scheduled", icon: "🚚", color: "#2563eb" },
-  in_transit: { label: "In transit", icon: "🚛", color: "#2563eb" },
-  delivered: { label: "Delivered", icon: "📦", color: "#16a34a" },
-  quality_confirmed: { label: "Quality confirmed", icon: "✓", color: "#16a34a" },
-  payment_pending: { label: "Payment pending", icon: "⏳", color: "#D97706" },
-  paid: { label: "Paid", icon: "💰", color: "#16a34a" },
-  completed: { label: "Completed", icon: "✅", color: "#16a34a" },
-  disputed: { label: "Disputed", icon: "⚠️", color: "#C2413B" },
-  cancelled: { label: "Cancelled", icon: "✕", color: "#667085" },
+  created: { label: "Order created", icon: "📝", color: "var(--text-secondary)" },
+  matched: { label: "Matched with buyer", icon: "🤝", color: "var(--info)" },
+  offer_received: { label: "Offer received", icon: "📨", color: "var(--warning)" },
+  negotiating: { label: "Negotiating", icon: "💬", color: "var(--warning)" },
+  accepted: { label: "Offer accepted", icon: "✅", color: "var(--success)" },
+  pickup_scheduled: { label: "Pickup scheduled", icon: "🚚", color: "var(--info)" },
+  in_transit: { label: "In transit", icon: "🚛", color: "var(--info)" },
+  delivered: { label: "Delivered", icon: "📦", color: "var(--success)" },
+  quality_confirmed: { label: "Quality confirmed", icon: "✓", color: "var(--success)" },
+  payment_pending: { label: "Payment pending", icon: "⏳", color: "var(--warning)" },
+  paid: { label: "Paid", icon: "💰", color: "var(--success)" },
+  completed: { label: "Completed", icon: "✅", color: "var(--success)" },
+  disputed: { label: "Disputed", icon: "⚠️", color: "var(--danger)" },
+  cancelled: { label: "Cancelled", icon: "✕", color: "var(--text-secondary)" },
 };
 
 function getStatusInfo(status: string) {
-  return STATUS_MAP[status] || { label: status?.replace(/_/g, " "), icon: "●", color: "#667085" };
+  return STATUS_MAP[status] || { label: status?.replace(/_/g, " "), icon: "●", color: "var(--text-secondary)" };
 }
 
 /**
@@ -118,7 +118,7 @@ export default function OrdersPage() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0" }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("my_orders")}</h1>
+          <h1 className="heading-md" style={{ margin: 0 }}>{t("my_orders")}</h1>
         </div>
 
         {/* Tabs */}
@@ -191,7 +191,7 @@ export default function OrdersPage() {
                     <div style={{ textAlign: "right" }}>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 8,
-                        background: `${info.color}15`, color: info.color, display: "inline-block",
+                        background: `color-mix(in srgb, ${info.color} 15%, white)`, color: info.color, display: "inline-block",
                       }}>
                         {info.label}
                       </span>

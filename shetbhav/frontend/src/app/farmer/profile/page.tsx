@@ -77,7 +77,7 @@ export default function FarmerProfile() {
       <FarmerHeader />
     <div className="farmer-page">
       <div style={{ padding: "16px 0" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("profile")}</h1>
+        <h1 className="heading-md" style={{ margin: 0 }}>{t("profile")}</h1>
       </div>
 
       {/* Profile Card */}

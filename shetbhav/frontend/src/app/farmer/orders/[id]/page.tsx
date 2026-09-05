@@ -31,6 +31,8 @@ const STATUS_LABELS: Record<string, string> = {
   payment_pending: "Payment Pending",
   paid: "Paid",
   completed: "Completed",
+  disputed: "Disputed",
+  cancelled: "Cancelled",
 };
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
