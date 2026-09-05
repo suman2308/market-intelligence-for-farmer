@@ -124,11 +124,11 @@ export default function QualityPage() {
       <div className="farmer-page">
       {/* Header */}
       <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => router.back()}
-          style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4 }}>←</button>
+        <button onClick={() => router.back()} aria-label="Go back"
+          style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("quality") || "Quality Grading"}</h1>
-          <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>AI-powered crop quality analysis</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>AI-powered crop quality analysis</p>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export default function QualityPage() {
                     <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
                       Lot #{lot.id} — {lot.crop_name}
                     </p>
-                    <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
                       {lot.quantity_kg}kg · Grade {lot.quality_grade} · {lot.address || "Nashik"}
                     </p>
                   </div>
@@ -221,7 +221,7 @@ export default function QualityPage() {
                 <p style={{ fontSize: 12, color: "#16a34a", margin: 0, fontWeight: 500 }}>
                   ✅ Photo ready for analysis
                 </p>
-                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0 0" }}>Tap to change photo</p>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>Tap to change photo</p>
               </div>
             ) : (
               <div>
@@ -229,7 +229,7 @@ export default function QualityPage() {
                 <p style={{ fontSize: 14, fontWeight: 600, margin: "8px 0 4px 0", color: "#374151" }}>
                   Take a clear photo of your {selectedLot.crop_name}
                 </p>
-                <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
                   Tap to use camera or select from gallery · JPEG, PNG, WebP
                 </p>
               </div>
@@ -248,6 +248,12 @@ export default function QualityPage() {
             }}>3</span>
             <span style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>Get your quality grade</span>
           </div>
+
+          {!["tomato", "onion", "soybean"].includes(selectedLot.crop_name?.toLowerCase()) && (
+            <p style={{ fontSize: 12, color: "var(--warning, #d97706)", margin: "0 0 10px 0" }}>
+              ⚠️ AI grading isn't tuned for {selectedLot.crop_name} yet — use Manual Grade instead for a reliable result.
+            </p>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <button className="btn-primary" onClick={assessAI} disabled={analyzing || loading}
@@ -310,7 +316,7 @@ export default function QualityPage() {
                 <div style={{
                   fontSize: 28, fontWeight: 800, color: gradeColor(result.grade), lineHeight: 1,
                 }}>{result.confidence}%</div>
-                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0 0" }}>Confidence</p>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>Confidence</p>
               </div>
             </div>
 
@@ -326,7 +332,7 @@ export default function QualityPage() {
             <p style={{ fontSize: 13, color: "#6b7280", marginTop: 12, lineHeight: 1.5, fontStyle: "italic" }}>
               {result.notes}
             </p>
-            <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 8 }}>{result.source_label}</p>
+            <p style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 8 }}>{result.source_label}</p>
           </div>
 
           {/* Factor Breakdown */}
@@ -352,7 +358,7 @@ export default function QualityPage() {
                         transition: "width 0.5s ease",
                       }} />
                     </div>
-                    <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0 0" }}>{factor.description}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>{factor.description}</p>
                   </div>
                 ))}
               </div>
@@ -366,7 +372,7 @@ export default function QualityPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {result.color_analysis && (
                   <div style={{ padding: 10, borderRadius: 12, background: "#fafafa" }}>
-                    <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Color</p>
+                    <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Color</p>
                     <p style={{ fontSize: 13, color: "#374151", margin: "4px 0 0 0", fontWeight: 500 }}>
                       Hue: {result.color_analysis.dominant_hue}°
                     </p>
@@ -377,11 +383,11 @@ export default function QualityPage() {
                 )}
                 {result.defect_analysis && (
                   <div style={{ padding: 10, borderRadius: 12, background: "#fafafa" }}>
-                    <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Defects</p>
+                    <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Defects</p>
                     <p style={{ fontSize: 13, color: result.defect_analysis.has_visible_defects ? "#dc2626" : "#16a34a", margin: "4px 0 0 0", fontWeight: 500 }}>
                       {result.defect_analysis.has_visible_defects ? "⚠️ Spots detected" : "✅ Clean surface"}
                     </p>
-                    <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
                       Dark area: {(result.defect_analysis.dark_spot_ratio * 100).toFixed(1)}%
                     </p>
                   </div>
@@ -401,7 +407,7 @@ export default function QualityPage() {
 
       {/* Info */}
       <div className="card" style={{ marginBottom: 20, padding: 14 }}>
-        <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
           🤖 AI grading analyzes color vibrancy, surface uniformity, freshness, and blemish detection.
           Supported: Tomato, Onion, Soybean. Upload a clear, well-lit photo for best results.
           Final grade is subject to buyer verification.

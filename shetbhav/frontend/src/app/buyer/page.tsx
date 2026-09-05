@@ -18,6 +18,7 @@ export default function BuyerDashboard() {
   const [showCreateDemand, setShowCreateDemand] = useState(false);
   const [offerModal, setOfferModal] = useState<any>(null);
   const [offerForm, setOfferForm] = useState({ price_per_q: 2500, quantity_kg: 1000, delivery_date: "" });
+  const [quantityCapped, setQuantityCapped] = useState(false);
   const [demandForm, setDemandForm] = useState({
     crop_id: 0, quantity_kg: 5000, quality_grade: "A",
     required_by_date: "", district: "Pune", offered_price_per_q: 2500,
@@ -87,6 +88,13 @@ export default function BuyerDashboard() {
   };
 
   useEffect(loadDashboard, [user]);
+
+  useEffect(() => {
+    if (!offerModal) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") setOfferModal(null); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [offerModal]);
 
   if (loading) return <div style={{ padding: 16 }}><Skeleton height={80} count={4} /></div>;
   if (!user) { router.push("/login"); return null; }
@@ -292,7 +300,7 @@ export default function BuyerDashboard() {
                     </button>
                   ) : null}
                   <button className="btn-secondary btn-sm" style={{ width: "100%" }}
-                    onClick={() => { setOfferForm({ price_per_q: lot.price_per_q || 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setOfferModal(lot); }}>
+                    onClick={() => { setOfferForm({ price_per_q: lot.price_per_q || 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setQuantityCapped(false); setOfferModal(lot); }}>
                     {lot.price_per_q ? "Propose a different price" : "Propose a price"}
                   </button>
                 </div>
@@ -453,10 +461,17 @@ export default function BuyerDashboard() {
       {offerModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 1000 }}
           onClick={() => setOfferModal(null)}>
-          <div className="card" style={{ width: "100%", maxWidth: 480, borderRadius: "16px 16px 0 0", padding: 20, maxHeight: "80vh", overflow: "auto" }}
+          <div className="card" role="dialog" aria-modal="true" aria-labelledby="offer-modal-title"
+            style={{ width: "100%", maxWidth: 480, borderRadius: "16px 16px 0 0", padding: 20, maxHeight: "80vh", overflow: "auto" }}
             onClick={e => e.stopPropagation()}>
             <div className="grabber" />
-            <h3 className="heading-md" style={{ margin: "8px 0 12px" }}>Make Offer</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "8px 0 12px" }}>
+              <h3 id="offer-modal-title" className="heading-md" style={{ margin: 0 }}>Make Offer</h3>
+              <button onClick={() => setOfferModal(null)} aria-label="Close" autoFocus
+                style={{ background: "var(--stone-100, #f3f4f6)", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>
+                ✕
+              </button>
+            </div>
             <div className="card" style={{ marginBottom: 12, background: "var(--green-50)" }}>
               <p style={{ fontWeight: 600, margin: 0 }}>{offerModal.crop_name} — {offerModal.quantity_kg}kg</p>
               <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {offerModal.quality_grade} · {offerModal.address}</p>
@@ -470,7 +485,17 @@ export default function BuyerDashboard() {
               <div>
                 <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>Quantity (max {offerModal.quantity_kg}kg)</label>
                 <input className="input" type="number" value={offerForm.quantity_kg}
-                  onChange={e => setOfferForm({ ...offerForm, quantity_kg: Math.min(Number(e.target.value), offerModal.quantity_kg) })} min={100} />
+                  onChange={e => {
+                    const raw = Number(e.target.value);
+                    const capped = raw > offerModal.quantity_kg;
+                    setQuantityCapped(capped);
+                    setOfferForm({ ...offerForm, quantity_kg: Math.min(raw, offerModal.quantity_kg) });
+                  }} min={100} />
+                {quantityCapped && (
+                  <p className="text-xs" style={{ color: "var(--warning, #d97706)", margin: "4px 0 0" }}>
+                    Capped at {offerModal.quantity_kg}kg — that's all this lot has available.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs" style={{ fontWeight: 600, display: "block", marginBottom: 4 }}>Delivery Date</label>

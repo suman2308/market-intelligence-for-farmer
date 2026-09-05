@@ -84,7 +84,7 @@ export default function GrievancePage() {
             style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Help & Grievance</h1>
-            <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0 0" }}>Report an issue or get help</p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>Report an issue or get help</p>
           </div>
         </div>
 

@@ -46,8 +46,8 @@ export default function BuyersPage() {
     <div className="farmer-shell">
       <FarmerHeader />
       <div className="page-header">
-        <button onClick={() => router.back()}
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 8 }}>←</button>
+        <button onClick={() => router.back()} aria-label="Go back"
+          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 12, margin: -4, minWidth: 44, minHeight: 44 }}>←</button>
         <h1 className="heading-md">{t("buyers_title")}</h1>
       </div>
 

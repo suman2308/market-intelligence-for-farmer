@@ -36,8 +36,8 @@ export default function FarmerLots() {
       <FarmerHeader />
       <div className="farmer-page">
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => router.back()}
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>←</button>
+        <button onClick={() => router.back()} aria-label="Go back"
+          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("my_produce")}</h1>
       </div>
 
@@ -74,7 +74,7 @@ export default function FarmerLots() {
                   Grade {lot.quality_grade} · {lot.urgency}
                   {lot.price_per_q ? ` · ₹${lot.price_per_q.toLocaleString("en-IN")}/q` : ""}
                 </p>
-                {lot.address && <p style={{ fontSize: 12, color: "#9ca3af", margin: "4px 0 0 0" }}>{lot.address}</p>}
+                {lot.address && <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0 0" }}>{lot.address}</p>}
               </div>
               <span className={`badge ${lot.status === "active" ? "badge-active" : "badge-completed"}`}>
                 {lot.status}

@@ -159,7 +159,7 @@ export default function FarmerProfile() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#6b7280", fontSize: 14 }}>Coordinates</span>
-              <span style={{ fontWeight: 500, fontSize: 14, color: "#9ca3af" }}>
+              <span style={{ fontWeight: 500, fontSize: 14, color: "var(--text-secondary)" }}>
                 {profile?.farm_location_lat?.toFixed(4)}, {profile?.farm_location_lng?.toFixed(4)}
               </span>
             </div>
@@ -190,7 +190,7 @@ export default function FarmerProfile() {
         </div>
 
         {orders.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#9ca3af", textAlign: "center", margin: 0 }}>No transactions yet</p>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", margin: 0 }}>No transactions yet</p>
         ) : (
           orders.slice(0, 5).map((order: any) => (
             <div key={order.id}
@@ -198,7 +198,7 @@ export default function FarmerProfile() {
               onClick={() => router.push(`/farmer/orders/${order.id}`)}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Order #{order.id} · {order.quantity_kg}kg</p>
-                <p style={{ fontSize: 11, color: "#9ca3af", margin: "2px 0 0" }}>₹{order.price_per_q}/q</p>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>₹{order.price_per_q}/q</p>
               </div>
               <div style={{ textAlign: "right" }}>
                 <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>₹{order.total_value?.toLocaleString("en-IN")}</p>
