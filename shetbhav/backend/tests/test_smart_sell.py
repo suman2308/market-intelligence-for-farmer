@@ -123,8 +123,10 @@ class TestScenarioD:
 # SCENARIO E: No storage available
 # ═══════════════════════════════════════════════════════════════════
 class TestScenarioE:
-    """When no storage, storage option should not appear."""
-    def test_no_storage_option(self):
+    """Storage option stays visible for comparison even with no storage
+    lined up yet — just honestly flagged as needing one arranged, with
+    lower confidence than the same option when storage is already available."""
+    def test_storage_option_still_shown_but_flagged(self):
         token = _register_farmer("scenario_e")
         resp = client.post("/smart-sell", json={
             "crop_id": 1, "quantity_kg": 1500, "quality_grade": "A",
@@ -134,9 +136,28 @@ class TestScenarioE:
         assert resp.status_code == 200
         data = resp.json()
         all_options = [data["best_option"]] + data.get("alternatives", [])
-        storage_options = [o for o in all_options if "storage" in o["option_type"].lower() or "sell later" in o["target_name"].lower()]
-        # Storage option should NOT appear when storage_available=False
-        assert len(storage_options) == 0
+        storage_options = [o for o in all_options if o["option_type"] == "storage_sell_later"]
+        assert len(storage_options) == 1
+        assert any("storage" in r.lower() and "arranged" in r.lower() for r in storage_options[0]["risks"])
+
+    def test_storage_option_more_confident_when_already_available(self):
+        token = _register_farmer("scenario_e2")
+        no_storage = client.post("/smart-sell", json={
+            "crop_id": 1, "quantity_kg": 1500, "quality_grade": "A",
+            "location_lat": 20.0, "location_lng": 73.7,
+            "urgency": "flexible", "storage_available": False,
+        }, headers=_auth(token)).json()
+        has_storage = client.post("/smart-sell", json={
+            "crop_id": 1, "quantity_kg": 1500, "quality_grade": "A",
+            "location_lat": 20.0, "location_lng": 73.7,
+            "urgency": "flexible", "storage_available": True,
+        }, headers=_auth(token)).json()
+
+        def storage_confidence(data):
+            all_options = [data["best_option"]] + data.get("alternatives", [])
+            return next(o["confidence"] for o in all_options if o["option_type"] == "storage_sell_later")
+
+        assert storage_confidence(has_storage) > storage_confidence(no_storage)
 
 
 # ═══════════════════════════════════════════════════════════════════

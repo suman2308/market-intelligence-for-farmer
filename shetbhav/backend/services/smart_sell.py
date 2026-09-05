@@ -330,53 +330,61 @@ def get_smart_sell_recommendation(
     # ── Option 3: Store and sell later ────────────────────────────────
     # §18: Forecast only influences gross value estimate; storage, transport,
     # handling, and spoilage are ALWAYS deducted. Forecast does NOT alone
-    # determine the recommendation.
-    if request.storage_available:
-        future_price = forecast.get("predicted_price", current_modal * 1.03)
-        forecast_low = forecast.get("expected_low", future_price * 0.92)
-        forecast_high = forecast.get("expected_high", future_price * 1.08)
-        forecast_confidence = forecast.get("confidence", 0.5)
+    # determine the recommendation. Always computed — even when the farmer
+    # has no storage lined up yet — so "wait" stays a visible, comparable
+    # option rather than silently disappearing; its confidence is docked
+    # and a risk note added when storage isn't already arranged.
+    future_price = forecast.get("predicted_price", current_modal * 1.03)
+    forecast_low = forecast.get("expected_low", future_price * 0.92)
+    forecast_high = forecast.get("expected_high", future_price * 1.08)
+    forecast_confidence = forecast.get("confidence", 0.5)
 
-        # §18: Full cost breakdown for storage option
-        storage_days = 7
-        storage_cost_total = estimate_storage_cost(request.quantity_kg, storage_days)
-        storage_cost_per_q = storage_cost_total / quantity_q if quantity_q > 0 else 0
-        future_loss = estimate_spoilage(crop_name, request.quantity_kg, storage_days)
-        future_loss_per_q = future_loss / quantity_q if quantity_q > 0 else 0
-        future_transport = estimate_transport_cost(
-            request.location_lat, request.location_lng,
-            19.9975, 73.7898
-        )
-        handling = HANDLING_COST_PER_Q
+    # §18: Full cost breakdown for storage option
+    storage_days = 7
+    storage_cost_total = estimate_storage_cost(request.quantity_kg, storage_days)
+    storage_cost_per_q = storage_cost_total / quantity_q if quantity_q > 0 else 0
+    future_loss = estimate_spoilage(crop_name, request.quantity_kg, storage_days)
+    future_loss_per_q = future_loss / quantity_q if quantity_q > 0 else 0
+    future_transport = estimate_transport_cost(
+        request.location_lat, request.location_lng,
+        19.9975, 73.7898
+    )
+    handling = HANDLING_COST_PER_Q
 
-        # §18: Net = gross - transport - storage - handling - spoilage
-        storage_net = calculate_net_realization(
-            future_price, future_transport, storage_cost_per_q, future_loss_per_q, handling
-        )
+    # §18: Net = gross - transport - storage - handling - spoilage
+    storage_net = calculate_net_realization(
+        future_price, future_transport, storage_cost_per_q, future_loss_per_q, handling
+    )
 
-        storage_option = score_sell_option(
-            option_type="storage_sell_later",
-            target_name=f"Sell at mandi after {storage_days}-day storage",
-            gross_price=round(future_price, 0),
-            transport_cost=future_transport,
-            storage_cost=storage_cost_per_q,
-            expected_loss=future_loss_per_q,
-            quality_match=True,
-            demand_level="medium",
-            payment_reliability=70,
-            quantity_available=999999,
-            quantity_needed=request.quantity_kg,
-            distance_km=future_transport / TRANSPORT_COST_PER_KM,
-            forecast_confidence=forecast_confidence * 0.8,
-            sale_window_days=storage_days,
-            reference_price=current_modal,
-        )
-        storage_option.reasons.append(f"Forecast: ₹{future_price:,.0f}/q in {storage_days} days")
-        storage_option.reasons.append(f"Net after all costs: ₹{storage_net:,.0f}/q")
-        storage_option.risks.append("Spoilage risk during storage")
-        storage_option.risks.append(f"Forecast confidence: {forecast_confidence*100:.0f}%")
-        storage_option.data_labels["gross_price"] = forecast.get("data_source", "model_prediction") + " forecast"
-        options.append(storage_option)
+    # Docked confidence when the farmer hasn't actually arranged storage
+    # yet — the option stays visible for comparison, but is honest about
+    # the extra step it would take.
+    storage_confidence_factor = 0.8 if request.storage_available else 0.6
+    storage_option = score_sell_option(
+        option_type="storage_sell_later",
+        target_name=f"Sell at mandi after {storage_days}-day storage",
+        gross_price=round(future_price, 0),
+        transport_cost=future_transport,
+        storage_cost=storage_cost_per_q,
+        expected_loss=future_loss_per_q,
+        quality_match=True,
+        demand_level="medium",
+        payment_reliability=70,
+        quantity_available=999999,
+        quantity_needed=request.quantity_kg,
+        distance_km=future_transport / TRANSPORT_COST_PER_KM,
+        forecast_confidence=forecast_confidence * storage_confidence_factor,
+        sale_window_days=storage_days,
+        reference_price=current_modal,
+    )
+    storage_option.reasons.append(f"Forecast: ₹{future_price:,.0f}/q in {storage_days} days")
+    storage_option.reasons.append(f"Net after all costs: ₹{storage_net:,.0f}/q")
+    storage_option.risks.append("Spoilage risk during storage")
+    storage_option.risks.append(f"Forecast confidence: {forecast_confidence*100:.0f}%")
+    if not request.storage_available:
+        storage_option.risks.append("You don't have storage arranged yet — this assumes you line some up")
+    storage_option.data_labels["gross_price"] = forecast.get("data_source", "model_prediction") + " forecast"
+    options.append(storage_option)
 
     # Sort by score
     options.sort(key=lambda o: o.score, reverse=True)

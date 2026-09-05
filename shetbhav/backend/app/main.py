@@ -37,7 +37,7 @@ from models.schemas import (
     BuyerProfileResponse, BuyerProfileUpdate,
     FPOProfileUpdate, FPOAggregateRequest,
     CropResponse, MarketResponse,
-    ProduceLotCreate, ProduceLotResponse,
+    ProduceLotCreate, ProduceLotUpdate, ProduceLotResponse,
     DemandRequestCreate, DemandRequestResponse, FulfilDemandRequest,
     OfferCreate, OfferCounter, OfferAccept, OfferResponse,
     OrderResponse, OrderStatusUpdate,
@@ -724,6 +724,59 @@ def set_lot_fpo_availability(
     db.commit()
     db.refresh(lot)
     return _lot_to_response(db, lot)
+
+
+@app.put("/lots/{lot_id}", response_model=ProduceLotResponse)
+def update_lot(
+    lot_id: int,
+    data: ProduceLotUpdate,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """Edit an existing lot's terms — only while it's still active and
+    unclaimed, so a buyer can never be surprised by a change to a lot
+    they've already offered on or booked."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile or lot.farmer_id != farmer_profile.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is not active (status: {lot.status})")
+    update = data.model_dump(exclude_unset=True)
+    if "price_per_q" in update:
+        lot.expected_price_per_q = update.pop("price_per_q")
+    for key, val in update.items():
+        setattr(lot, key, val)
+    db.commit()
+    db.refresh(lot)
+    return _lot_to_response(db, lot)
+
+
+@app.delete("/lots/{lot_id}")
+def delete_lot(
+    lot_id: int,
+    user: User = Depends(require_role(UserRole.FARMER)),
+    db: Session = Depends(get_db),
+):
+    """Withdraw a lot from sale. A soft cancel (status='cancelled') rather
+    than a hard delete — offers already sent against this lot keep a
+    valid lot_id to point back to."""
+    lot = db.query(ProduceLot).filter(ProduceLot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.user_id == user.id).first()
+    if not farmer_profile or lot.farmer_id != farmer_profile.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is not active (status: {lot.status})")
+    lot.status = "cancelled"
+    _reject_stale_offers(
+        db, lot_id=lot.id, reason=f"Lot #{lot.id} was withdrawn by the farmer.",
+    )
+    db.commit()
+    return {"status": "cancelled"}
 
 
 @app.get("/lots", response_model=List[ProduceLotResponse])
@@ -2024,6 +2077,16 @@ def mark_read(notif_id: int, user: User = Depends(get_current_user), db: Session
         n.is_read = True
         db.commit()
     return {"status": "ok"}
+
+
+@app.delete("/notifications/{notif_id}")
+def delete_notification(notif_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    n = db.query(Notification).filter(Notification.id == notif_id, Notification.user_id == user.id).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    db.delete(n)
+    db.commit()
+    return {"status": "deleted"}
 
 
 # ── Admin Routes ─────────────────────────────────────────────────────

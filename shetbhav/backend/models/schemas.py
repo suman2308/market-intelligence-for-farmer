@@ -199,6 +199,14 @@ class ProduceLotCreate(BaseModel):
     # aggregation. Purely additive — omitting it behaves exactly as before.
     available_for_fpo: bool = False
 
+class ProduceLotUpdate(BaseModel):
+    quantity_kg: Optional[float] = Field(default=None, gt=0)
+    price_per_q: Optional[float] = Field(default=None, gt=0)
+    quality_grade: Optional[QualityGrade] = None
+    urgency: Optional[UrgencyLevel] = None
+    storage_available: Optional[bool] = None
+    available_for_fpo: Optional[bool] = None
+
 class ProduceLotResponse(BaseModel):
     id: int
     farmer_id: int
