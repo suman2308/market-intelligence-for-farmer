@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 

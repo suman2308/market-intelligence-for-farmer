@@ -137,21 +137,23 @@ export default function FarmerHome() {
                     <div className="card" style={{ cursor: "pointer" }}
                       onClick={() => router.push("/farmer/prices")}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
+                        <p style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
                         <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>→</span>
                       </div>
                       {p ? (
-                        <>
+                        <div style={{ textAlign: "center" }}>
                           <div className="price-big" style={{ fontSize: "clamp(24px, 5.5vw, 30px)" }}>
                             ₹{p.prices?.modal_price?.toLocaleString("en-IN") || "---"}
                           </div>
                           <p className="text-xs" style={{ margin: "4px 0 8px" }}>
                             Range ₹{p.prices?.min_price?.toLocaleString("en-IN")} – ₹{p.prices?.max_price?.toLocaleString("en-IN")}
                           </p>
-                          <DataSourceBadge source={p.data_source_label || "Synthetic demo data"} />
-                        </>
+                          <div style={{ display: "flex", justifyContent: "center" }}>
+                            <DataSourceBadge source={p.data_source_label || "Synthetic demo data"} />
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Price unavailable</p>
+                        <p className="text-xs" style={{ color: "var(--text-secondary)", textAlign: "center" }}>Price unavailable</p>
                       )}
                     </div>
                   </CarouselItem>

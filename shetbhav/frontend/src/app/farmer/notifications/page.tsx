@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { NotificationsPanel } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -22,9 +22,7 @@ export default function FarmerNotifications() {
         </div>
 
         <Card>
-          <CardContent>
-            <NotificationsPanel />
-          </CardContent>
+          <NotificationsPanel />
         </Card>
       </div>
       <FarmerBottomNav />
