@@ -13,7 +13,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -406,6 +406,34 @@ def _order_seller_user_id(db: Session, order: Order) -> Optional[int]:
     return farmer_profile.user_id if farmer_profile else None
 
 
+def _reject_stale_offers(
+    db: Session, *, lot_id: Optional[int] = None, demand_id: Optional[int] = None,
+    exclude_offer_id: Optional[int] = None, reason: str,
+) -> None:
+    """Auto-reject any other PENDING/COUNTERED offers tied to a lot or demand
+    that has just become unavailable (booked/sold/filled). Without this, a
+    stale offer from a losing bidder could still be accepted later, creating
+    a second order against a lot that's already gone."""
+    conditions = []
+    if lot_id is not None:
+        conditions.append(Offer.lot_id == lot_id)
+    if demand_id is not None:
+        conditions.append(Offer.demand_id == demand_id)
+    if not conditions:
+        return
+    query = db.query(Offer).filter(
+        Offer.status.in_([OfferStatus.PENDING, OfferStatus.COUNTERED]),
+        or_(*conditions),
+    )
+    if exclude_offer_id is not None:
+        query = query.filter(Offer.id != exclude_offer_id)
+    for stale in query.all():
+        stale.status = OfferStatus.REJECTED
+        db.add(OfferHistory(offer_id=stale.id, action="auto_rejected", notes=reason))
+        notify(db, stale.from_user_id, "Offer no longer available", reason,
+               type="offer_auto_rejected", link="/buyer")
+
+
 def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
     crop = db.query(Crop).filter(Crop.id == lot.crop_id).first()
     return ProduceLotResponse(
@@ -532,6 +560,10 @@ def book_lot(
         db, seller_user_id, "Lot booked",
         f"Your lot #{lot.id} ({lot.quantity_kg:,.0f}kg) was booked. Awaiting buyer payment.",
         type="lot_booked", link="/farmer/lots",
+    )
+    _reject_stale_offers(
+        db, lot_id=lot.id, exclude_offer_id=offer.id,
+        reason=f"Lot #{lot.id} was booked by another buyer.",
     )
     db.commit()
     db.refresh(order)
@@ -870,6 +902,10 @@ def fulfil_demand(
         f"Your demand for {demand.quantity_kg:,.0f}kg has been matched. Please proceed with payment.",
         type="demand_fulfilled", link="/buyer",
     )
+    _reject_stale_offers(
+        db, lot_id=lot.id, demand_id=demand.id, exclude_offer_id=offer.id,
+        reason=f"Demand #{demand.id} was fulfilled by another farmer/FPO.",
+    )
     db.commit()
     db.refresh(order)
     return order
@@ -967,6 +1003,11 @@ def accept_offer(
         raise HTTPException(status_code=403, detail="Not authorized")
     if offer.status not in (OfferStatus.PENDING, OfferStatus.COUNTERED):
         raise HTTPException(status_code=400, detail=f"Cannot accept offer in {offer.status.value} status")
+
+    lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+    if lot and lot.status != "active":
+        raise HTTPException(status_code=400, detail=f"Lot is no longer available (status: {lot.status})")
+
     offer.status = OfferStatus.ACCEPTED
     history = OfferHistory(
         offer_id=offer.id, price_per_q=offer.price_per_q,
@@ -975,7 +1016,6 @@ def accept_offer(
     db.add(history)
 
     # Auto-create order from accepted offer
-    lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
     if lot:
         farmer_profile = db.query(FarmerProfile).filter(FarmerProfile.id == lot.farmer_id).first()
         farmer_user_id = farmer_profile.user_id if farmer_profile else 0
@@ -984,6 +1024,7 @@ def accept_offer(
         order = Order(
             offer_id=offer.id,
             farmer_id=lot.farmer_id,
+            fpo_id=lot.fpo_id,
             buyer_id=buyer_profile.id if buyer_profile else 0,
             crop_id=lot.crop_id,
             quantity_kg=offer.quantity_kg,
@@ -1006,6 +1047,10 @@ def accept_offer(
             db, offer.from_user_id, "Offer accepted",
             f"Your offer of ₹{offer.price_per_q:,.0f}/q on lot #{lot.id} was accepted. Order #{order.id} created.",
             type="offer_accepted", link=f"/buyer",
+        )
+        _reject_stale_offers(
+            db, lot_id=lot.id, demand_id=offer.demand_id, exclude_offer_id=offer.id,
+            reason=f"Lot #{lot.id} was sold to another buyer.",
         )
 
     db.commit()
@@ -1055,6 +1100,10 @@ def counter_offer(
         raise HTTPException(status_code=403, detail="Not authorized")
     if offer.status not in (OfferStatus.PENDING, OfferStatus.COUNTERED):
         raise HTTPException(status_code=400, detail=f"Cannot counter offer in {offer.status.value} status")
+    if offer.lot_id:
+        lot = db.query(ProduceLot).filter(ProduceLot.id == offer.lot_id).first()
+        if lot and lot.status != "active":
+            raise HTTPException(status_code=400, detail=f"Lot is no longer available (status: {lot.status})")
     # Swap roles: counter-offer makes the current recipient the new offerer
     old_from = offer.from_user_id
     offer.from_user_id = offer.to_user_id

@@ -26,6 +26,120 @@ def _register_and_login(username, role, full_name=None):
     return resp.json()["access_token"]
 
 
+class TestStaleOfferCleanup:
+    """P0 correctness fix: once a lot is booked/sold or a demand is filled,
+    any other still-pending negotiated offers on it must be auto-rejected —
+    otherwise a stale offer could later be accepted into a second,
+    conflicting order against something that's already gone."""
+
+    def test_direct_book_auto_rejects_a_pending_negotiated_offer_on_the_same_lot(self):
+        farmer_token = _register_and_login("stale_farmer", "farmer")
+        buyer_a = _register_and_login("stale_buyer_a", "buyer")
+        buyer_b = _register_and_login("stale_buyer_b", "buyer")
+        lot = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 500, "price_per_q": 2500,
+            "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_token)).json()
+
+        # Buyer A negotiates a lower price instead of booking outright.
+        offer_a = client.post("/offers", json={
+            "lot_id": lot["id"], "price_per_q": 2300, "quantity_kg": 500,
+        }, headers=_auth(buyer_a)).json()
+        assert offer_a["status"] == "pending"
+
+        # Buyer B books it directly at the listed price.
+        book_resp = client.post(f"/lots/{lot['id']}/book", headers=_auth(buyer_b))
+        assert book_resp.status_code == 200
+
+        # Buyer A's dangling offer must now be rejected, not still pending.
+        offers = client.get("/offers", headers=_auth(buyer_a)).json()
+        stale = next(o for o in offers if o["id"] == offer_a["id"])
+        assert stale["status"] == "rejected"
+
+        notifs = client.get("/notifications", headers=_auth(buyer_a)).json()
+        assert any(n["type"] == "offer_auto_rejected" for n in notifs)
+
+        # And it can no longer be accepted by the farmer even if they try.
+        accept_resp = client.post(f"/offers/{offer_a['id']}/accept", headers=_auth(farmer_token))
+        assert accept_resp.status_code == 400
+
+    def test_accepting_one_offer_auto_rejects_a_competing_offer_on_the_same_lot(self):
+        farmer_token = _register_and_login("stale_farmer2", "farmer")
+        buyer_a = _register_and_login("stale_buyer_c", "buyer")
+        buyer_b = _register_and_login("stale_buyer_d", "buyer")
+        lot = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 300, "price_per_q": 2200,
+            "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_token)).json()
+
+        offer_a = client.post("/offers", json={
+            "lot_id": lot["id"], "price_per_q": 2100, "quantity_kg": 300,
+        }, headers=_auth(buyer_a)).json()
+        offer_b = client.post("/offers", json={
+            "lot_id": lot["id"], "price_per_q": 2150, "quantity_kg": 300,
+        }, headers=_auth(buyer_b)).json()
+
+        accept_resp = client.post(f"/offers/{offer_b['id']}/accept", headers=_auth(farmer_token))
+        assert accept_resp.status_code == 200
+
+        offers = client.get("/offers", headers=_auth(buyer_a)).json()
+        stale = next(o for o in offers if o["id"] == offer_a["id"])
+        assert stale["status"] == "rejected"
+
+    def test_cannot_counter_an_offer_on_a_no_longer_active_lot(self):
+        farmer_token = _register_and_login("stale_farmer3", "farmer")
+        buyer_a = _register_and_login("stale_buyer_e", "buyer")
+        buyer_b = _register_and_login("stale_buyer_f", "buyer")
+        lot = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 400, "price_per_q": 2400,
+            "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_token)).json()
+
+        offer_a = client.post("/offers", json={
+            "lot_id": lot["id"], "price_per_q": 2300, "quantity_kg": 400,
+        }, headers=_auth(buyer_a)).json()
+
+        book_resp = client.post(f"/lots/{lot['id']}/book", headers=_auth(buyer_b))
+        assert book_resp.status_code == 200
+
+        counter_resp = client.post(f"/offers/{offer_a['id']}/counter", json={"price_per_q": 2350}, headers=_auth(farmer_token))
+        assert counter_resp.status_code == 400
+
+    def test_fulfil_demand_auto_rejects_a_competing_offer_on_the_same_demand(self):
+        buyer_token = _register_and_login("stale_buyer_g", "buyer")
+        farmer_a = _register_and_login("stale_farmer_a", "farmer")
+        farmer_b = _register_and_login("stale_farmer_b", "farmer")
+
+        demand = client.post("/demand", json={
+            "crop_id": 1, "quantity_kg": 350, "district": "Nashik",
+            "offered_price_per_q": 2500,
+        }, headers=_auth(buyer_token)).json()
+
+        lot_a = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 350, "price_per_q": 2300,
+            "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_a)).json()
+        lot_b = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 350, "price_per_q": 2350,
+            "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_b)).json()
+
+        # Farmer A proposes a counter-price against the demand instead of
+        # locking it outright.
+        offer_a = client.post("/offers", json={
+            "lot_id": lot_a["id"], "demand_id": demand["id"],
+            "price_per_q": 2450, "quantity_kg": 350,
+        }, headers=_auth(farmer_a)).json()
+
+        # Farmer B locks and fulfils the same demand directly.
+        fulfil_resp = client.post(f"/demand/{demand['id']}/fulfil", json={"lot_id": lot_b["id"]}, headers=_auth(farmer_b))
+        assert fulfil_resp.status_code == 200
+
+        offers = client.get("/offers", headers=_auth(farmer_a)).json()
+        stale = next(o for o in offers if o["id"] == offer_a["id"])
+        assert stale["status"] == "rejected"
+
+
 class TestBookLot:
     def test_book_creates_payment_pending_order_at_listed_price(self):
         farmer_token = _register_and_login("book_farmer", "farmer")
