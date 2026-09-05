@@ -30,6 +30,7 @@ export default function FarmerHome() {
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
   const [recommendationError, setRecommendationError] = useState(false);
+  const [sectionsLoaded, setSectionsLoaded] = useState(false);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
@@ -40,8 +41,10 @@ export default function FarmerHome() {
     api.get("/crops").then(r => {
       const list: any[] = r.data || [];
       const onion = list.find((c: any) => (c.name || "").toLowerCase() === "onion");
-      setCropId((onion || list[0])?.id ?? null);
-    }).catch(() => setCropId(null));
+      const resolved = (onion || list[0])?.id ?? null;
+      setCropId(resolved);
+      if (resolved === null) setSectionsLoaded(true);
+    }).catch(() => { setCropId(null); setSectionsLoaded(true); });
   }, [user]);
 
   const loadDashboardAndLots = () => {
@@ -54,6 +57,7 @@ export default function FarmerHome() {
       api.get("/lots").catch(() => { setLotsError(true); return { data: [] }; }),
     ]).then(([d, p, l]) => {
       setDashboard(d.data); setPrices(p.data); setLots(l.data);
+      setSectionsLoaded(true);
     });
   };
 
@@ -196,7 +200,8 @@ export default function FarmerHome() {
       </div>
 
       {/* ── Market Price Snapshot ── */}
-      {prices && (
+      {!sectionsLoaded && <div className="section-gap"><Skeleton height={150} /></div>}
+      {sectionsLoaded && prices && (
         <div className="card section-gap" style={{ cursor: "pointer" }} onClick={() => router.push("/farmer/prices")}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <p className="heading-sm" style={{ margin: 0 }}>📊 {t("todays_prices") || "Today's Prices"}</p>
@@ -220,17 +225,19 @@ export default function FarmerHome() {
         </div>
       )}
 
-      {dashboardError && (
+      {/* ── Dashboard Stats ── */}
+      {!sectionsLoaded ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <Skeleton height={72} /><Skeleton height={72} /><Skeleton height={72} /><Skeleton height={72} />
+        </div>
+      ) : dashboardError ? (
         <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your dashboard stats.</p>
           <button className="btn-sm" onClick={loadDashboardAndLots} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             Retry
           </button>
         </div>
-      )}
-
-      {/* ── Dashboard Stats ── */}
-      {dashboard && (
+      ) : dashboard && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
             { value: dashboard.active_lots, label: t("active_lots") || "Active Lots", icon: "📦", color: "var(--green-600)" },
@@ -249,7 +256,9 @@ export default function FarmerHome() {
       )}
 
       {/* ── My Lots ── */}
-      {lotsError ? (
+      {!sectionsLoaded ? (
+        <div className="section-gap"><Skeleton height={70} count={2} /></div>
+      ) : lotsError ? (
         <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your produce lots.</p>
           <button className="btn-sm" onClick={loadDashboardAndLots} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
