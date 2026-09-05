@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -111,7 +114,69 @@ export default function OrdersPage() {
 
   const activeOrders = orders.filter(o => !["completed", "cancelled", "paid"].includes(o.status));
   const completedOrders = orders.filter(o => ["completed", "cancelled", "paid"].includes(o.status));
-  const displayOrders = activeTab === "active" ? activeOrders : completedOrders;
+
+  const renderOrders = (list: any[], kind: "active" | "completed") => {
+    if (loading) return <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100, marginBottom: 12 }} />)}</div>;
+    if (ordersError) return (
+      <Card style={{ textAlign: "center", padding: 32, borderColor: "var(--danger)" }}>
+        <p style={{ fontSize: 28, margin: 0 }}>⚠️</p>
+        <p style={{ fontSize: 14, color: "var(--danger)", margin: "8px 0 12px 0" }}>
+          Couldn't load your orders. Check your connection and try again.
+        </p>
+        <Button onClick={loadOrders}>Retry</Button>
+      </Card>
+    );
+    if (list.length === 0) return (
+      <Card style={{ textAlign: "center", padding: 40 }}>
+        <p style={{ fontSize: 32, margin: 0 }}>📋</p>
+        <p style={{ fontSize: 14, color: "#667085", margin: "8px 0 0 0" }}>
+          {kind === "active"
+            ? "No active orders. When you accept an offer, your orders will appear here."
+            : "Completed orders will show up here after delivery and payment."
+          }
+        </p>
+        {kind === "active" && (
+          <Button style={{ marginTop: 12 }} onClick={() => router.push("/farmer/lots")}>
+            {t("create_lot") || "Create a Lot"}
+          </Button>
+        )}
+      </Card>
+    );
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {list.map(order => {
+          const info = getStatusInfo(order.status);
+          return (
+            <Card key={order.id} style={{ cursor: "pointer" }}
+              onClick={() => router.push(`/farmer/orders/${order.id}`)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 18 }}>{info.icon}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Order #{order.id}</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#667085", margin: 0 }}>
+                    {order.quantity_kg}kg · ₹{order.price_per_q?.toLocaleString("en-IN")}/q
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 8,
+                    background: `color-mix(in srgb, ${info.color} 15%, white)`, color: info.color, display: "inline-block",
+                  }}>
+                    {info.label}
+                  </span>
+                  <p style={{ fontSize: 18, fontWeight: 700, margin: "4px 0 0 0", color: "#172033" }}>
+                    ₹{order.total_value?.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="farmer-shell">
@@ -121,91 +186,14 @@ export default function OrdersPage() {
           <h1 className="heading-md" style={{ margin: 0 }}>{t("my_orders")}</h1>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 16, paddingBottom: 4 }}>
-          <button
-            style={{
-              padding: "10px 20px", borderRadius: 12, border: "none", cursor: "pointer", flexShrink: 0,
-              background: activeTab === "active" ? "#1F6B45" : "#f3f4f6",
-              color: activeTab === "active" ? "white" : "#667085",
-              fontWeight: 600, fontSize: 14,
-            }}
-            onClick={() => setActiveTab("active")}>
-            {t("active_orders")} ({activeOrders.length})
-          </button>
-          <button
-            style={{
-              padding: "10px 20px", borderRadius: 12, border: "none", cursor: "pointer", flexShrink: 0,
-              background: activeTab === "completed" ? "#1F6B45" : "#f3f4f6",
-              color: activeTab === "completed" ? "white" : "#667085",
-              fontWeight: 600, fontSize: 14,
-            }}
-            onClick={() => setActiveTab("completed")}>
-            {t("orders_history")} ({completedOrders.length})
-          </button>
-        </div>
-
-        {loading ? (
-          <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100, marginBottom: 12 }} />)}</div>
-        ) : ordersError ? (
-          <div className="card" style={{ textAlign: "center", padding: 32, borderColor: "var(--danger)" }}>
-            <p style={{ fontSize: 28, margin: 0 }}>⚠️</p>
-            <p style={{ fontSize: 14, color: "var(--danger)", margin: "8px 0 12px 0" }}>
-              Couldn't load your orders. Check your connection and try again.
-            </p>
-            <button className="btn-primary" onClick={loadOrders}>Retry</button>
-          </div>
-        ) : displayOrders.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 40 }}>
-            <p style={{ fontSize: 32, margin: 0 }}>📋</p>
-            <p style={{ fontSize: 14, color: "#667085", margin: "8px 0 0 0" }}>
-              {activeTab === "active"
-                ? "No active orders. When you accept an offer, your orders will appear here."
-                : "Completed orders will show up here after delivery and payment."
-              }
-            </p>
-            {activeTab === "active" && (
-              <button className="btn-primary" style={{ marginTop: 12 }}
-                onClick={() => router.push("/farmer/lots")}>
-                {t("create_lot") || "Create a Lot"}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {displayOrders.map(order => {
-              const info = getStatusInfo(order.status);
-              return (
-                <div key={order.id} className="card" style={{ cursor: "pointer" }}
-                  onClick={() => router.push(`/farmer/orders/${order.id}`)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 18 }}>{info.icon}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600 }}>Order #{order.id}</span>
-                      </div>
-                      <p style={{ fontSize: 12, color: "#667085", margin: 0 }}>
-                        {order.quantity_kg}kg · ₹{order.price_per_q?.toLocaleString("en-IN")}/q
-                      </p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 8,
-                        background: `color-mix(in srgb, ${info.color} 15%, white)`, color: info.color, display: "inline-block",
-                      }}>
-                        {info.label}
-                      </span>
-                      <p style={{ fontSize: 18, fontWeight: 700, margin: "4px 0 0 0", color: "#172033" }}>
-                        ₹{order.total_value?.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "active" | "completed")}>
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="active">{t("active_orders")} ({activeOrders.length})</TabsTrigger>
+            <TabsTrigger value="completed">{t("orders_history")} ({completedOrders.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="active">{renderOrders(activeOrders, "active")}</TabsContent>
+          <TabsContent value="completed">{renderOrders(completedOrders, "completed")}</TabsContent>
+        </Tabs>
       </div>
         <FarmerBottomNav />
     </div>

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -41,15 +44,16 @@ export default function EarningsPage() {
       <FarmerHeader />
       <div className="farmer-page">
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => router.back()} aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+          <ArrowLeft className="size-5" />
+        </Button>
         <h1 className="heading-md" style={{ margin: 0 }}>{t("my_earnings")}</h1>
       </div>
 
       {/* Total Earnings Hero */}
-      <div className="card" style={{
+      <Card style={{
         textAlign: "center", marginBottom: 16, padding: 28,
-        background: "linear-gradient(135deg, #166534, #16a34a)", color: "white", borderRadius: 16,
+        background: "linear-gradient(135deg, #166534, #16a34a)", color: "white",
       }}>
         <p style={{ fontSize: 13, opacity: 0.8, margin: 0 }}>Total Received</p>
         <p style={{ fontSize: 36, fontWeight: 800, margin: "8px 0" }}>
@@ -58,22 +62,22 @@ export default function EarningsPage() {
         <p style={{ fontSize: 13, opacity: 0.7, margin: 0 }}>
           {paidOrders.length} paid transaction{paidOrders.length !== 1 ? "s" : ""}
         </p>
-      </div>
+      </Card>
 
       {/* Stats Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-        <div className="card" style={{ textAlign: "center" }}>
+        <Card style={{ textAlign: "center", padding: 16 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--warning)" }}>
             ₹{totalPending > 0 ? totalPending.toLocaleString("en-IN") : "0"}
           </div>
           <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pending</div>
-        </div>
-        <div className="card" style={{ textAlign: "center" }}>
+        </Card>
+        <Card style={{ textAlign: "center", padding: 16 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--success)" }}>
             ₹{avgPrice > 0 ? avgPrice.toLocaleString("en-IN") : "---"}
           </div>
           <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Avg ₹/quintal</div>
-        </div>
+        </Card>
       </div>
 
       {/* Transaction History */}
@@ -81,18 +85,17 @@ export default function EarningsPage() {
       {loading ? (
         <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 80, marginBottom: 12 }} />)}</div>
       ) : orders.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: 32 }}>
+        <Card style={{ textAlign: "center", padding: 32 }}>
           <p style={{ fontSize: 28, margin: 0 }}>💰</p>
           <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "8px 0 0 0" }}>No transactions yet. Sell your produce to start earning!</p>
-          <button className="btn-primary" style={{ marginTop: 12 }}
-            onClick={() => router.push("/farmer/lots")}>
+          <Button style={{ marginTop: 12 }} onClick={() => router.push("/farmer/lots")}>
             {t("create_lot") || "Create a Lot"}
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : (
         orders.map((o: any) => (
-          <div key={o.id} className="card" style={{
-            marginBottom: 8, borderLeft: `3px solid ${
+          <Card key={o.id} style={{
+            marginBottom: 8, padding: 14, borderLeft: `3px solid ${
               ["paid", "completed"].includes(o.status) ? "var(--success)" :
               o.status === "cancelled" ? "var(--danger)" : "var(--warning)"
             }`
@@ -129,7 +132,7 @@ export default function EarningsPage() {
                 </p>
               </div>
             </div>
-          </div>
+          </Card>
         ))
       )}
 

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -80,8 +82,9 @@ export default function GrievancePage() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()} aria-label="Go back"
-            style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+          <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+            <ArrowLeft className="size-5" />
+          </Button>
           <div>
             <h1 className="heading-md" style={{ margin: 0 }}>Help & Grievance</h1>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>Report an issue or get help</p>
@@ -163,14 +166,13 @@ export default function GrievancePage() {
           </p>
         </div>
 
-        <button
-          className="btn-primary"
-          style={{ width: "100%" }}
+        <Button
+          className="w-full"
           onClick={submit}
           disabled={!category || description.length < 10 || submitting}
         >
           {submitting ? "Submitting..." : "Submit Grievance"}
-        </button>
+        </Button>
       </div>
 
       {/* Previous Grievances */}

@@ -5,6 +5,10 @@ import api from "@/lib/api";
 import { cropEmoji } from "@/lib/cropEmoji";
 import { totalAmount, formatINR } from "@/lib/money";
 import { EmptyState, Skeleton } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -76,8 +80,9 @@ export default function FarmerFpoPage() {
       <FarmerHeader />
       <div className="farmer-page">
         <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()} aria-label="Go back"
-            style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+          <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+            <ArrowLeft className="size-5" />
+          </Button>
           <h1 className="heading-md" style={{ margin: 0 }}>FPO Membership</h1>
         </div>
 
@@ -99,7 +104,7 @@ export default function FarmerFpoPage() {
               <>
                 <p className="heading-sm" style={{ marginBottom: 8 }}>Aggregation Requests</p>
                 {requests.map(r => (
-                  <div key={r.contribution_id} className="card" style={{ marginBottom: 12 }}>
+                  <Card key={r.contribution_id} style={{ marginBottom: 12 }}>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
                       {cropEmoji(r.crop_name)} {r.fpo_name} wants your {r.quantity_kg?.toLocaleString("en-IN")}kg of {r.crop_name || "produce"}
                     </p>
@@ -110,20 +115,17 @@ export default function FarmerFpoPage() {
                       </p>
                     )}
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button className="btn-primary" style={{ flex: 1, padding: "10px", fontSize: 13 }}
-                        disabled={respondingId === r.contribution_id}
+                      <Button className="flex-1" disabled={respondingId === r.contribution_id}
                         onClick={() => respond(r.contribution_id, "confirm")}>
                         {respondingId === r.contribution_id ? "…" : "✅ Confirm"}
-                      </button>
-                      <button style={{
-                        flex: 1, padding: "10px", fontSize: 13, borderRadius: 8,
-                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer", color: "var(--danger)",
-                      }} disabled={respondingId === r.contribution_id}
+                      </Button>
+                      <Button variant="outline" className="flex-1 text-destructive"
+                        disabled={respondingId === r.contribution_id}
                         onClick={() => respond(r.contribution_id, "decline")}>
                         ✕ Decline
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </>
             )}
@@ -133,7 +135,7 @@ export default function FarmerFpoPage() {
               {activeMembership ? "Your FPO" : "Browse FPOs"}
             </p>
             {activeMembership ? (
-              <div className="card">
+              <Card>
                 <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{activeMembership.fpo_name}</p>
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                   Member since {activeMembership.joined_at ? new Date(activeMembership.joined_at).toLocaleDateString("en-IN") : "—"}
@@ -141,14 +143,14 @@ export default function FarmerFpoPage() {
                 <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "8px 0 0" }}>
                   Mark a lot "available for FPO aggregation" when you create it to let this FPO pick it up.
                 </p>
-              </div>
+              </Card>
             ) : fpos.length === 0 ? (
               <EmptyState icon="🏢" title="No FPOs registered yet" description="Check back later." />
             ) : (
               fpos.map(fpo => {
                 const m = membershipFor(fpo.id);
                 return (
-                  <div key={fpo.id} className="card" style={{ marginBottom: 8 }}>
+                  <Card key={fpo.id} style={{ marginBottom: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{fpo.name}</p>
@@ -157,17 +159,17 @@ export default function FarmerFpoPage() {
                         </p>
                       </div>
                       {m?.status === "pending" ? (
-                        <span className="badge badge-amber">Requested</span>
+                        <Badge variant="secondary">Requested</Badge>
                       ) : m?.status === "rejected" ? (
-                        <span className="badge badge-gray">Declined</span>
+                        <Badge variant="outline">Declined</Badge>
                       ) : (
-                        <button className="btn-primary btn-sm" disabled={joiningId === fpo.id}
+                        <Button size="sm" disabled={joiningId === fpo.id}
                           onClick={() => joinFpo(fpo.id)}>
                           {joiningId === fpo.id ? "…" : "Join"}
-                        </button>
+                        </Button>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 );
               })
             )}
