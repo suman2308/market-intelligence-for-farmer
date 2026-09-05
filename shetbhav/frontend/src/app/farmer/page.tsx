@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
-import {
-  DataSourceBadge, Skeleton, ConfidenceBadge,
-  WhyExplainer, VoicePlayButton,
-} from "@/components/ui";
+import { DataSourceBadge, Skeleton } from "@/components/ui";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 import { cropEmoji } from "@/lib/cropEmoji";
@@ -15,66 +12,49 @@ import { cropEmoji } from "@/lib/cropEmoji";
 /**
  * Farmer Dashboard — शेतभाव
  * Mobile-first. One main action per screen.
- * Shows: greeting → Smart Sell recommendation → quick actions → market price → stats.
+ * Shows: greeting → today's prices (all crops) → stats → my produce.
  */
 export default function FarmerHome() {
   const router = useRouter();
   const { user, loadUser } = useAuth();
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const [dashboard, setDashboard] = useState<any>(null);
-  const [prices, setPrices] = useState<any>(null);
+  const [crops, setCrops] = useState<any[]>([]);
+  const [cropPrices, setCropPrices] = useState<Record<number, any>>({});
   const [lots, setLots] = useState<any[]>([]);
-  const [recommendation, setRecommendation] = useState<any>(null);
-  const [cropId, setCropId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
-  const [recommendationError, setRecommendationError] = useState(false);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
-  // Crop ids differ between databases (dev seeds id 2=Onion, prod seeds a different id),
-  // so never hardcode — resolve a real id from /crops, preferring Onion like the demo.
-  useEffect(() => {
-    if (!user) return;
-    api.get("/crops").then(r => {
-      const list: any[] = r.data || [];
-      const onion = list.find((c: any) => (c.name || "").toLowerCase() === "onion");
-      const resolved = (onion || list[0])?.id ?? null;
-      setCropId(resolved);
-      if (resolved === null) setSectionsLoaded(true);
-    }).catch(() => { setCropId(null); setSectionsLoaded(true); });
-  }, [user]);
-
   const loadDashboardAndLots = () => {
-    if (!user || !cropId) return;
+    if (!user) return;
     setDashboardError(false);
     setLotsError(false);
     Promise.all([
       api.get("/farmers/dashboard").catch(() => { setDashboardError(true); return { data: null }; }),
-      api.get(`/markets/prices?crop_id=${cropId}`).catch(() => ({ data: null })),
+      api.get("/crops").catch(() => ({ data: [] })),
       api.get("/lots").catch(() => { setLotsError(true); return { data: [] }; }),
-    ]).then(([d, p, l]) => {
-      setDashboard(d.data); setPrices(p.data); setLots(l.data);
+    ]).then(async ([d, c, l]) => {
+      setDashboard(d.data);
+      setLots(l.data);
+      const cropList: any[] = c.data || [];
+      setCrops(cropList);
+      const priceResults = await Promise.all(
+        cropList.map((crop: any) =>
+          api.get(`/markets/prices?crop_id=${crop.id}`).then(r => r.data).catch(() => null)
+        )
+      );
+      const priceMap: Record<number, any> = {};
+      cropList.forEach((crop: any, i: number) => { priceMap[crop.id] = priceResults[i]; });
+      setCropPrices(priceMap);
       setSectionsLoaded(true);
     });
   };
 
-  const loadRecommendation = () => {
-    if (!user || !cropId) return;
-    setRecommendationError(false);
-    api.post("/smart-sell", {
-      crop_id: cropId, quantity_kg: 1000, quality_grade: "A",
-      location_lat: 20.0057, location_lng: 73.7229,
-      storage_available: true, urgency: "soon",
-    }).then(r => setRecommendation(r.data)).catch(() => setRecommendationError(true));
-  };
-
-  useEffect(() => {
-    loadDashboardAndLots();
-    loadRecommendation();
-  }, [user, cropId]);
+  useEffect(loadDashboardAndLots, [user]);
 
   if (loading) return (
     <div className="farmer-shell">
@@ -108,8 +88,6 @@ export default function FarmerHome() {
     return lang === "hi" ? "शुभ संध्या" : lang === "mr" ? "शुभ संध्या" : "Good Evening";
   };
 
-  const best = recommendation?.best_option;
-
   return (
     <div className="farmer-shell">
       <FarmerHeader />
@@ -123,105 +101,41 @@ export default function FarmerHome() {
         <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--text-secondary)" }}>📍 Nashik, Maharashtra</p>
       </div>
 
-      {/* ── Smart Sell Recommendation Card ── */}
-      {best && (
-        <div className="card section-gap" style={{
-          background: "linear-gradient(135deg, var(--saffron-500), var(--saffron-700))",
-          color: "white", border: "none", cursor: "pointer",
-          boxShadow: "0 6px 18px rgba(217, 119, 6, 0.25)",
-        }} onClick={() => router.push("/farmer/sell")}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 800, margin: 0, color: "#fff", opacity: 1, textTransform: "uppercase", letterSpacing: "0.8px", textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
-                🧠 Smart Sell Recommendation
-              </p>
-              {(recommendation?.lot_summary?.crop || best.crop_name) && (
-                <p style={{ fontSize: 13, fontWeight: 700, margin: "2px 0 0", opacity: 0.95 }}>
-                  {recommendation?.lot_summary?.crop || best.crop_name}
-                  {recommendation?.lot_summary?.quantity_kg ? ` · ${recommendation.lot_summary.quantity_kg} kg` : ""}
-                  {recommendation?.lot_summary?.quality ? ` · Grade ${recommendation.lot_summary.quality}` : ""}
-                </p>
-              )}
-              <p style={{ fontSize: 20, fontWeight: 800, margin: "4px 0 0" }}>
-                ₹{best.net_realization_per_q.toLocaleString("en-IN")}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.75 }}> /q net</span>
-              </p>
-            </div>
-            <span style={{
-              background: "white", color: "var(--saffron-700)", padding: "4px 10px",
-              borderRadius: 20, fontSize: 13, fontWeight: 800,
-            }}>
-              {best.score}/100
-            </span>
-          </div>
-          <p style={{ fontSize: 14, margin: "0 0 8px", opacity: 0.95 }}>
-            → {best.target_name}
-          </p>
-          {best.reasons?.slice(0, 2).map((r: string, i: number) => (
-            <p key={i} style={{ fontSize: 12, margin: "2px 0", opacity: 0.85 }}>✓ {r}</p>
-          ))}
-          <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
-            <button className="btn-sm" onClick={(e) => { e.stopPropagation(); router.push("/farmer/sell"); }} style={{
-              background: "white", color: "var(--saffron-700)", border: "none",
-              fontWeight: 800, padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
-            }}>
-              View Details →
-            </button>
-            <VoicePlayButton text={recommendation.explanation} label="Listen" />
-          </div>
-        </div>
-      )}
-
-      {recommendationError && !best && (
-        <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your Smart Sell recommendation.</p>
-          <button className="btn-sm" onClick={loadRecommendation} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* ── Quick Actions ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-        {[
-          { icon: "📊", label: t("todays_prices") || "Prices", route: "/farmer/prices" },
-          { icon: "🌾", label: t("sell_my_produce") || "Sell", route: "/farmer/sell" },
-          { icon: "🏭", label: t("find_buyers") || "Buyers", route: "/farmer/buyers" },
-        ].map((a, i) => (
-          <button key={i} onClick={() => router.push(a.route)} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-            padding: "14px 8px", borderRadius: 14, border: "1.5px solid var(--stone-200)",
-            background: "white", cursor: "pointer", fontFamily: "inherit", minHeight: 72,
-            transition: "all 0.15s",
-          }}>
-            <span style={{ fontSize: 22 }}>{a.icon}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--stone-600)" }}>{a.label}</span>
-          </button>
-        ))}
+      {/* ── Today's Prices — sliding carousel across every crop ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <p className="heading-sm" style={{ margin: 0 }}>📊 {t("todays_prices") || "Today's Prices"}</p>
       </div>
-
-      {/* ── Market Price Snapshot ── */}
-      {!sectionsLoaded && <div className="section-gap"><Skeleton height={150} /></div>}
-      {sectionsLoaded && prices && (
-        <div className="card section-gap" style={{ cursor: "pointer" }} onClick={() => router.push("/farmer/prices")}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <p className="heading-sm" style={{ margin: 0 }}>📊 {t("todays_prices") || "Today's Prices"}</p>
-            <span style={{ fontSize: 14, color: "var(--stone-400)" }}>→</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-            <div>
-              <div className="price-big" style={{ fontSize: "clamp(26px, 6vw, 34px)" }}>
-                ₹{prices.prices?.modal_price?.toLocaleString("en-IN") || "---"}
+      {!sectionsLoaded ? (
+        <div className="section-gap" style={{ display: "flex", gap: 10, overflow: "hidden" }}>
+          <Skeleton height={140} />
+        </div>
+      ) : (
+        <div className="scroll-x section-gap" style={{ display: "flex", gap: 10, scrollSnapType: "x mandatory" as any }}>
+          {crops.map((crop: any) => {
+            const p = cropPrices[crop.id];
+            return (
+              <div key={crop.id} className="card" style={{ flex: "0 0 82%", cursor: "pointer", scrollSnapAlign: "start" as any }}
+                onClick={() => router.push("/farmer/prices")}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
+                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>→</span>
+                </div>
+                {p ? (
+                  <>
+                    <div className="price-big" style={{ fontSize: "clamp(24px, 5.5vw, 30px)" }}>
+                      ₹{p.prices?.modal_price?.toLocaleString("en-IN") || "---"}
+                    </div>
+                    <p className="text-xs" style={{ margin: "4px 0 8px" }}>
+                      Range ₹{p.prices?.min_price?.toLocaleString("en-IN")} – ₹{p.prices?.max_price?.toLocaleString("en-IN")}
+                    </p>
+                    <DataSourceBadge source={p.data_source_label || "Synthetic demo data"} />
+                  </>
+                ) : (
+                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Price unavailable</p>
+                )}
               </div>
-              <p className="text-xs" style={{ margin: "4px 0 0" }}>Tomato · Nashik APMC</p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <p className="text-xs">Range</p>
-              <p style={{ fontSize: 13, fontWeight: 600 }}>
-                ₹{prices.prices?.min_price?.toLocaleString("en-IN")} — ₹{prices.prices?.max_price?.toLocaleString("en-IN")}
-              </p>
-            </div>
-          </div>
-          <DataSourceBadge source={prices.data_source_label || "Synthetic demo data"} />
+            );
+          })}
         </div>
       )}
 
@@ -240,13 +154,12 @@ export default function FarmerHome() {
       ) : dashboard && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
-            { value: dashboard.active_lots, label: t("active_lots") || "Active Lots", icon: "📦", color: "var(--green-600)" },
-            { value: dashboard.pending_orders, label: t("pending_orders") || "Pending Orders", icon: "🚚", color: "var(--saffron-500)" },
-            { value: dashboard.total_earnings > 0 ? `₹${(dashboard.total_earnings / 1000).toFixed(1)}K` : "₹0", label: t("my_earnings") || "Earnings", icon: "💰", color: "var(--sky-500)" },
-            { value: "→", label: t("find_buyers") || "Find Buyers", icon: "🔍", color: "var(--stone-500)" },
+            { value: dashboard.active_lots, label: t("active_lots") || "Active Lots", icon: "📦", color: "var(--green-600)", route: "/farmer/lots" },
+            { value: dashboard.pending_orders, label: t("pending_orders") || "Pending Orders", icon: "🚚", color: "var(--saffron-500)", route: "/farmer/orders" },
+            { value: dashboard.total_earnings > 0 ? `₹${(dashboard.total_earnings / 1000).toFixed(1)}K` : "₹0", label: t("my_earnings") || "Earnings", icon: "💰", color: "var(--sky-500)", route: "/farmer/earnings" },
+            { value: "→", label: t("find_buyers") || "Find Buyers", icon: "🔍", color: "var(--stone-500)", route: "/farmer/buyers" },
           ].map((s, i) => (
-            <div key={i} className="stat-card-premium"
-              onClick={() => router.push(i === 3 ? "/farmer/buyers" : i === 0 ? "/farmer/lots" : i === 1 ? "/farmer/orders" : "/farmer/earnings")}>
+            <div key={i} className="stat-card-premium" onClick={() => router.push(s.route)}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
               <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
               <div className="stat-label">{s.label}</div>
@@ -270,7 +183,7 @@ export default function FarmerHome() {
           <p style={{ fontSize: 24, margin: "0 0 4px" }}>🌾</p>
           <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>No produce listed yet</p>
           <p className="text-xs" style={{ margin: "0 0 12px" }}>List your first lot to start reaching buyers.</p>
-          <button className="btn-sm" onClick={() => router.push("/farmer/sell")} style={{ background: "var(--green-600)", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <button className="btn-sm" onClick={() => router.push("/farmer/lots")} style={{ background: "var(--green-600)", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             + List Produce
           </button>
         </div>
@@ -300,11 +213,6 @@ export default function FarmerHome() {
           ))}
         </div>
       )}
-
-      {/* ── Data Disclaimer ── */}
-      <p className="data-source data-source-synthetic" style={{ textAlign: "center", marginTop: 8 }}>
-        🧪 {prices?.source === "synthetic_demo" ? "Demo data — not live market prices" : "Live market data"}
-      </p>
       </div>
 
       <FarmerBottomNav />

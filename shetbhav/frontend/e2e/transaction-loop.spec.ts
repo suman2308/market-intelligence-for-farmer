@@ -160,20 +160,19 @@ test.describe("Two-account book-and-pay transaction loop", () => {
     await expect(page.locator('input[placeholder="Qty (kg)"]')).toHaveCount(0);
   });
 
-  test("farmer browses /farmer/demands and locks & fulfils it via the UI", async ({ page }) => {
+  test("farmer browses /farmer/demands and accepts it directly via the UI", async ({ page }) => {
     await loginViaUI(page, FARMER);
     await page.goto("/farmer/demands");
 
     // Scope to this run's own demand card by buyer name rather than relying
     // on list order or a global button match — the demand list is global
     // and stale runs may have left other open demands (and their own
-    // identically-labelled "Lock & Fulfil" buttons) behind.
+    // identically-labelled "Accept" buttons) behind.
     const demandCard = page.locator(".card", { hasText: BUYER.full_name });
     await expect(demandCard).toBeVisible({ timeout: 10000 });
-    await demandCard.getByRole("button", { name: "Lock & Fulfil" }).click();
-    await demandCard.getByRole("button", { name: "Lock & Fulfil" }).click();
+    await demandCard.getByRole("button", { name: /Accept/ }).click();
 
-    await expect(demandCard.getByText("✓ Locked")).toBeVisible({ timeout: 10000 });
+    await expect(demandCard.getByText("✓ Accepted")).toBeVisible({ timeout: 10000 });
   });
 
   test("buyer is notified to pay, pays, and farmer gets the final sold notification", async ({ page }) => {
@@ -181,7 +180,7 @@ test.describe("Two-account book-and-pay transaction loop", () => {
 
     const bell = page.locator(".notif-bell-btn");
     await bell.click();
-    await expect(page.locator(".notif-bell-item-title", { hasText: "fulfilled" })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(".notif-bell-item-title", { hasText: "accepted" })).toBeVisible({ timeout: 10000 });
 
     await page.getByRole("button", { name: /My Orders/ }).click();
     const payButtons = page.getByRole("button", { name: /Pay ₹/ });

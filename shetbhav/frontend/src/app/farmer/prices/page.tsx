@@ -218,8 +218,11 @@ export default function PricesPage() {
           </div>
 
           <button className="btn-primary" onClick={() => router.push("/farmer/sell")}>
-            💰 {t("sell_my_produce")}
+            🧠 Smart Sell Recommendation
           </button>
+          <p className="text-xs" style={{ textAlign: "center", color: "var(--text-secondary)", margin: "8px 0 0" }}>
+            Answer a few quick questions and get a personalised recommendation on where and how to sell.
+          </p>
         </>
       ) : (
         <div className="card" style={{ textAlign: "center", padding: 40 }}>

@@ -3,15 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EmptyState, Skeleton } from "@/components/ui";
+import { cropEmoji } from "@/lib/cropEmoji";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
 /**
  * Farmer Demands — the buyer-initiated direction of the transaction loop.
- * A buyer posts a demand at a fixed price/quantity; a farmer locks it in
- * with one of their own lots (POST /demand/{id}/fulfil) — no negotiation,
- * since the buyer already set the terms. The buyer is notified to pay,
- * and the transaction completes once they do.
+ * A buyer posts a demand at their stated price/quantity; a farmer can
+ * accept it directly (no lot required — a lightweight bookkeeping lot is
+ * auto-created server-side), reject it (hides it from just this farmer),
+ * or negotiate a different price (sends a counter-offer the buyer can
+ * accept/reject/counter back through the normal offer flow).
  */
 
 type Demand = {
@@ -19,54 +21,88 @@ type Demand = {
   quantity_kg: number; offered_price_per_q: number; district?: string;
   quality_grade?: string; required_by_date?: string; status: string;
 };
-type Lot = { id: number; crop_id: number; crop_name?: string; quantity_kg: number; status: string };
+type Offer = { id: number; demand_id?: number | null; from_user_id: number; price_per_q: number; status: string };
 
 export default function FarmerDemands() {
   const router = useRouter();
   const [demands, setDemands] = useState<Demand[]>([]);
-  const [lots, setLots] = useState<Lot[]>([]);
+  const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [respondingTo, setRespondingTo] = useState<number | null>(null);
-  const [selectedLotId, setSelectedLotId] = useState("");
-  const [fulfilling, setFulfilling] = useState(false);
-  const [fulfilledIds, setFulfilledIds] = useState<Set<number>>(new Set());
+  const [loadError, setLoadError] = useState(false);
+  const [negotiatingId, setNegotiatingId] = useState<number | null>(null);
+  const [negotiatePrice, setNegotiatePrice] = useState("");
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
+  const [acceptedIds, setAcceptedIds] = useState<Set<number>>(new Set());
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError(false);
     Promise.all([
       api.get<Demand[]>("/demand", { params: { status: "open" } }),
-      api.get<Lot[]>("/lots", { params: { status: "active" } }),
-    ]).then(([d, l]) => { setDemands(d.data); setLots(l.data); })
+      api.get<Offer[]>("/offers"),
+    ]).then(([d, o]) => { setDemands(d.data); setMyOffers(o.data); })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const lotsForDemand = (demand: Demand) =>
-    lots.filter(l => l.crop_id === demand.crop_id && l.quantity_kg >= demand.quantity_kg);
+  const myOfferOn = (demandId: number) =>
+    myOffers.find(o => o.demand_id === demandId && ["pending", "countered"].includes(o.status));
 
-  const openRespond = (demand: Demand) => {
-    setError("");
-    setRespondingTo(demand.id);
-    const matchingLot = lotsForDemand(demand)[0];
-    setSelectedLotId(matchingLot ? String(matchingLot.id) : "");
-  };
-
-  const fulfil = async (demand: Demand) => {
-    if (!selectedLotId) return;
-    setFulfilling(true);
+  const accept = async (demand: Demand) => {
+    setBusyId(demand.id);
     setError("");
     try {
-      await api.post(`/demand/${demand.id}/fulfil`, { lot_id: Number(selectedLotId) });
-      setFulfilledIds(prev => new Set(prev).add(demand.id));
-      setRespondingTo(null);
+      await api.post(`/demand/${demand.id}/accept`);
+      setAcceptedIds(prev => new Set(prev).add(demand.id));
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Could not fulfil this demand. Please try again.");
+      setError(e.response?.data?.detail || "Could not accept this demand. Please try again.");
     } finally {
-      setFulfilling(false);
+      setBusyId(null);
     }
   };
+
+  const reject = async (demand: Demand) => {
+    setBusyId(demand.id);
+    setError("");
+    try {
+      await api.post(`/demand/${demand.id}/reject`);
+      setDismissedIds(prev => new Set(prev).add(demand.id));
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Could not dismiss this demand. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openNegotiate = (demand: Demand) => {
+    setError("");
+    setNegotiatingId(demand.id);
+    setNegotiatePrice(String(demand.offered_price_per_q));
+  };
+
+  const sendNegotiate = async (demand: Demand) => {
+    if (!negotiatePrice) return;
+    setBusyId(demand.id);
+    setError("");
+    try {
+      const { data } = await api.post<Offer>("/offers", {
+        demand_id: demand.id, price_per_q: Number(negotiatePrice), quantity_kg: demand.quantity_kg,
+      });
+      setMyOffers(prev => [...prev, data]);
+      setNegotiatingId(null);
+      setNegotiatePrice("");
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Could not send your counter-offer. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const visibleDemands = demands.filter(d => !dismissedIds.has(d.id));
 
   return (
     <div className="farmer-shell">
@@ -85,76 +121,83 @@ export default function FarmerDemands() {
         )}
 
         {loading ? (
-          <div>{[1, 2].map(i => <Skeleton key={i} height={100} />)}</div>
-        ) : demands.length === 0 ? (
-          <EmptyState icon="📋" title="No open demands right now"
+          <div>{[1, 2].map(i => <Skeleton key={i} height={120} />)}</div>
+        ) : loadError ? (
+          <EmptyState icon="⚠️" title="Couldn't load demands" description="Check your connection and try again."
+            action={{ label: "Retry", onClick: load }} />
+        ) : visibleDemands.length === 0 ? (
+          <EmptyState icon="📥" title="No open demands right now"
             description="Buyers looking for produce will show up here." />
         ) : (
-          demands.map(demand => {
-            const cropLots = lotsForDemand(demand);
-            const fulfilled = fulfilledIds.has(demand.id);
+          visibleDemands.map(demand => {
+            const pendingOffer = myOfferOn(demand.id);
+            const busy = busyId === demand.id;
             return (
               <div key={demand.id} className="card" style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
                   onClick={() => router.push(`/demands/${demand.id}`)}>
-                  <div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-                      {demand.crop_name || "Crop"} · {demand.quantity_kg}kg
+                      {cropEmoji(demand.crop_name)} {demand.crop_name || "Crop"} · {demand.quantity_kg}kg
                     </p>
                     <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                       {demand.buyer_name || "Buyer"} · {demand.district || "—"}
                       {demand.quality_grade ? ` · Grade ${demand.quality_grade}` : ""}
                     </p>
                   </div>
-                  <p style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 800, margin: 0, whiteSpace: "nowrap" }}>
                     ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q
                   </p>
                 </div>
 
-                {fulfilled ? (
+                {acceptedIds.has(demand.id) ? (
                   <p style={{ fontSize: 13, color: "var(--green-600)", fontWeight: 600, marginTop: 10 }}>
-                    ✓ Locked — buyer notified to pay
+                    ✓ Accepted — buyer notified to pay
                   </p>
-                ) : respondingTo === demand.id ? (
+                ) : pendingOffer ? (
+                  <p style={{ fontSize: 13, color: "var(--info)", fontWeight: 600, marginTop: 10 }}>
+                    🤝 Counter-offer sent: ₹{pendingOffer.price_per_q.toLocaleString("en-IN")}/q — awaiting buyer response
+                  </p>
+                ) : negotiatingId === demand.id ? (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--stone-100, #f5f5f4)" }}>
-                    {cropLots.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                        You have no active lot with enough quantity for this demand.{" "}
-                        <a href="/farmer/sell" style={{ color: "var(--green-600)" }}>Create one</a>.
-                      </p>
-                    ) : (
-                      <>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Fulfil with which lot?</label>
-                        <select className="select" value={selectedLotId}
-                          onChange={e => setSelectedLotId(e.target.value)}
-                          style={{ width: "100%", marginBottom: 8 }}>
-                          {cropLots.map(l => (
-                            <option key={l.id} value={l.id}>Lot #{l.id} · {l.quantity_kg}kg</option>
-                          ))}
-                        </select>
-                        <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
-                          You'll supply {demand.quantity_kg}kg at the buyer's price of ₹{demand.offered_price_per_q?.toLocaleString("en-IN")}/q — no negotiation, this locks the deal.
-                        </p>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
-                            disabled={fulfilling} onClick={() => fulfil(demand)}>
-                            {fulfilling ? "Locking…" : "Lock & Fulfil"}
-                          </button>
-                          <button style={{
-                            flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
-                            border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                          }} onClick={() => setRespondingTo(null)}>
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    )}
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                      Your counter-price (₹/quintal)
+                    </label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input className="input" type="number" value={negotiatePrice}
+                        onChange={e => setNegotiatePrice(e.target.value)}
+                        style={{ flex: 1, padding: "8px 10px", fontSize: 13 }} />
+                      <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}
+                        disabled={!negotiatePrice || busy} onClick={() => sendNegotiate(demand)}>
+                        {busy ? "Sending…" : "Send"}
+                      </button>
+                      <button style={{
+                        padding: "8px 10px", fontSize: 13, borderRadius: 8,
+                        border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                      }} onClick={() => { setNegotiatingId(null); setNegotiatePrice(""); }}>
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <button className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px", fontSize: 14 }}
-                    onClick={() => openRespond(demand)}>
-                    Lock & Fulfil
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button className="btn-primary" style={{ flex: 1, padding: "10px", fontSize: 13 }}
+                      disabled={busy} onClick={() => accept(demand)}>
+                      {busy ? "…" : "✅ Accept"}
+                    </button>
+                    <button style={{
+                      flex: 1, padding: "10px", fontSize: 13, borderRadius: 8,
+                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
+                    }} disabled={busy} onClick={() => openNegotiate(demand)}>
+                      🤝 Negotiate
+                    </button>
+                    <button style={{
+                      flex: 1, padding: "10px", fontSize: 13, borderRadius: 8,
+                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer", color: "var(--danger)",
+                    }} disabled={busy} onClick={() => reject(demand)}>
+                      ✕ Reject
+                    </button>
+                  </div>
                 )}
               </div>
             );

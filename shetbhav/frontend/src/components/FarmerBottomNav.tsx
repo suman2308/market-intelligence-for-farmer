@@ -4,24 +4,24 @@ import { useI18n } from "@/lib/i18n";
 
 /**
  * Shared bottom navigation for every farmer page.
- * Five fixed tabs: Home · Prices · Sell · Orders · Profile.
+ * Five fixed tabs: Home · Market · Demands · My Lots · Profile.
  * Highlights the matching tab from the current path automatically.
  */
 const TABS = [
   { href: "/farmer", icon: "🏠", labelKey: "home" },
   { href: "/farmer/prices", icon: "📊", labelKey: "markets" },
-  { href: "/farmer/sell", icon: "💰", labelKey: "sell_my_produce" },
-  { href: "/farmer/orders", icon: "📋", labelKey: "orders" },
+  { href: "/farmer/demands", icon: "📥", labelKey: "demands" },
+  { href: "/farmer/lots", icon: "📦", labelKey: "my_lots" },
   { href: "/farmer/profile", icon: "👤", labelKey: "profile" },
 ] as const;
 
 // Detail pages that belong under each tab
 const CHILDREN: Record<string, string[]> = {
-  "/farmer": ["/farmer/lots"],
-  "/farmer/prices": ["/farmer/buyers"],
-  "/farmer/sell": ["/farmer/quality", "/farmer/offers", "/farmer/demands"],
-  "/farmer/orders": [],
-  "/farmer/profile": ["/farmer/earnings", "/farmer/grievance"],
+  "/farmer": [],
+  "/farmer/prices": ["/farmer/buyers", "/farmer/sell"],
+  "/farmer/demands": [],
+  "/farmer/lots": ["/farmer/quality", "/farmer/offers", "/farmer/orders"],
+  "/farmer/profile": ["/farmer/earnings", "/farmer/grievance", "/farmer/notifications"],
 };
 
 export default function FarmerBottomNav({ active }: { active?: string } = {}) {
