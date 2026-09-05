@@ -351,6 +351,20 @@ body {
 .notif-bell-item.unread:hover { background: var(--green-50); }
 .notif-bell-item-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .notif-bell-item-msg { font-size: 12px; color: var(--text-secondary); }
+.notif-bell-profile-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--stone-200, #e7e5e4);
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.notif-bell-profile-btn:hover { border-color: var(--green-300); }
 
 /* ── Notifications Panel (inline, for Profile pages) ─────────────── */
 .notif-panel-item {

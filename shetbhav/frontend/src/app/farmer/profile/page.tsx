@@ -14,19 +14,24 @@ export default function FarmerProfile() {
   const { t, lang, setLang } = useI18n();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ farm_address: "", farm_location_lat: 0, farm_location_lng: 0, phone: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadUser().then(() => {
-      api.get("/farmers/profile").then(r => {
-        setProfile(r.data);
+      Promise.all([
+        api.get("/farmers/profile"),
+        api.get("/orders").catch(() => ({ data: [] })),
+      ]).then(([profileRes, ordersRes]) => {
+        setProfile(profileRes.data);
+        setOrders(ordersRes.data);
         setEditForm({
-          farm_address: r.data.farm_address || "",
-          farm_location_lat: r.data.farm_location_lat || 19.9975,
-          farm_location_lng: r.data.farm_location_lng || 73.7898,
-          phone: r.data.phone || "",
+          farm_address: profileRes.data.farm_address || "",
+          farm_location_lat: profileRes.data.farm_location_lat || 19.9975,
+          farm_location_lng: profileRes.data.farm_location_lng || 73.7898,
+          phone: profileRes.data.phone || "",
         });
         setLoading(false);
       }).catch(() => setLoading(false));
@@ -146,6 +151,50 @@ export default function FarmerProfile() {
               </span>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Transaction History */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>📋 Transaction History</h3>
+          <Link href="/farmer/orders" style={{ fontSize: 13, color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>
+            View all →
+          </Link>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: orders.length ? 14 : 0 }}>
+          {[
+            { label: "Orders", value: orders.length },
+            { label: "Completed", value: orders.filter((o: any) => o.status === "paid" || o.status === "completed").length },
+            { label: "Earned", value: `₹${orders.filter((o: any) => o.status === "paid" || o.status === "completed").reduce((sum: number, o: any) => sum + (o.total_value || 0), 0).toLocaleString("en-IN")}` },
+          ].map(stat => (
+            <div key={stat.label} style={{ textAlign: "center", padding: "10px 4px", background: "#f9fafb", borderRadius: 10 }}>
+              <p style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>{stat.value}</p>
+              <p style={{ fontSize: 11, color: "#6b7280", margin: "2px 0 0" }}>{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {orders.length === 0 ? (
+          <p style={{ fontSize: 13, color: "#9ca3af", textAlign: "center", margin: 0 }}>No transactions yet</p>
+        ) : (
+          orders.slice(0, 5).map((order: any) => (
+            <div key={order.id}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid #f3f4f6", cursor: "pointer" }}
+              onClick={() => router.push(`/farmer/orders/${order.id}`)}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Order #{order.id} · {order.quantity_kg}kg</p>
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "2px 0 0" }}>₹{order.price_per_q}/q</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>₹{order.total_value?.toLocaleString("en-IN")}</p>
+                <span className={`badge ${order.status === "paid" || order.status === "completed" ? "badge-completed" : "badge-active"}`} style={{ fontSize: 10 }}>
+                  {order.status}
+                </span>
+              </div>
+            </div>
+          ))
         )}
       </div>
 

@@ -431,6 +431,7 @@ class NotificationResponse(BaseModel):
     type: Optional[str] = None
     is_read: bool
     link: Optional[str] = None
+    counterparty_user_id: Optional[int] = None
     created_at: datetime
 
     class Config:

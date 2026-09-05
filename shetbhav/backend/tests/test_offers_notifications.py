@@ -74,6 +74,26 @@ class TestOfferNotifications:
         notifs = client.get("/notifications", headers=_auth(farmer_token)).json()
         assert any(n["type"] == "offer_received" for n in notifs)
 
+    def test_offer_notification_carries_counterparty_user_id(self):
+        farmer_token = _register_and_login("notif_cp_farmer", "farmer")
+        buyer_token = _register_and_login("notif_cp_buyer", "buyer")
+        lot = client.post("/lots", json={
+            "crop_id": 1, "quantity_kg": 200, "price_per_q": 2500, "quality_grade": "A", "urgency": "soon",
+        }, headers=_auth(farmer_token)).json()
+        client.post("/offers", json={
+            "lot_id": lot["id"], "price_per_q": 2400, "quantity_kg": 200,
+        }, headers=_auth(buyer_token))
+
+        buyer_me = client.get("/auth/me", headers=_auth(buyer_token)).json()
+        notifs = client.get("/notifications", headers=_auth(farmer_token)).json()
+        offer_notif = next(n for n in notifs if n["type"] == "offer_received")
+        assert offer_notif["counterparty_user_id"] == buyer_me["id"]
+
+        # And the profile behind that id must actually be fetchable.
+        profile_resp = client.get(f"/users/{offer_notif['counterparty_user_id']}/profile", headers=_auth(farmer_token))
+        assert profile_resp.status_code == 200
+        assert profile_resp.json()["username"] == "notif_cp_buyer"
+
     def test_accept_notifies_buyer_and_creates_order(self):
         farmer_token = _register_and_login("notif_farmer2", "farmer")
         buyer_token = _register_and_login("notif_buyer2", "buyer")

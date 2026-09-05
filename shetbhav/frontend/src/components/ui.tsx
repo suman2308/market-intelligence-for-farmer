@@ -680,6 +680,7 @@ type NotificationItem = {
   message: string;
   is_read: boolean;
   link?: string | null;
+  counterparty_user_id?: number | null;
   created_at: string;
 };
 
@@ -712,13 +713,24 @@ export function NotificationBell() {
     if (!open) load(); // refresh on open so it's never stale
   };
 
-  const handleSelect = (n: NotificationItem) => {
+  const markRead = (n: NotificationItem) => {
     if (!n.is_read) {
       api.post(`/notifications/${n.id}/read`).catch(() => {});
       setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
     }
+  };
+
+  const handleSelect = (n: NotificationItem) => {
+    markRead(n);
     setOpen(false);
     if (n.link) router.push(n.link);
+  };
+
+  const handleViewProfile = (n: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    markRead(n);
+    setOpen(false);
+    if (n.counterparty_user_id) router.push(`/profile/${n.counterparty_user_id}`);
   };
 
   return (
@@ -735,12 +747,22 @@ export function NotificationBell() {
             <div className="notif-bell-empty">No notifications yet</div>
           ) : (
             notifs.slice(0, 10).map(n => (
-              <button key={n.id} type="button" role="menuitem"
+              <div key={n.id} role="menuitem"
                 className={`notif-bell-item ${n.is_read ? "" : "unread"}`}
                 onClick={() => handleSelect(n)}>
-                <span className="notif-bell-item-title">{n.title}</span>
-                <span className="notif-bell-item-msg">{n.message}</span>
-              </button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span className="notif-bell-item-title">{n.title}</span>
+                    <span className="notif-bell-item-msg">{n.message}</span>
+                  </div>
+                  {n.counterparty_user_id && (
+                    <button type="button" className="notif-bell-profile-btn"
+                      onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
+                      👤
+                    </button>
+                  )}
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -762,12 +784,22 @@ export function NotificationsPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleClick = (n: NotificationItem) => {
+  const markRead = (n: NotificationItem) => {
     if (!n.is_read) {
       api.post(`/notifications/${n.id}/read`).catch(() => {});
       setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
     }
+  };
+
+  const handleClick = (n: NotificationItem) => {
+    markRead(n);
     if (n.link) router.push(n.link);
+  };
+
+  const handleViewProfile = (n: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    markRead(n);
+    if (n.counterparty_user_id) router.push(`/profile/${n.counterparty_user_id}`);
   };
 
   if (loading) return <Skeleton height={56} count={2} />;
@@ -778,11 +810,21 @@ export function NotificationsPanel() {
   return (
     <div className="flex-col gap-2">
       {notifs.map(n => (
-        <button key={n.id} type="button" onClick={() => handleClick(n)}
+        <div key={n.id} onClick={() => handleClick(n)}
           className={`notif-panel-item ${n.is_read ? "" : "unread"}`}>
-          <span className="notif-panel-item-title">{n.title}</span>
-          <span className="notif-panel-item-msg">{n.message}</span>
-        </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, width: "100%" }}>
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+              <span className="notif-panel-item-title">{n.title}</span>
+              <span className="notif-panel-item-msg">{n.message}</span>
+            </div>
+            {n.counterparty_user_id && (
+              <button type="button" className="notif-bell-profile-btn"
+                onClick={(e) => handleViewProfile(n, e)} aria-label="View counterparty profile">
+                👤
+              </button>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );

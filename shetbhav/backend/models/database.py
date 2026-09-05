@@ -131,7 +131,7 @@ class User(Base):
     fpo_profile = relationship("FPOProfile", back_populates="user", uselist=False)
     buyer_profile = relationship("BuyerProfile", back_populates="user", uselist=False)
     admin_profile = relationship("AdminProfile", back_populates="user", uselist=False)
-    notifications = relationship("Notification", back_populates="user")
+    notifications = relationship("Notification", back_populates="user", foreign_keys="Notification.user_id")
 
 
 class FarmerProfile(Base):
@@ -1018,9 +1018,13 @@ class Notification(Base):
     type = Column(String(50))
     is_read = Column(Boolean, default=False)
     link = Column(String(500))
+    # Who this notification is about, if it's about a specific counterparty
+    # (the other party in an offer/booking/order) — lets the frontend offer
+    # a direct "View Profile" shortcut without re-deriving it from the link.
+    counterparty_user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", back_populates="notifications")
+    user = relationship("User", back_populates="notifications", foreign_keys=[user_id])
 
 
 class AuditLog(Base):

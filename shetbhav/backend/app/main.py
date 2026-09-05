@@ -449,7 +449,7 @@ def _order_seller_user_id(db: Session, order: Order) -> Optional[int]:
 
 def _reject_stale_offers(
     db: Session, *, lot_id: Optional[int] = None, demand_id: Optional[int] = None,
-    exclude_offer_id: Optional[int] = None, reason: str,
+    exclude_offer_id: Optional[int] = None, reason: str, winner_user_id: Optional[int] = None,
 ) -> None:
     """Auto-reject any other PENDING/COUNTERED offers tied to a lot or demand
     that has just become unavailable (booked/sold/filled). Without this, a
@@ -472,7 +472,7 @@ def _reject_stale_offers(
         stale.status = OfferStatus.REJECTED
         db.add(OfferHistory(offer_id=stale.id, action="auto_rejected", notes=reason))
         notify(db, stale.from_user_id, "Offer no longer available", reason,
-               type="offer_auto_rejected", link="/buyer")
+               type="offer_auto_rejected", link="/buyer", counterparty_user_id=winner_user_id)
 
 
 def _lot_to_response(db: Session, lot: ProduceLot) -> ProduceLotResponse:
@@ -608,11 +608,11 @@ def book_lot(
     notify(
         db, seller_user_id, "Lot booked",
         f"Your lot #{lot.id} ({lot.quantity_kg:,.0f}kg) was booked. Awaiting buyer payment.",
-        type="lot_booked", link="/farmer/lots",
+        type="lot_booked", link="/farmer/lots", counterparty_user_id=user.id,
     )
     _reject_stale_offers(
         db, lot_id=lot.id, exclude_offer_id=offer.id,
-        reason=f"Lot #{lot.id} was booked by another buyer.",
+        reason=f"Lot #{lot.id} was booked by another buyer.", winner_user_id=user.id,
     )
     db.commit()
     db.refresh(order)
@@ -961,11 +961,11 @@ def fulfil_demand(
     notify(
         db, buyer_profile.user_id, "Your demand has been fulfilled",
         f"Your demand for {demand.quantity_kg:,.0f}kg has been matched. Please proceed with payment.",
-        type="demand_fulfilled", link="/buyer",
+        type="demand_fulfilled", link="/buyer", counterparty_user_id=user.id,
     )
     _reject_stale_offers(
         db, lot_id=lot.id, demand_id=demand.id, exclude_offer_id=offer.id,
-        reason=f"Demand #{demand.id} was fulfilled by another farmer/FPO.",
+        reason=f"Demand #{demand.id} was fulfilled by another farmer/FPO.", winner_user_id=user.id,
     )
     db.commit()
     db.refresh(order)
@@ -1027,13 +1027,13 @@ def create_offer(
             db, to_user_id, "New offer on your demand",
             f"₹{offer.price_per_q:,.0f}/q for {offer.quantity_kg:,.0f}kg" +
             (f" on demand #{offer.demand_id}" if offer.demand_id else ""),
-            type="offer_received", link="/buyer",
+            type="offer_received", link="/buyer", counterparty_user_id=user.id,
         )
     else:
         notify(
             db, to_user_id, "New offer received",
             f"₹{offer.price_per_q:,.0f}/q for {offer.quantity_kg:,.0f}kg on your lot #{offer.lot_id}",
-            type="offer_received", link="/farmer/offers",
+            type="offer_received", link="/farmer/offers", counterparty_user_id=user.id,
         )
     db.commit()
     db.refresh(offer)
@@ -1107,11 +1107,11 @@ def accept_offer(
         notify(
             db, offer.from_user_id, "Offer accepted",
             f"Your offer of ₹{offer.price_per_q:,.0f}/q on lot #{lot.id} was accepted. Order #{order.id} created.",
-            type="offer_accepted", link=f"/buyer",
+            type="offer_accepted", link=f"/buyer", counterparty_user_id=user.id,
         )
         _reject_stale_offers(
             db, lot_id=lot.id, demand_id=offer.demand_id, exclude_offer_id=offer.id,
-            reason=f"Lot #{lot.id} was sold to another buyer.",
+            reason=f"Lot #{lot.id} was sold to another buyer.", winner_user_id=offer.from_user_id,
         )
 
     db.commit()
@@ -1140,7 +1140,7 @@ def reject_offer(
     notify(
         db, offer.from_user_id, "Offer rejected",
         f"Your offer of ₹{offer.price_per_q:,.0f}/q on lot #{offer.lot_id} was rejected.",
-        type="offer_rejected", link=f"/buyer",
+        type="offer_rejected", link=f"/buyer", counterparty_user_id=user.id,
     )
     db.commit()
     db.refresh(offer)
@@ -1184,6 +1184,7 @@ def counter_offer(
         db, offer.to_user_id, "Counter-offer received",
         f"New counter-offer of ₹{data.price_per_q:,.0f}/q on lot #{offer.lot_id}",
         type="offer_countered", link="/farmer/offers" if recipient_is_farmer else "/buyer",
+        counterparty_user_id=user.id,
     )
     db.commit()
     db.refresh(offer)
@@ -1320,7 +1321,7 @@ def update_order_status(
             notify(
                 db, profile.user_id, "Order status updated",
                 f"Order #{order.id} is now {status_label}",
-                type="order_status", link=link,
+                type="order_status", link=link, counterparty_user_id=user.id,
             )
 
     db.commit()
@@ -1440,10 +1441,12 @@ def simulate_payment(
     # Notify the seller (farmer or FPO) — this is the "sold + earning
     # credited" moment the whole book/fulfil flow is building toward.
     seller_user_id = _order_seller_user_id(db, order)
+    buyer_profile_for_notify = db.query(BuyerProfile).filter(BuyerProfile.id == order.buyer_id).first()
     notify(
         db, seller_user_id, "Lot sold!",
         f"₹{order.total_value:,.0f} has been credited to your account for order #{order.id}.",
         type="payment_received", link="/farmer/earnings",
+        counterparty_user_id=buyer_profile_for_notify.user_id if buyer_profile_for_notify else None,
     )
     db.commit()
     db.refresh(payment)
