@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { Skeleton } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -81,7 +84,7 @@ export default function FarmerProfile() {
       </div>
 
       {/* Profile Card */}
-      <div className="card" style={{ textAlign: "center", marginBottom: 16, padding: 24 }}>
+      <Card style={{ textAlign: "center", marginBottom: 16, padding: 24 }}>
         <div style={{
           width: 72, height: 72, borderRadius: "50%",
           background: "linear-gradient(135deg, var(--green-100), var(--green-200))",
@@ -94,16 +97,15 @@ export default function FarmerProfile() {
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{user.full_name}</h2>
         <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0 0" }}>@{user.username} · Farmer</p>
         <p style={{ fontSize: 13, color: "#6b7280" }}>{user.email}</p>
-      </div>
+      </Card>
 
       {/* Farm Details */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Farm Details</h3>
-          <button onClick={() => setEditing(!editing)}
-            style={{ fontSize: 13, color: "#16a34a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -10px", minHeight: 36, minWidth: 44 }}>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)}>
             {editing ? "Cancel" : "Edit"}
-          </button>
+          </Button>
         </div>
 
         {editing ? (
@@ -112,7 +114,7 @@ export default function FarmerProfile() {
               <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, display: "block" }}>
                 Farm Address
               </label>
-              <input className="input" value={editForm.farm_address}
+              <Input value={editForm.farm_address}
                 onChange={e => setEditForm({ ...editForm, farm_address: e.target.value })}
                 placeholder="Village, Taluka, District" />
             </div>
@@ -121,14 +123,14 @@ export default function FarmerProfile() {
                 <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, display: "block" }}>
                   Latitude
                 </label>
-                <input className="input" type="number" step="0.0001" value={editForm.farm_location_lat}
+                <Input type="number" step="0.0001" value={editForm.farm_location_lat}
                   onChange={e => setEditForm({ ...editForm, farm_location_lat: Number(e.target.value) })} />
               </div>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, display: "block" }}>
                   Longitude
                 </label>
-                <input className="input" type="number" step="0.0001" value={editForm.farm_location_lng}
+                <Input type="number" step="0.0001" value={editForm.farm_location_lng}
                   onChange={e => setEditForm({ ...editForm, farm_location_lng: Number(e.target.value) })} />
               </div>
             </div>
@@ -136,16 +138,16 @@ export default function FarmerProfile() {
               <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, display: "block" }}>
                 Phone
               </label>
-              <input className="input" type="tel" value={editForm.phone}
+              <Input type="tel" value={editForm.phone}
                 onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                 placeholder="+91 XXXXX XXXXX" />
             </div>
             {saveError && (
               <p style={{ fontSize: 13, color: "var(--color-danger, #ef4444)", margin: 0 }}>⚠️ {saveError}</p>
             )}
-            <button className="btn-primary" onClick={saveProfile} disabled={saving}>
+            <Button onClick={saveProfile} disabled={saving}>
               {saving ? "Saving…" : "Save Changes"}
-            </button>
+            </Button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -165,10 +167,10 @@ export default function FarmerProfile() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Transaction History */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>📋 Transaction History</h3>
           <Link href="/farmer/orders" style={{ fontSize: 13, color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>
@@ -209,10 +211,10 @@ export default function FarmerProfile() {
             </div>
           ))
         )}
-      </div>
+      </Card>
 
       {/* Language */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{t("language")}</h3>
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div className="lang-toggle" role="group" aria-label="Language">
@@ -225,10 +227,10 @@ export default function FarmerProfile() {
             ))}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* More */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         {[
           { label: "📦 Recent Lot Info", path: "/farmer/lots" },
           { label: "💰 My Earnings", path: "/farmer/earnings" },
@@ -246,13 +248,13 @@ export default function FarmerProfile() {
             {link.label}
           </Link>
         ))}
-      </div>
+      </Card>
 
       {/* Logout */}
-      <button className="btn-primary" onClick={() => { logout(); router.push("/login"); }}
-        style={{ background: "#ef4444", width: "100%" }}>
+      <Button className="w-full" onClick={() => { logout(); router.push("/login"); }}
+        style={{ background: "#ef4444" }}>
         {t("logout")}
-      </button>
+      </Button>
 
     </div>
       <FarmerBottomNav />

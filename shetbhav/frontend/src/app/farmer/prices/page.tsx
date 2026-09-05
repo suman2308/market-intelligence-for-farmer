@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import MapView, { MapPoint } from "@/components/MapView";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 import { cropEmoji } from "@/lib/cropEmoji";
@@ -73,8 +76,9 @@ export default function PricesPage() {
     <div className="farmer-shell">
       <FarmerHeader />
       <div className="page-header">
-        <button onClick={() => router.back()} aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 12, margin: -4, minWidth: 44, minHeight: 44 }}>←</button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+          <ArrowLeft className="size-5" />
+        </Button>
         <h1 className="heading-md">{t("todays_prices")}</h1>
       </div>
 
@@ -135,19 +139,19 @@ export default function PricesPage() {
           <div className="skeleton" style={{ height: 100 }} />
         </div>
       ) : error ? (
-        <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
+        <Card style={{ textAlign: "center", padding: "28px 20px" }}>
           <p style={{ fontSize: 30, margin: "0 0 6px 0" }}>⚠️</p>
           <p className="text-body" style={{ color: "var(--color-text-secondary)", margin: "0 0 14px 0" }}>
             Couldn't load market prices. Check your connection and try again.
           </p>
-          <button className="btn-primary" onClick={() => setRetry(r => r + 1)}>
+          <Button onClick={() => setRetry(r => r + 1)}>
             ↻ Retry
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : prices ? (
         <>
           {/* Current Price Card */}
-          <div className="card section-gap" style={{ textAlign: "center", padding: "20px 16px" }}>
+          <Card className="section-gap" style={{ textAlign: "center", padding: "20px 16px" }}>
             <p style={{ margin: 0, color: "var(--saffron-600)", fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase" }}>TODAY</p>
             <div className="price-big" style={{ margin: "6px 0 2px" }}>
               ₹{prices.prices?.modal_price?.toLocaleString("en-IN") || "---"}
@@ -159,11 +163,11 @@ export default function PricesPage() {
               Range: ₹{prices.prices?.min_price?.toLocaleString("en-IN")} — ₹{prices.prices?.max_price?.toLocaleString("en-IN")}
             </p>
             <div className="data-source" style={{ marginTop: 8 }}>{prices.data_source_label}</div>
-          </div>
+          </Card>
 
           {/* Forecast */}
           {forecast && (
-            <div className="card section-gap">
+            <Card className="section-gap">
               <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: "0 0 4px 0" }}>{t("forecast")} (7 days)</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                 <span className="heading-lg" style={{ color: "#3b82f6" }}>
@@ -195,11 +199,11 @@ export default function PricesPage() {
                   }
                 </p>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Price Details */}
-          <div className="card section-gap">
+          <Card className="section-gap">
             <h3 className="heading-sm mb-2">Details</h3>
             <div className="flex-col gap-2">
               {[
@@ -215,22 +219,22 @@ export default function PricesPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <button className="btn-primary" onClick={() => router.push("/farmer/sell")}>
+          <Button className="w-full" onClick={() => router.push("/farmer/sell")}>
             🧠 Smart Sell Recommendation
-          </button>
+          </Button>
           <p className="text-xs" style={{ textAlign: "center", color: "var(--text-secondary)", margin: "8px 0 0" }}>
             Answer a few quick questions and get a personalised recommendation on where and how to sell.
           </p>
         </>
       ) : (
-        <div className="card" style={{ textAlign: "center", padding: 40 }}>
+        <Card style={{ textAlign: "center", padding: 40 }}>
           <p style={{ fontSize: 30, margin: "0 0 6px 0" }}>📭</p>
           <p className="text-body" style={{ color: "var(--color-text-secondary)", margin: 0 }}>
             No market price data available for this crop yet.
           </p>
-        </div>
+        </Card>
       )}
 
       </div>
