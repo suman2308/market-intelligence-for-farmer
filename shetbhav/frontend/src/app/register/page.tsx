@@ -6,6 +6,8 @@ import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import type { Lang } from "@/lib/i18n";
 import { PasswordInput } from "@/components/ui";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const ROLES = [
   { value: "farmer", icon: "👨‍🌾", labelKey: "i_am_farmer", descKey: "role_farmer_desc" },
@@ -219,7 +221,7 @@ export default function RegisterPage() {
               <form onSubmit={handleDetails} className="auth-form" noValidate>
                 <div className="auth-field">
                   <label className="auth-label">{t("full_name")}</label>
-                  <input className={`input ${touched.full_name && fieldErrors.full_name ? "input-error" : ""}`}
+                  <Input className={`h-12 px-4 text-base ${touched.full_name && fieldErrors.full_name ? "input-error" : ""}`}
                     placeholder={t("full_name")} value={form.full_name}
                     onChange={e => handleFieldChange("full_name", e.target.value)}
                     onBlur={() => handleFieldBlur("full_name")}
@@ -230,7 +232,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("username")}</label>
-                  <input className={`input ${touched.username && (fieldErrors.username || availability.username === false) ? "input-error" : availability.username === true ? "input-success" : ""}`}
+                  <Input className={`h-12 px-4 text-base ${touched.username && (fieldErrors.username || availability.username === false) ? "input-error" : availability.username === true ? "input-success" : ""}`}
                     placeholder={t("username")} value={form.username}
                     onChange={e => { handleFieldChange("username", e.target.value); debouncedCheck("username", e.target.value); }}
                     onBlur={() => handleFieldBlur("username")}
@@ -241,7 +243,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("email")}</label>
-                  <input className={`input ${touched.email && (fieldErrors.email || availability.email === false) ? "input-error" : availability.email === true ? "input-success" : ""}`}
+                  <Input className={`h-12 px-4 text-base ${touched.email && (fieldErrors.email || availability.email === false) ? "input-error" : availability.email === true ? "input-success" : ""}`}
                     type="email" placeholder={t("email")} value={form.email}
                     onChange={e => { handleFieldChange("email", e.target.value); debouncedCheck("email", e.target.value); }}
                     onBlur={() => handleFieldBlur("email")} />
@@ -251,7 +253,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="auth-field">
                   <label className="auth-label">{t("phone")}</label>
-                  <input className={`input ${touched.phone && fieldErrors.phone ? "input-error" : ""}`}
+                  <Input className={`h-12 px-4 text-base ${touched.phone && fieldErrors.phone ? "input-error" : ""}`}
                     type="tel" placeholder="9876543210" value={form.phone}
                     onChange={e => handleFieldChange("phone", e.target.value)}
                     onBlur={() => handleFieldBlur("phone")} />
@@ -269,9 +271,9 @@ export default function RegisterPage() {
                     <div className="field-popup">{fieldErrors.password}</div>
                   )}
                 </div>
-                <button className="btn-primary auth-submit" type="submit" disabled={availability.username === false || availability.email === false}>
+                <Button type="submit" className="auth-submit text-base" disabled={availability.username === false || availability.email === false}>
                   {t("continue")}
-                </button>
+                </Button>
               </form>
             </>
           ) : (
@@ -302,9 +304,9 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <button className="btn-primary auth-submit" type="submit" disabled={loading}>
+                <Button type="submit" className="auth-submit text-base" disabled={loading}>
                   {loading ? <><span className="spinner" /> {t("creating_account")}</> : t("create_account")}
-                </button>
+                </Button>
               </form>
             </>
           )}

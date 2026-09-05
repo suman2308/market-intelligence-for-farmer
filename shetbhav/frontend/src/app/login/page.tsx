@@ -5,6 +5,8 @@ import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { PasswordInput } from "@/components/ui";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const LANGS: { code: Lang; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
@@ -113,7 +115,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
               <label className="auth-label">{t("username")}</label>
-              <input className="input" placeholder={t("username")} value={username}
+              <Input className="h-12 px-4 text-base" placeholder={t("username")} value={username}
                 onChange={e => setUsername(e.target.value)} required autoComplete="username" />
             </div>
             <div className="auth-field">
@@ -127,9 +129,9 @@ export default function LoginPage() {
                 <p>{error}</p>
               </div>
             )}
-            <button className="btn-primary auth-submit" type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="auth-submit text-base">
               {loading ? <><span className="spinner" /> {t("signing_in")}</> : t("sign_in")}
-            </button>
+            </Button>
           </form>
 
           <p className="auth-footer-link">
