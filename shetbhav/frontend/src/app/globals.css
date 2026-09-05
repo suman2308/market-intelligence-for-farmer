@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@heroui/react/styles";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -139,6 +140,26 @@
   --sidebar-accent-foreground: var(--green-800);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--green-600);
+
+  /* HeroUI v3 (@heroui/react/styles, imported above) happens to reuse
+     several of the exact same variable names as shadcn above —
+     --background/--foreground/--accent/--muted/--border/--radius — but
+     with different meanings (e.g. HeroUI's --accent is a bold focus/
+     interactive color; shadcn's is a subtle hover surface). Because this
+     block is unlayered :root CSS and HeroUI's own theme is imported
+     inside `@layer theme`, these overrides win for both libraries by the
+     cascade-layers spec — which is correct for shadcn but means HeroUI
+     components inherit shadcn-flavored values for those shared names
+     until a HeroUI component is actually wired into a page and checked
+     visually (tracked in the redesign plan, Phase 3). --focus is set
+     explicitly here so keyboard focus rings stay visible and on-brand
+     regardless of what happens to --accent.
+     --success/--warning/--danger are already defined above (line ~55)
+     with ShetBhav's real status colors and need no re-declaration here —
+     HeroUI's own --success/--warning/--danger already collide with
+     those names and inherit them correctly via the same cascade-layers
+     mechanism. */
+  --focus: var(--green-600);
 }
 
 /* ── Base ─────────────────────────────────────────────────────────── */
