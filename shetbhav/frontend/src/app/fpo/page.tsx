@@ -264,9 +264,14 @@ export default function FPODashboard() {
                           Grade {lot.quality_grade} · {lot.quantity_kg?.toLocaleString("en-IN")} kg
                         </p>
                       </div>
-                      <span className={`badge ${lot.status === "active" ? "badge-verified" : ""}`}>
-                        {lot.status}
-                      </span>
+                      <div style={{ textAlign: "right" }}>
+                        {lot.price_per_q && (
+                          <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>₹{lot.price_per_q.toLocaleString("en-IN")}/q</p>
+                        )}
+                        <span className={`badge ${lot.status === "active" ? "badge-verified" : ""}`}>
+                          {lot.status}
+                        </span>
+                      </div>
                     </div>
                     {lot.is_aggregated && (
                       <div style={{

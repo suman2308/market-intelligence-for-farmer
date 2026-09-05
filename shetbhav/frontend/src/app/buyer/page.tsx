@@ -269,15 +269,17 @@ export default function BuyerDashboard() {
                     <span className={`badge badge-${lot.status === "active" ? "active" : "pending"}`}>{lot.status}</span>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button className="btn-primary btn-sm" style={{ flex: 1 }}
-                    disabled={!lot.price_per_q || bookingLotId === lot.id}
-                    onClick={() => bookLot(lot)}>
-                    {bookingLotId === lot.id ? "Booking…" : `📦 Book at ₹${lot.price_per_q?.toLocaleString("en-IN") ?? "—"}/q`}
-                  </button>
-                  <button className="btn-secondary btn-sm"
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                  {lot.price_per_q ? (
+                    <button className="btn-primary btn-sm" style={{ width: "100%" }}
+                      disabled={bookingLotId === lot.id}
+                      onClick={() => bookLot(lot)}>
+                      {bookingLotId === lot.id ? "Booking…" : `📦 Book at ₹${lot.price_per_q.toLocaleString("en-IN")}/q`}
+                    </button>
+                  ) : null}
+                  <button className="btn-secondary btn-sm" style={{ width: "100%" }}
                     onClick={() => { setOfferForm({ price_per_q: lot.price_per_q || 2500, quantity_kg: Math.min(lot.quantity_kg, 5000), delivery_date: "" }); setOfferModal(lot); }}>
-                    Propose price
+                    {lot.price_per_q ? "Propose a different price" : "Propose a price"}
                   </button>
                 </div>
               </div>

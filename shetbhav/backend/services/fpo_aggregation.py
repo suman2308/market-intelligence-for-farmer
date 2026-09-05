@@ -48,12 +48,22 @@ def aggregate_lots(
         grade_counts[g] = grade_counts.get(g, 0) + lot.quantity_kg
     dominant_grade = max(grade_counts, key=grade_counts.get)
 
+    # Quantity-weighted average of the contributing lots' asking prices —
+    # lots without a price (e.g. pre-dating this field) don't count toward
+    # either side of the average.
+    priced_lots = [l for l in farmer_lots if l.expected_price_per_q]
+    avg_price = (
+        sum(l.expected_price_per_q * l.quantity_kg for l in priced_lots) / sum(l.quantity_kg for l in priced_lots)
+        if priced_lots else None
+    )
+
     # Create aggregated lot
     agg_lot = ProduceLot(
         farmer_id=farmer_lots[0].farmer_id,  # FPO primary contact
         fpo_id=fpo_id,
         crop_id=farmer_lots[0].crop_id,
         quantity_kg=min(total_qty, target_quantity_kg),
+        expected_price_per_q=round(avg_price, 2) if avg_price else None,
         quality_grade=QualityGrade(dominant_grade),
         location_lat=fpo.location_lat,
         location_lng=fpo.location_lng,
