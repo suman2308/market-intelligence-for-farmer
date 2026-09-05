@@ -5,6 +5,10 @@ import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { cropEmoji } from "@/lib/cropEmoji";
 import { totalAmount, formatINR } from "@/lib/money";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 
@@ -148,19 +152,20 @@ function FarmerLotsContent() {
       <FarmerHeader />
       <div className="farmer-page">
       <div style={{ padding: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => router.back()} aria-label="Go back"
-          style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", padding: 10, margin: -6, minWidth: 44, minHeight: 44 }}>←</button>
+        <Button variant="ghost" size="icon-lg" className="size-11" onClick={() => router.back()} aria-label="Go back">
+          <ArrowLeft className="size-5" />
+        </Button>
         <h1 className="heading-md" style={{ margin: 0 }}>{t("my_lots") || "My Lots"}</h1>
       </div>
 
       {/* ── Create Lot ── */}
-      <button className="btn-primary" style={{ width: "100%", marginBottom: showCreate ? 12 : 16 }}
+      <Button className="w-full" style={{ marginBottom: showCreate ? 12 : 16 }}
         onClick={() => setShowCreate(s => !s)}>
         {showCreate ? "✕ Cancel" : `➕ ${t("create_lot") || "Create a Lot"}`}
-      </button>
+      </Button>
 
       {showCreate && (
-        <div className="card section-gap">
+        <Card className="section-gap">
           {createError && (
             <p style={{ fontSize: 13, color: "var(--danger)", margin: "0 0 10px" }}>⚠️ {createError}</p>
           )}
@@ -174,12 +179,12 @@ function FarmerLotsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity (kg)</label>
-                <input className="input" type="number" value={form.quantity_kg}
+                <Input type="number" value={form.quantity_kg}
                   onChange={e => setForm({ ...form, quantity_kg: Number(e.target.value) })} min={1} />
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Price (₹/quintal)</label>
-                <input className="input" type="number" value={form.price_per_q}
+                <Input type="number" value={form.price_per_q}
                   onChange={e => setForm({ ...form, price_per_q: Number(e.target.value) })} min={1} />
               </div>
             </div>
@@ -212,37 +217,37 @@ function FarmerLotsContent() {
                 onChange={e => setForm({ ...form, available_for_fpo: e.target.checked })} />
               Make this lot available for FPO aggregation
             </label>
-            <button className="btn-primary" disabled={creating} onClick={createLot}>
+            <Button disabled={creating} onClick={createLot}>
               {creating ? "Listing…" : "List this produce"}
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      <button className="btn-secondary" style={{ width: "100%", marginBottom: 16 }}
+      <Button variant="secondary" className="w-full" style={{ marginBottom: 16 }}
         onClick={() => router.push("/farmer/offers")}>
         📨 Offers on my lots
-      </button>
+      </Button>
 
       {/* ── Active Lots ── */}
       <p className="heading-sm" style={{ marginBottom: 8 }}>Active Lots</p>
       {loading ? (
         <div>{[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100, marginBottom: 12 }} />)}</div>
       ) : loadError ? (
-        <div className="card section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <Card className="section-gap" style={{ borderColor: "var(--danger)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <p style={{ fontSize: 13, margin: 0, color: "var(--danger)" }}>⚠️ Couldn't load your lots.</p>
-          <button className="btn-sm" onClick={load} style={{ background: "none", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+          <Button variant="outline" size="sm" onClick={load} className="text-destructive">
             Retry
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : activeLots.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: 32, marginBottom: 16 }}>
+        <Card style={{ textAlign: "center", padding: 32, marginBottom: 16 }}>
           <p style={{ fontSize: 28, margin: 0 }}>📦</p>
           <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "10px 0 0 0" }}>No active lots. Create one above to reach buyers.</p>
-        </div>
+        </Card>
       ) : (
         activeLots.map(lot => (
-          <div key={lot.id} className="card" style={{ marginBottom: 12 }}>
+          <Card key={lot.id} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}
               onClick={() => router.push(`/lots/${lot.id}`)}>
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -270,12 +275,12 @@ function FarmerLotsContent() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity (kg)</label>
-                    <input className="input" type="number" value={editForm.quantity_kg}
+                    <Input type="number" value={editForm.quantity_kg}
                       onChange={e => setEditForm({ ...editForm, quantity_kg: Number(e.target.value) })} min={1} />
                   </div>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Price (₹/quintal)</label>
-                    <input className="input" type="number" value={editForm.price_per_q}
+                    <Input type="number" value={editForm.price_per_q}
                       onChange={e => setEditForm({ ...editForm, price_per_q: Number(e.target.value) })} min={1} />
                   </div>
                 </div>
@@ -299,32 +304,27 @@ function FarmerLotsContent() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn-primary" style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                  <Button className="flex-1"
                     disabled={savingEditId === lot.id} onClick={() => saveEdit(lot.id)}>
                     {savingEditId === lot.id ? "Saving…" : "Save Changes"}
-                  </button>
-                  <button style={{
-                    flex: 1, padding: "8px", fontSize: 13, borderRadius: 8,
-                    border: "1px solid var(--stone-200)", background: "white", cursor: "pointer",
-                  }} onClick={() => setEditingLotId(null)}>
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setEditingLotId(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 {lot.status === "active" && (
                   <>
-                    <button className="btn-secondary" style={{ flex: 1, padding: "10px", fontSize: 14 }}
+                    <Button variant="secondary" className="flex-1"
                       onClick={() => startEdit(lot)}>
                       ✏️ Edit
-                    </button>
-                    <button style={{
-                      flex: 1, padding: "10px", fontSize: 14, borderRadius: 8,
-                      border: "1px solid var(--stone-200)", background: "white", cursor: "pointer", color: "var(--danger)",
-                    }} disabled={deletingLotId === lot.id} onClick={() => deleteLot(lot.id)}>
+                    </Button>
+                    <Button variant="outline" className="flex-1 text-destructive"
+                      disabled={deletingLotId === lot.id} onClick={() => deleteLot(lot.id)}>
                       {deletingLotId === lot.id ? "…" : "🗑️ Delete"}
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -332,7 +332,7 @@ function FarmerLotsContent() {
             {deleteError && editingLotId !== lot.id && (
               <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0" }}>⚠️ {deleteError}</p>
             )}
-          </div>
+          </Card>
         ))
       )}
 
@@ -341,7 +341,7 @@ function FarmerLotsContent() {
         <>
           <p className="heading-sm" style={{ margin: "20px 0 8px" }}>In FPO Storage</p>
           {inFpoProcessLots.map(lot => (
-            <div key={lot.id} className="card" style={{ marginBottom: 8 }}>
+            <Card key={lot.id} style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
@@ -353,7 +353,7 @@ function FarmerLotsContent() {
                 </div>
                 <span className="badge badge-amber">{lot.status === "pending_fpo" ? "Pending" : "In FPO storage"}</span>
               </div>
-            </div>
+            </Card>
           ))}
         </>
       )}
@@ -361,16 +361,15 @@ function FarmerLotsContent() {
       {/* ── Order History ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 8px" }}>
         <p className="heading-sm" style={{ margin: 0 }}>Order History</p>
-        <button onClick={() => router.push("/farmer/orders")}
-          style={{ background: "none", border: "none", color: "var(--green-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+        <Button variant="link" className="h-auto p-0 text-[13px]" onClick={() => router.push("/farmer/orders")}>
           View all →
-        </button>
+        </Button>
       </div>
       {!loading && !loadError && recentOrders.length === 0 ? (
         <p style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", margin: "8px 0" }}>No orders yet</p>
       ) : (
         recentOrders.map((order: any) => (
-          <div key={order.id} className="card" style={{ marginBottom: 8, padding: "12px 14px", cursor: "pointer" }}
+          <Card key={order.id} style={{ marginBottom: 8, padding: "12px 14px", cursor: "pointer" }}
             onClick={() => router.push(`/farmer/orders/${order.id}`)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -388,7 +387,7 @@ function FarmerLotsContent() {
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
         ))
       )}
       </div>
