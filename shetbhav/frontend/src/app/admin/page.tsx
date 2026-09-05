@@ -8,6 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const COLORS = ["#2d6a4f", "#b07d3b", "#c95d3e", "#4a7c59", "#6c757d"];
 
@@ -48,7 +50,7 @@ export default function AdminDashboard() {
       <div style={{ padding: 40, textAlign: "center" }}>
         <h2>Access Denied</h2>
         <p style={{ color: "var(--color-text-secondary)" }}>Admin access required</p>
-        <button className="btn-primary" onClick={() => router.push("/login")} style={{ marginTop: 16 }}>Login as Admin</button>
+        <Button onClick={() => router.push("/login")} style={{ marginTop: 16 }}>Login as Admin</Button>
       </div>
     );
   }
@@ -183,7 +185,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Key Metrics */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <h3 className="heading-sm">Platform Health</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
                   {[
@@ -199,7 +201,7 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </>
           )}
 
@@ -207,7 +209,7 @@ export default function AdminDashboard() {
           {activeTab === "analytics" && stats && (
             <>
               {/* User Distribution Pie Chart */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <h3 className="heading-sm">User Distribution</h3>
                 <div style={{ width: "100%", height: 250 }}>
                   <ResponsiveContainer>
@@ -220,10 +222,10 @@ export default function AdminDashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </Card>
 
               {/* Platform Health Bar Chart */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <h3 className="heading-sm">Platform Health Metrics</h3>
                 <div style={{ width: "100%", height: 250 }}>
                   <ResponsiveContainer>
@@ -236,10 +238,10 @@ export default function AdminDashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </Card>
 
               {/* Activity Trend Line Chart */}
-              <div className="card section-gap">
+              <Card className="section-gap">
                 <h3 className="heading-sm">Weekly Activity Trend</h3>
                 <div style={{ width: "100%", height: 250 }}>
                   <ResponsiveContainer>
@@ -255,14 +257,14 @@ export default function AdminDashboard() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </Card>
 
-              <div className="card">
+              <Card>
                 <p className="text-xs" style={{ color: "var(--color-text-secondary)", margin: 0 }}>
                   Charts show current snapshot data. Weekly trends are derived from active/total counts.
                   Full time-series analytics require a data warehouse integration.
                 </p>
-              </div>
+              </Card>
             </>
           )}
 
@@ -271,7 +273,7 @@ export default function AdminDashboard() {
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>Users ({users.length})</h2>
               {users.map((u: any) => (
-                <div key={u.id} className="card" style={{ marginBottom: 8 }}>
+                <Card key={u.id} style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{u.full_name}</p>
@@ -281,7 +283,7 @@ export default function AdminDashboard() {
                       {u.role}
                     </span>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -291,12 +293,12 @@ export default function AdminDashboard() {
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>Grievances ({grievances.length})</h2>
               {grievances.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 32 }}>
+                <Card style={{ textAlign: "center", padding: 32 }}>
                   <p style={{ fontSize: 28, margin: 0 }}>✅</p>
                   <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: "8px 0 0 0" }}>No grievances filed</p>
-                </div>
+                </Card>
               ) : grievances.map((g: any) => (
-                <div key={g.id} className="card" style={{
+                <Card key={g.id} style={{
                   marginBottom: 8,
                   borderLeft: `3px solid ${g.status === "open" ? "var(--color-accent)" : g.status === "resolved" ? "var(--color-success)" : "var(--color-text-secondary)"}`
                 }}>
@@ -318,14 +320,14 @@ export default function AdminDashboard() {
                   </div>
                   {g.status === "open" && (
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <button className="btn-primary" style={{ flex: 1, fontSize: 13, padding: "8px 12px" }}
+                      <Button className="flex-1" size="sm"
                         onClick={() => resolveGrievance(g.id, "resolved", "Resolved — issue addressed")}>
                         ✅ Resolve
-                      </button>
-                      <button className="btn-secondary" style={{ flex: 1, fontSize: 13, padding: "8px 12px" }}
+                      </Button>
+                      <Button variant="secondary" className="flex-1" size="sm"
                         onClick={() => resolveGrievance(g.id, "rejected", "Rejected — no action needed")}>
                         ❌ Reject
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {g.resolution && (
@@ -333,7 +335,7 @@ export default function AdminDashboard() {
                       Resolution: {g.resolution}
                     </p>
                   )}
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -343,7 +345,7 @@ export default function AdminDashboard() {
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>Lots ({lots.length})</h2>
               {lots.map((lot: any) => (
-                <div key={lot.id} className="card" style={{ marginBottom: 8, cursor: "pointer" }}
+                <Card key={lot.id} style={{ marginBottom: 8, cursor: "pointer" }}
                   onClick={() => router.push(`/lots/${lot.id}`)}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
@@ -357,7 +359,7 @@ export default function AdminDashboard() {
                     </div>
                     <span className={`badge ${lot.status === "active" ? "badge-active" : "badge-completed"}`}>{lot.status}</span>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -367,7 +369,7 @@ export default function AdminDashboard() {
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>Demands ({demands.length})</h2>
               {demands.map((d: any) => (
-                <div key={d.id} className="card" style={{ marginBottom: 8, cursor: "pointer" }}
+                <Card key={d.id} style={{ marginBottom: 8, cursor: "pointer" }}
                   onClick={() => router.push(`/demands/${d.id}`)}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
@@ -380,7 +382,7 @@ export default function AdminDashboard() {
                     </div>
                     <span className={`badge ${d.status === "open" ? "badge-active" : "badge-completed"}`}>{d.status}</span>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -390,7 +392,7 @@ export default function AdminDashboard() {
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>Orders ({orders.length})</h2>
               {orders.map((o: any) => (
-                <div key={o.id} className="card" style={{ marginBottom: 8 }}>
+                <Card key={o.id} style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
                       <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
@@ -402,7 +404,7 @@ export default function AdminDashboard() {
                     </div>
                     <span className="badge badge-active">{o.status}</span>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -411,7 +413,7 @@ export default function AdminDashboard() {
           {activeTab === "ml" && (
             <div>
               <h2 className="heading-sm" style={{ marginBottom: 12 }}>🤖 ML Models</h2>
-              <div className="card" style={{ marginBottom: 12 }}>
+              <Card style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 8px 0" }}>
                   Forecasts are evaluated on real AGMARKNET data. XGBoost is used only when it beats the naive baseline; otherwise the baseline is served and labeled honestly.
                 </p>
@@ -434,15 +436,15 @@ export default function AdminDashboard() {
                 <p className="data-source" style={{ marginTop: 12 }}>
                   Real-data evaluation only — no synthetic rows in training. See ML.md for methodology and metrics.
                 </p>
-              </div>
+              </Card>
 
-              <div className="card">
+              <Card>
                 <h3 className="heading-sm" style={{ marginBottom: 8 }}>Smart Sell Engine</h3>
                 <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
                   Multi-factor scoring: net realization, buyer reliability, transport cost,
                   storage cost, price forecast, quality match, urgency.
                 </p>
-              </div>
+              </Card>
             </div>
           )}
         </>
