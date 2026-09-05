@@ -5,6 +5,7 @@ import { useAuth, roleHomePath } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { DataSourceBadge, Skeleton } from "@/components/ui";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 import { cropEmoji } from "@/lib/cropEmoji";
@@ -26,37 +27,24 @@ export default function FarmerHome() {
   const [dashboardError, setDashboardError] = useState(false);
   const [lotsError, setLotsError] = useState(false);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
-  // trackIndex counts up past crops.length onto a cloned copy of the first
-  // card, then snaps back to 0 with the transition switched off — the
-  // standard "infinite loop" carousel trick. Without the clone, going from
-  // the last card back to index 0 would animate backwards through every
-  // card in between instead of continuing forward.
-  const [trackIndex, setTrackIndex] = useState(0);
-  const [instantJump, setInstantJump] = useState(false);
-  const priceIndex = crops.length ? trackIndex % crops.length : 0;
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [priceIndex, setPriceIndex] = useState(0);
 
   useEffect(() => { loadUser().then(() => setLoading(false)); }, []);
 
+  // embla (via shadcn's Carousel) handles the last->first wraparound
+  // correctly with loop:true — no clone-slide trick needed.
   useEffect(() => {
-    if (!sectionsLoaded || crops.length <= 1) return;
-    const timer = setInterval(() => {
-      setTrackIndex(i => i + 1);
-    }, 3200);
-    return () => clearInterval(timer);
-  }, [sectionsLoaded, crops.length]);
+    if (!carouselApi) return;
+    setPriceIndex(carouselApi.selectedScrollSnap());
+    carouselApi.on("select", () => setPriceIndex(carouselApi.selectedScrollSnap()));
+  }, [carouselApi]);
 
-  // Once the transition has carried us onto the cloned card (trackIndex ===
-  // crops.length, which looks identical to index 0), jump back to the real
-  // index 0 with no transition — imperceptible since the clone is identical.
   useEffect(() => {
-    if (crops.length <= 1 || trackIndex !== crops.length) return;
-    const timer = setTimeout(() => {
-      setInstantJump(true);
-      setTrackIndex(0);
-      requestAnimationFrame(() => requestAnimationFrame(() => setInstantJump(false)));
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [trackIndex, crops.length]);
+    if (!carouselApi || !sectionsLoaded || crops.length <= 1) return;
+    const timer = setInterval(() => carouselApi.scrollNext(), 3200);
+    return () => clearInterval(timer);
+  }, [carouselApi, sectionsLoaded, crops.length]);
 
   const loadDashboardAndLots = () => {
     if (!user) return;
@@ -140,25 +128,13 @@ export default function FarmerHome() {
         </div>
       ) : (
         <div className="section-gap">
-        <div style={{ overflow: "hidden", borderRadius: 14 }}>
-          {(() => {
-            // Append a clone of the first crop so the track has one extra
-            // slide to slide onto — see the trackIndex effect above for why.
-            const slides = crops.length > 1 ? [...crops, crops[0]] : crops;
-            const totalSlides = slides.length;
-            return (
-              <div style={{
-                display: "flex",
-                width: `${totalSlides * 100}%`,
-                transform: `translateX(-${trackIndex * (100 / totalSlides)}%)`,
-                transition: instantJump ? "none" : "transform 0.7s cubic-bezier(0.65, 0, 0.35, 1)",
-              }}>
-                {slides.map((crop: any, i: number) => {
-                  const p = cropPrices[crop.id];
-                  const isClone = i === crops.length;
-                  return (
-                    <div key={isClone ? `${crop.id}-clone` : crop.id} className="card"
-                      style={{ flex: `0 0 ${100 / totalSlides}%`, cursor: "pointer", margin: 0, borderRadius: 0 }}
+          <Carousel opts={{ loop: crops.length > 1 }} setApi={setCarouselApi}>
+            <CarouselContent className="ml-0">
+              {crops.map((crop: any) => {
+                const p = cropPrices[crop.id];
+                return (
+                  <CarouselItem key={crop.id} className="pl-0">
+                    <div className="card" style={{ cursor: "pointer" }}
                       onClick={() => router.push("/farmer/prices")}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cropEmoji(crop.name)} {crop.name}</p>
@@ -178,23 +154,22 @@ export default function FarmerHome() {
                         <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Price unavailable</p>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
-        {crops.length > 1 && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
-            {crops.map((crop: any, i: number) => (
-              <span key={crop.id} style={{
-                width: i === priceIndex ? 16 : 6, height: 6, borderRadius: 3,
-                background: i === priceIndex ? "var(--green-600)" : "var(--stone-200)",
-                transition: "all 0.3s ease",
-              }} />
-            ))}
-          </div>
-        )}
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+          </Carousel>
+          {crops.length > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
+              {crops.map((crop: any, i: number) => (
+                <span key={crop.id} style={{
+                  width: i === priceIndex ? 16 : 6, height: 6, borderRadius: 3,
+                  background: i === priceIndex ? "var(--green-600)" : "var(--stone-200)",
+                  transition: "all 0.3s ease",
+                }} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
