@@ -22,17 +22,17 @@
 | 🌾 FPO (Nashik FPO) | `nashik_fpo` | `demo123` | `/fpo` |
 | ⚙️ Admin | `admin` | `demo123` | `/admin` |
 
-Sign in at **/login**: enter the username and password, click **Continue**, then select the matching role.
+Sign in at **/login**: enter the username and password, click **Sign In** — your role is detected automatically.
 
 ## Demo Flow (5 minutes)
 
 ### 1. Login as Farmer (30 sec)
-- Username `ramesh`, password `demo123`, role **Farmer**
+- Username `ramesh`, password `demo123`
 - **Show**: Greeting, today's tomato price, active lots, earnings
 
 ### 2. Smart Sell Decision Engine (2 min)
 - Click "Sell My Produce"
-- Walk through 7-step wizard:
+- Walk through the 6-step wizard:
   1. Crop: Tomato 🍅
   2. Quantity: 2,000 kg
   3. Quality: Grade A ⭐
@@ -52,7 +52,7 @@ Sign in at **/login**: enter the username and password, click **Continue**, then
 - **Show**: Data source label "Synthetic demo data"
 
 ### 4. Buyer Dashboard (1 min)
-- Logout → Login with username `abc_foods`, password `demo123`, role **Buyer**
+- Logout → Login with username `abc_foods`, password `demo123`
 - **Show**: demands, available lots, offers
 - Click "Make Offer" on a lot
 - **Show**: Offer modal with price, quantity, delivery date, total value
@@ -60,7 +60,7 @@ Sign in at **/login**: enter the username and password, click **Continue**, then
 - Navigate to "Offers" tab to see offer status
 
 ### 5. Admin Dashboard (30 sec)
-- Logout → Login with username `admin`, password `demo123`, role **Admin**
+- Logout → Login with username `admin`, password `demo123`
 - **Show**: farmers, buyers, active lots, active demand
 - **Show**: Platform health metrics
 - Click "Grievances" tab

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import type * as LeafletTypes from "leaflet";
 
 // Dynamic import to avoid SSR issues with Leaflet
 const MapContainer = dynamic(
@@ -18,10 +19,6 @@ const Marker = dynamic(
 );
 const Popup = dynamic(
   () => import("react-leaflet").then((mod) => mod.Popup),
-  { ssr: false }
-);
-const Circle = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Circle),
   { ssr: false }
 );
 
@@ -47,7 +44,10 @@ interface MapViewProps {
 
 function getMarkerIcon(type: string, color?: string) {
   if (typeof window === "undefined") return undefined;
-  const L = require("leaflet");
+  // Leaflet must be loaded client-side only; the map components above are
+  // dynamically imported with ssr:false, so this only runs in the browser.
+  const L = window.L as typeof LeafletTypes | undefined;
+  if (!L) return undefined;
 
   const colors: Record<string, string> = {
     market: "#2d6a4f",
@@ -99,13 +99,15 @@ export default function MapView({
     setMounted(true);
     // Fix Leaflet default icon paths
     if (typeof window !== "undefined") {
-      const L = require("leaflet");
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-      });
+      const L = window.L as typeof LeafletTypes | undefined;
+      if (L) {
+        delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        });
+      }
     }
   }, []);
 

@@ -5,6 +5,7 @@ ShetBhav — FastAPI Backend
 import os
 import sys
 import random
+import re
 import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -68,8 +69,6 @@ app = FastAPI(
     description="AI-powered agricultural market intelligence platform",
     version="1.0.0",
 )
-
-import re
 
 def _cors_origins():
     """Allow the configured frontend URL plus any localhost port (dev)."""

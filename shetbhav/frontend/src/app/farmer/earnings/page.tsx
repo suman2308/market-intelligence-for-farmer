@@ -15,7 +15,6 @@ export default function EarningsPage() {
   const { user, loadUser } = useAuth();
   const { t } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

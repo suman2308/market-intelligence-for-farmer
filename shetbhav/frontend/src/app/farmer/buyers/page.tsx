@@ -40,13 +40,18 @@ export default function BuyersPage() {
     Nagpur: [21.15, 79.09],
   };
 
+  // Deterministic per-id jitter so multiple buyers in the same district don't
+  // stack on one map marker — stable across renders (no Math.random() in render).
+  const jitter = (id: number, salt: number) =>
+    (((Math.sin(id * 12.9898 + salt * 78.233) * 43758.5453) % 1) + 1) % 1;
+
   const mapPoints: MapPoint[] = buyers.map((b: any) => {
     const coords = districtCoords[b.district] || [19.75, 75.71];
     return {
       id: b.id,
       name: b.business_name,
-      lat: coords[0] + (Math.random() - 0.5) * 0.05,
-      lng: coords[1] + (Math.random() - 0.5) * 0.05,
+      lat: coords[0] + (jitter(b.id, 1) - 0.5) * 0.05,
+      lng: coords[1] + (jitter(b.id, 2) - 0.5) * 0.05,
       type: "buyer" as const,
       detail: `${b.business_type} · Trust: ${b.trust_score}`,
       badge: b.business_type,

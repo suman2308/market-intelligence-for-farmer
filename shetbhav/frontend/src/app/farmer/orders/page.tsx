@@ -35,63 +35,8 @@ function getStatusInfo(status: string) {
 }
 
 /**
- * Timeline for an order
+ * Timeline for an order (shared shape with the order-detail page).
  */
-function OrderTimeline({ status }: { status: string }) {
-  const allSteps = [
-    "accepted", "pickup_scheduled", "in_transit", "delivered", "quality_confirmed", "paid",
-  ];
-  const currentIdx = allSteps.indexOf(status);
-  const isComplete = ["completed", "paid"].includes(status);
-  const isCancelled = status === "cancelled";
-
-  if (isCancelled || status === "disputed") {
-    return (
-      <div style={{ padding: "12px 0 4px", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 16 }}>{getStatusInfo(status).icon}</span>
-        <span style={{ color: getStatusInfo(status).color, fontWeight: 600, fontSize: 14 }}>
-          {getStatusInfo(status).label}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: "8px 0", display: "flex", flexDirection: "column", gap: 0 }}>
-      {allSteps.map((step, i) => {
-        const isDone = isComplete || (currentIdx >= 0 && i <= currentIdx);
-        const isCurrent = !isComplete && i === currentIdx;
-        const stepInfo = getStatusInfo(step);
-        return (
-          <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0 }}>
-              <div style={{
-                width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 10, fontWeight: 700,
-                background: isDone ? "#16a34a" : isCurrent ? "#1F6B45" : "#e5e7eb",
-                color: !isDone && !isCurrent ? "#667085" : "white",
-                border: isCurrent ? "2px solid #bbf7d0" : "none",
-              }}>
-                {isDone ? "✓" : ""}
-              </div>
-              {i < allSteps.length - 1 && (
-                <div style={{ width: 2, height: 20, background: isDone ? "#16a34a" : "#e5e7eb" }} />
-              )}
-            </div>
-            <span style={{
-              fontSize: 12, paddingBottom: 4,
-              color: isDone ? "#172033" : "#667085",
-              fontWeight: isCurrent ? 600 : 400,
-            }}>
-              {stepInfo.icon} {stepInfo.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function OrdersPage() {
   const router = useRouter();
   const { user, loadUser } = useAuth();

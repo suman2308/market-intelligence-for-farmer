@@ -33,7 +33,6 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Demo
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
-DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "en")
 
 # File uploads
 MAX_UPLOAD_SIZE_MB = 10
@@ -46,5 +45,4 @@ DATA_GOV_RESOURCE_ID = os.getenv("MARKET_DATA_RESOURCE_ID", "9ef84268-d588-465a-
 MARKET_DATA_MODE = os.getenv("MARKET_DATA_MODE", "cached")
 MARKET_DATA_CACHE_HOURS = int(os.getenv("MARKET_DATA_CACHE_HOURS", "24"))
 REQUEST_TIMEOUT_SECONDS = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "15"))
-AGMARKNET_API_URL = "https://data.gov.in/backend/dmspublic/v1/resources/download"
 AGMARKNET_API_KEY = os.getenv("AGMARKNET_API_KEY", DATA_GOV_API_KEY)

@@ -2,7 +2,6 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
-import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { Skeleton } from "@/components/ui";
 import { ArrowLeft } from "lucide-react";
@@ -43,7 +42,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const { user, loadUser } = useAuth();
-  const { t } = useI18n();
   const [orderData, setOrderData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,7 +51,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     if (user && id) {
       api.get(`/orders/${id}`)
         .then(r => { setOrderData(r.data); setLoading(false); })
-        .catch(e => { setError("Order not found"); setLoading(false); });
+        .catch(() => { setError("Order not found"); setLoading(false); });
     }
   }, [user, id]);
 

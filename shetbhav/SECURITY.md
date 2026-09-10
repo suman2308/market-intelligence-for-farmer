@@ -2,7 +2,7 @@
 
 **Last updated:** September 2026
 
-This document describes how ShetBhav handles secrets, authentication, and data — and what is NOT hardened yet. It is an MVP built for a hackathon, so please treat the gaps honestly.
+This document describes how ShetBhav handles secrets, authentication, and data — and what is NOT hardened yet. It is an early-stage product, so please treat the gaps honestly.
 
 ---
 

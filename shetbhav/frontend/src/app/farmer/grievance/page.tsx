@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
-import { useI18n } from "@/lib/i18n";
 import api from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ const CATEGORIES = [
 export default function GrievancePage() {
   const router = useRouter();
   const { user, loadUser } = useAuth();
-  const { t } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -31,7 +29,6 @@ export default function GrievancePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadUser(); }, []);
   useEffect(() => {
@@ -42,7 +39,6 @@ export default function GrievancePage() {
       ]).then(([o, g]) => {
         setOrders(o.data);
         setGrievances(g.data);
-        setLoading(false);
       });
     }
   }, [user]);

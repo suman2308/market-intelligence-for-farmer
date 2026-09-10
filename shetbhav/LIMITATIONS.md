@@ -6,7 +6,7 @@
 
 ## Honest Assessment
 
-ShetBhav is an **MVP prototype** built for Smart India Hackathon 2026. It is **not** a production system.
+ShetBhav is an **MVP prototype**. It is **not** a production system.
 
 ---
 

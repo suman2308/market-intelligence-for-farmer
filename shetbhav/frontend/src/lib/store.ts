@@ -23,17 +23,27 @@ export function roleHomePath(role: string): string {
   }
 }
 
+interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  full_name: string;
+  phone?: string;
+  role: string;
+  language?: string;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   loadUser: () => Promise<void>;
 }
 
-export const useAuth = create<AuthState>((set, get) => ({
+export const useAuth = create<AuthState>((set) => ({
   user: null,
   token: typeof window !== "undefined" ? sessionStorage.getItem("shetbhav_token") : null,
   loading: false,
@@ -44,8 +54,8 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ user: data.user, token: data.access_token });
   },
 
-  register: async (regData: any) => {
-    const { data } = await api.post("/auth/register", regData);
+  register: async (regData: RegisterData) => {
+    await api.post("/auth/register", regData);
     // Auto-login after registration
     const loginRes = await api.post("/auth/login", {
       username: regData.username,

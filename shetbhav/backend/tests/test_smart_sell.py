@@ -1,6 +1,6 @@
 """
 Smart Sell Decision Engine — 10 Test Scenarios
-Tests the core differentiator for SIH readiness.
+Tests the core differentiator.
 """
 import os
 import sys

@@ -18,16 +18,6 @@ import { cropEmoji } from "@/lib/cropEmoji";
  * Progressive disclosure. Simple on the surface.
  */
 
-const STEPS = [
-  { key: "crop", icon: "🌾" },
-  { key: "quantity", icon: "⚖️" },
-  { key: "quality", icon: "⭐" },
-  { key: "urgency", icon: "⏰" },
-  { key: "storage", icon: "📦" },
-  { key: "location", icon: "📍" },
-  { key: "result", icon: "🎯" },
-];
-
 export default function SmartSellPage() {
   const router = useRouter();
   const { user, loadUser } = useAuth();
@@ -40,7 +30,6 @@ export default function SmartSellPage() {
     harvest_date: "", storage_available: true, urgency: "soon",
   });
   const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
   const [showExplanation, setShowExplanation] = useState(false);

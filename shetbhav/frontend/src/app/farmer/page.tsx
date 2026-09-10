@@ -9,6 +9,7 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/com
 import FarmerHeader from "@/components/FarmerHeader";
 import FarmerBottomNav from "@/components/FarmerBottomNav";
 import { cropEmoji } from "@/lib/cropEmoji";
+import { formatINR } from "@/lib/money";
 
 /**
  * Farmer Dashboard — शेतभाव
@@ -190,7 +191,7 @@ export default function FarmerHome() {
           {[
             { value: dashboard.active_lots, label: t("active_lots") || "Active Lots", icon: "📦", color: "var(--green-600)", route: "/farmer/lots" },
             { value: dashboard.pending_orders, label: t("pending_orders") || "Pending Orders", icon: "🚚", color: "var(--saffron-500)", route: "/farmer/orders" },
-            { value: dashboard.total_earnings > 0 ? `₹${(dashboard.total_earnings / 1000).toFixed(1)}K` : "₹0", label: t("my_earnings") || "Earnings", icon: "💰", color: "var(--sky-500)", route: "/farmer/earnings" },
+            { value: dashboard.total_earnings > 0 ? formatINR(dashboard.total_earnings) : "₹0", label: t("my_earnings") || "Earnings", icon: "💰", color: "var(--sky-500)", route: "/farmer/earnings" },
             { value: "→", label: "Buyers & FPOs", icon: "🏢", color: "var(--stone-500)", route: "/farmer/buyers" },
           ].map((s, i) => (
             <div key={i} className="stat-card-premium" onClick={() => router.push(s.route)}>

@@ -60,9 +60,9 @@ if existing_lots:
     test('6. Reuse existing lot', 200, bool(lot_id))
 else:
     s, d = api('POST', '/lots', {
-        'crop_id': 1, 'quantity_kg': 10000, 'grade': 'A',
-        'location': 'Nashik, Maharashtra',
-        'expected_price_per_kg': 22.0
+        'crop_id': 1, 'quantity_kg': 10000, 'quality_grade': 'A',
+        'address': 'Nashik, Maharashtra',
+        'price_per_q': 2200.0
     }, token=r_token)
     lot_id = d.get('id') or d.get('lot_id')
     test('6. Create lot', s, s in [200,201] and lot_id)

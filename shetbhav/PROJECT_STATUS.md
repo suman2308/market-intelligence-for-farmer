@@ -10,7 +10,7 @@
 | Metric | Value |
 |--------|-------|
 | Frontend Routes | 24 (incl. dynamic `[id]`/`[userId]` routes) |
-| Backend API Endpoints | 104 |
+| Backend API Endpoints | 105 methods (94 paths) |
 | Database Tables | 45 |
 | pytest Tests | 246/246 PASS (14 files) |
 | Playwright E2E Tests | 15/15 PASS (4 spec files — both servers must be running) |

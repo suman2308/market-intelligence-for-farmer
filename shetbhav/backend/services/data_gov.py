@@ -224,7 +224,6 @@ def fetch_from_api(
         sync_meta["errors"].append(f"Timeout or network error: {str(e)[:100]}")
         sync_meta["api_status"] = "timeout"
         return None, sync_meta
-        return None, sync_meta
     except Exception as e:
         sync_meta["errors"].append(f"API error: {str(e)[:100]}")
         sync_meta["api_status"] = "error"

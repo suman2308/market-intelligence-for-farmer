@@ -9,7 +9,7 @@
 | **Interactive docs** | `https://shetbhav-backend.onrender.com/docs` |
 | **Health check** | `https://shetbhav-backend.onrender.com/health` |
 
-The backend exposes **73 paths (78 methods)**. All examples below use realistic values.
+The backend exposes **94 paths (105 methods)**. All examples below use realistic values.
 
 ## Authentication
 
