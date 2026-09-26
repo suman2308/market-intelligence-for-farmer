@@ -141,6 +141,29 @@ def _to_native(obj):
     return obj
 
 
+def _restore_market_ledger():
+    """Replay the local market-data ledger into the database at startup.
+
+    The ledger file (backend/data/local_market_ledger.jsonl) holds every real
+    AGMARKNET record ever fetched, so a wiped/recreated database is refilled
+    from the file instead of losing history or re-spending API quota.
+    Runs before demo seeding so restored real rows exist for fresh databases.
+    """
+    try:
+        from services.market_ledger import restore_to_db, ledger_stats
+        db = SessionLocal()
+        try:
+            written = restore_to_db(db)
+            if written:
+                stats = ledger_stats()
+                print(f"[OK] Market ledger restored {written} real price record(s) "
+                      f"({stats['records']} in file, {stats['date_range']['from']} to {stats['date_range']['to']})")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[WARN] Market ledger restore skipped: {e}")
+
+
 def _maybe_import_historical_csv():
     """Bootstrap a fresh database with the real AGMARKNET CSV (env-gated)."""
     if os.getenv("IMPORT_HISTORICAL_CSV", "false").lower() != "true":
@@ -255,6 +278,7 @@ def startup():
     init_db()
     _seed_reference_data()
     _maybe_import_historical_csv()
+    _restore_market_ledger()
     _seed_demo_data()
     _maybe_train_models_on_startup()
 
@@ -1038,9 +1062,12 @@ def sync_status(
     user: User = Depends(require_role(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    """Get data sync status for all crops."""
+    """Get data sync status for all crops plus local ledger health."""
     from services.data_gov import get_sync_status
-    return get_sync_status(db)
+    from services.market_ledger import ledger_stats
+    result = get_sync_status(db)
+    result["ledger"] = ledger_stats()
+    return result
 
 
 @app.post("/sync/mandi")
@@ -3091,7 +3118,7 @@ def fpo_aggregate_request(
         expected_price_per_q=data.expected_price_per_q,
         quality_grade=lots[0].quality_grade,
         location_lat=fpo.location_lat, location_lng=fpo.location_lng,
-        address=f"{fpo.name}, {fpo.district}",
+        address=" ".join(p for p in [fpo.name, fpo.district] if p),
         is_aggregated=True, status="pending",
     )
     db.add(agg_lot)

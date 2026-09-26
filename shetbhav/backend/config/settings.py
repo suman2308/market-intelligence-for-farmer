@@ -46,3 +46,7 @@ MARKET_DATA_MODE = os.getenv("MARKET_DATA_MODE", "cached")
 MARKET_DATA_CACHE_HOURS = int(os.getenv("MARKET_DATA_CACHE_HOURS", "24"))
 REQUEST_TIMEOUT_SECONDS = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "15"))
 AGMARKNET_API_KEY = os.getenv("AGMARKNET_API_KEY", DATA_GOV_API_KEY)
+
+# Local market-data ledger — append-only file that survives database resets
+# (see services/market_ledger.py). Leave empty to use backend/data/.
+MARKET_DATA_LEDGER_PATH = os.getenv("MARKET_DATA_LEDGER_PATH", "")

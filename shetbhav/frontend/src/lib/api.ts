@@ -4,9 +4,20 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 15000,
+  // Render free tier can sleep between requests; a cold start may take ~50s.
+  // A short timeout would abort a perfectly healthy (just waking) backend.
+  timeout: 60000,
   headers: { "Content-Type": "application/json" },
 });
+
+/** True when a request failed because the backend is waking up or offline —
+ * used to show an actionable message instead of a generic failure. */
+export function isColdStartError(err: unknown): boolean {
+  const e = err as { code?: string; message?: string; response?: { status?: number } };
+  if (e?.response?.status === 503) return true;
+  const msg = `${e?.code || ""} ${e?.message || ""}`;
+  return /ECONNABORTED|ERR_NETWORK|network error|timeout/i.test(msg);
+}
 
 // Attach token automatically
 if (typeof window !== "undefined") {

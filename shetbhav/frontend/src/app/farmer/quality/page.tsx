@@ -171,7 +171,7 @@ export default function QualityPage() {
                       Lot #{lot.id} — {lot.crop_name}
                     </p>
                     <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
-                      {lot.quantity_kg}kg · Grade {lot.quality_grade} · {lot.address || "Nashik"}
+                      {lot.quantity_kg}kg · Grade {lot.quality_grade} · {lot.address || "Address not set"}
                     </p>
                   </div>
                   {["tomato", "onion", "soybean"].includes(lot.crop_name?.toLowerCase()) && (

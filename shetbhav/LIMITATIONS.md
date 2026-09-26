@@ -30,14 +30,14 @@ ShetBhav is an **MVP prototype**. It is **not** a production system.
 - **Daily mandi data** — not real-time second-by-second prices
 - **AGMARKNET coverage** — some mandis may not report daily
 - **Soybean seasonal gaps** — not always available in API
-- **Historical depth** — 770 imported + 93 live records (~90 days; useful for demo, still thin for production-grade ML)
+- **Historical depth** — 1,469 banked real records (74 mandis, Jun–Sep 2026) in the local ledger; grows with each daily sync, but still thin for production-grade ML
 - **No real buyer transactions** — buyer reliability is based on seeded data
 
 ---
 
 ## ML Limitations
 
-- XGBoost is evaluated against the naive baseline on the real data. With ~78 daily points per crop it currently can't beat persistence, so the baseline is served and honestly labeled — revisit as history accumulates
+- XGBoost is evaluated against the naive baseline on the real data. With the current daily depth per crop it can't beat persistence yet, so the baseline is served and honestly labeled — revisit as the ledger accumulates history
 - Confidence intervals are approximate
 - Model retraining requires fresh data
 - Quality grading is rule-based CV, not trained neural network

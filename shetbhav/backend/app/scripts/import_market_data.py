@@ -275,6 +275,16 @@ def import_csv(filepath: str, db_session, overwrite: bool = False) -> dict:
             summary["inserted"] += 1
 
     db_session.commit()
+
+    # Durable copy: mirror imported real rows into the local ledger file so
+    # they survive a database reset (append-only + idempotent).
+    try:
+        from services.market_ledger import sync_db_to_ledger
+        added = sync_db_to_ledger(db_session)
+        summary["ledger_added"] = added
+    except Exception as e:
+        print(f"[WARN] Ledger sync after import failed (ignored): {e}")
+
     return summary
 
 

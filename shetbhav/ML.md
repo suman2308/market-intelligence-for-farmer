@@ -19,7 +19,7 @@ ShetBhav uses two ML components:
 | Field | Value |
 |-------|-------|
 | Source | data.gov.in AGMARKNET live API + imported historical dataset (real records only — synthetic demo rows are excluded from training) |
-| Records (dev DB) | 863 market price records — 770 imported as `historical_dataset` + 93 live-fetched |
+| Records (dev DB) | 1,469 real AGMARKNET records via the local market-data ledger (74 mandis, 1 Jun – 3 Sep 2026); grows with each daily sync |
 | Aggregation | Prices arrive per mandi per day; records are aggregated to **one daily series per crop** (mean modal/min/max across mandis) before training |
 | Crops | Onion, Tomato (the AGMARKNET subset we pull contains no Soybean arrivals — Soybean forecasts are unavailable) |
 | Markets | ~69 Maharashtra mandis mapped in the DB |
@@ -94,7 +94,7 @@ Re-evaluate any time more data is available: `POST /forecasts/train?crop=tomato|
   "trained_until": "2026-09-01",
   "data_source": "data.gov.in / AGMARKNET",
   "forecast_status": "forecast_available",
-  "explanation": "Based on 93 days of mandi price data"
+  "explanation": "Based on 95 days of mandi price data"
 }
 ```
 

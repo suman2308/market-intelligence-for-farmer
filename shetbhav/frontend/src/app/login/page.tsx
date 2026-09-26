@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, roleHomePath } from "@/lib/store";
+import { isColdStartError } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { PasswordInput } from "@/components/ui";
@@ -33,8 +34,12 @@ export default function LoginPage() {
       // Route by the account's real role so a user can never land on the
       // wrong dashboard (which would surface 403 errors).
       router.push(roleHomePath(useAuth.getState().user?.role || "farmer"));
-    } catch {
-      setError(t("invalid_credentials"));
+    } catch (err) {
+      // A free-tier backend may need ~50s to wake up; say so instead of
+      // claiming the credentials were wrong.
+      setError(isColdStartError(err)
+        ? "Server is waking up — please wait a few seconds and try again."
+        : t("invalid_credentials"));
     } finally {
       setLoading(false);
     }

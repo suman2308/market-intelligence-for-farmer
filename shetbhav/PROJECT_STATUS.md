@@ -1,7 +1,7 @@
 # ShetBhav — Project Status
 
-**Last Updated:** September 5, 2026
-**Status:** MVP demo-ready, GitHub-ready
+**Last Updated:** September 26, 2026
+**Status:** MVP demo-ready, GitHub-ready, deployed
 
 ---
 
@@ -12,14 +12,14 @@
 | Frontend Routes | 24 (incl. dynamic `[id]`/`[userId]` routes) |
 | Backend API Endpoints | 105 methods (94 paths) |
 | Database Tables | 45 |
-| pytest Tests | 246/246 PASS (14 files) |
+| pytest Tests | 259/259 PASS (14 files) |
 | Playwright E2E Tests | 15/15 PASS (4 spec files — both servers must be running) |
 | E2E Demo Steps | 22/22 PASS (manual run with backend) |
 | Frontend Build | 24 routes, 0 errors |
 | UI component layer | shadcn/ui (Base UI) — full redesign across all 24 pages |
 | Languages | English, Hindi, Marathi |
 | Demo Accounts | 4 (Farmer, Buyer, Admin, FPO) |
-| Market Price Records | 863 (770 historical + 93 live) |
+| Real Market Price Records | 1,469 banked in the local ledger (74 mandis, Jun–Sep 2026) |
 
 ---
 
@@ -32,9 +32,10 @@
 | Farmer dashboard | ✅ COMPLETE | /farmer, E2E step 3 |
 | Language switch (EN/HI/MR) | ✅ COMPLETE | test_api.py (3 tests) |
 | Crop lot creation | ✅ COMPLETE | test_api.py, E2E step 6 |
-| Market prices (AGMARKNET) | ✅ COMPLETE | 863 real records, E2E step 4 |
+| Market prices (AGMARKNET) | ✅ COMPLETE | 1,469 real ledger records, E2E step 4 |
 | Price source labeling | ✅ COMPLETE | live/cached/dataset/synthetic |
 | data.gov.in live API | ✅ COMPLETE | sync/status, sync/mandi endpoints |
+| Local market-data ledger | ✅ COMPLETE | test_market_ledger.py (13 tests); restores history after DB resets |
 | Smart Sell recommendation | ✅ COMPLETE | 8-factor scoring, E2E step 5 |
 | Price forecasting (XGBoost) | ✅ COMPLETE | 47 tests, chronological validation |
 | Buyer login | ✅ COMPLETE | E2E step 8 |
@@ -82,9 +83,10 @@
 
 | Source | Status | Records |
 |--------|--------|---------|
-| data.gov.in live API | ✅ Working | 91 records labeled `live` |
-| AGMARKNET dataset | ✅ Imported | 770 records labeled `historical_dataset` |
-| Seeded demo data | ✅ Fallback | Synthetic, clearly labeled |
+| data.gov.in live API | ✅ Working | Grows with each daily sync; every fetch banked in the ledger |
+| Local market-data ledger | ✅ NEW | 1,469 real records (74 mandis, 1 Jun – 3 Sep 2026); survives DB resets |
+| AGMARKNET dataset CSV | ✅ Imported | 222 records labeled `historical_dataset` |
+| Seeded demo data | ✅ Fallback | Synthetic, clearly labeled, never stored in the ledger |
 | Transport quotes | ✅ Seeded | 2 transporters |
 | Storage facilities | ✅ Seeded | 2 facilities |
 
@@ -124,7 +126,7 @@ cd shetbhav/frontend
 npm install
 npm run dev
 
-# Tests (246 tests)
+# Tests (259 tests)
 cd shetbhav/backend
 python -m pytest tests/ -v
 
@@ -146,6 +148,7 @@ Open http://localhost:3000
 - **Platform**: Render Blueprint (`render.yaml`)
 - **Auto-deploy**: Every push to `main` triggers both frontend + backend
 - **Database**: PostgreSQL (free tier, auto-wired by Blueprint)
+- **Database resilience**: after any DB reset, the local market ledger restores all banked real records on the next boot
 - **Keep-alive**: UptimeRobot pings `/health` every 5 min
 
 ---

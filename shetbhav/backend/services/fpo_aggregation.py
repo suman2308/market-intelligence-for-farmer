@@ -67,7 +67,7 @@ def aggregate_lots(
         quality_grade=QualityGrade(dominant_grade),
         location_lat=fpo.location_lat,
         location_lng=fpo.location_lng,
-        address=f"{fpo.name}, {fpo.district}",
+        address=" ".join(p for p in [fpo.name, fpo.district] if p),
         is_aggregated=True,
         status="active",
     )

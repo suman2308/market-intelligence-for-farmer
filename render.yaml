@@ -20,16 +20,16 @@ services:
         value: live
       - key: DATA_GOV_API_KEY
         sync: false
-      - key: IMPORT_HISTORICAL_CSV
-        value: "true"
-      - key: TRAIN_ON_STARTUP
-        value: "true"
       - key: DATA_GOV_RESOURCE_ID
         value: 9ef84268-d588-465a-a308-a864a43d0070
       - key: MARKET_DATA_CACHE_HOURS
         value: 24
       - key: REQUEST_TIMEOUT_SECONDS
         value: 30
+      - key: IMPORT_HISTORICAL_CSV
+        value: "true"
+      - key: TRAIN_ON_STARTUP
+        value: "true"
       - key: FRONTEND_URL
         value: https://market-intelligence-for-farmer.vercel.app
     healthCheckPath: /health

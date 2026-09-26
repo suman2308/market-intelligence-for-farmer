@@ -2,13 +2,13 @@
 
 **Know the market. Choose better. Earn more.**
 
-ShetBhav is a market-intelligence platform that helps Indian farmers decide **where, when, and to whom** to sell their produce — with official mandi prices, buyer demand, and a Smart Sell engine that ranks every selling option by *net* income. The problem statement it tackles originates from Smart India Hackathon 2026 (SIH26132); ShetBhav itself is an independent product built around it.
+ShetBhav is a market-intelligence platform that helps Indian farmers decide **where, when, and to whom** to sell their produce — with official mandi prices, buyer demand, and a Smart Sell engine that ranks every selling option by *net* income, not just headline price. The problem statement it tackles originates from Smart India Hackathon 2026 (SIH26132); ShetBhav itself is an independent product built around it.
 
 [![Python](https://img.shields.io/badge/Python-3.11+-2e7d32)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-246%20backend%20·%2015%20E2E-brightgreen)](#testing--ci)
+[![Tests](https://img.shields.io/badge/tests-259%20backend%20·%2015%20E2E-brightgreen)](#testing--ci)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
 ---
@@ -20,6 +20,7 @@ ShetBhav is a market-intelligence platform that helps Indian farmers decide **wh
 - [Live demo](#live-demo)
 - [Screenshots](#screenshots)
 - [Key features](#key-features)
+- [Real market data & the local ledger](#real-market-data--the-local-ledger)
 - [Architecture](#architecture)
 - [How a sale flows end-to-end](#how-a-sale-flows-end-to-end)
 - [Tech stack](#tech-stack)
@@ -41,23 +42,24 @@ ShetBhav is a market-intelligence platform that helps Indian farmers decide **wh
 
 **ShetBhav (शेतभाव)** — *Know the market. Choose better. Earn more.*
 
-Farmers often sell at whichever mandi is nearest, without knowing whether another market or a direct buyer would pay more. ShetBhav changes that:
+A farmer who sells at whichever mandi is nearest often leaves money on the table: another market 40 km away, a direct buyer, or two weeks of cold storage could have paid more. ShetBhav closes that information gap with five connected capabilities:
 
-1. **Official market data** — pulls daily mandi prices from the government's data.gov.in AGMARKNET feed, with every price card labelled by source and freshness.
-2. **Smart Sell engine** — scores every selling option by *net* income after transport, storage, handling, and spoilage costs, and explains each recommendation in plain language.
-3. **Full marketplace** — farmers list crop lots → buyers make offers → negotiate → accept → order tracking → demo payment records.
-4. **FPO aggregation** — farmers join Farmer Producer Organizations; FPOs combine member lots for bulk buyer demands and distribute payments automatically.
-5. **AI-assisted quality grading** (prototype) — computer-vision estimate for Tomato, Onion, and Soybean, always labelled "AI-assisted estimate".
-6. **Price forecasting** — XGBoost-based 7-day predictions with automatic fallback to baselines when data is thin.
+1. **Official market data** — daily mandi prices from the government's data.gov.in AGMARKNET feed, every price card labelled by source and date, so farmers always know what they're looking at.
+2. **Smart Sell engine** — scores every selling option on *net* income after transport, storage, handling, and spoilage, then explains each recommendation in plain language with risks and confidence.
+3. **Full marketplace** — farmers list crop lots → buyers make offers → negotiate → accept → order tracking → payment records, with a complete notification trail.
+4. **FPO aggregation** — Farmer Producer Organizations combine member lots for bulk buyer demands and automatically split payments by quantity share.
+5. **AI-assisted quality grading** (prototype) — computer-vision estimate for Tomato, Onion, and Soybean, always labelled "AI-assisted estimate", never "certified grade".
 
-Everything works in **English, Hindi (हिंदी), and Marathi (मराठी)**, with distinct experiences per role:
+Plus **7-day price forecasting** (XGBoost with automatic baseline fallback when data is thin).
+
+Everything works in **English, Hindi (हिंदी), and Marathi (मराठी)** — switchable live in the UI — with a distinct experience per role:
 
 | Role | Experience |
 |---|---|
 | 👨‍🌾 **Farmer** | Mobile-first app: prices, Smart Sell wizard (6 steps), lots management, orders tracking, earnings, AI-grade photos, grievances, FPO membership |
 | 🏭 **Buyer** | Desktop dashboard: browse lots (farmers/FPOs), post demands, make/counter offers, orders, payments, profile management |
-| 🌾 **FPO** | Collective dashboard: overview stats, members (approve/reject/remove), lots, available-lots aggregation, demands fulfilment, payment distribution |
-| ⚙️ **Admin** | Platform dashboard: users, buyer verification, grievances resolution, ML model status, platform analytics, market data sync |
+| 🌾 **FPO** | Collective dashboard: overview stats, members (approve/reject/remove), lots, available-lot aggregation, demand fulfilment, payment distribution |
+| ⚙️ **Admin** | Platform dashboard: users, buyer verification, grievance resolution, ML model status, platform analytics, market-data sync |
 
 ---
 
@@ -66,6 +68,8 @@ Everything works in **English, Hindi (हिंदी), and Marathi (मरा�
 🔗 **Frontend**: [market-intelligence-for-farmer.vercel.app](https://market-intelligence-for-farmer.vercel.app/)
 🔗 **Backend**: [shetbhav-backend.onrender.com](https://shetbhav-backend.onrender.com/)
 🔗 **API Docs**: [shetbhav-backend.onrender.com/docs](https://shetbhav-backend.onrender.com/docs)
+
+> The backend runs on Render's free tier and sleeps after inactivity — the first request can take ~50 seconds to wake it. If login stalls once, retry; it stays fast afterwards.
 
 ### Demo Accounts
 
@@ -108,18 +112,17 @@ Captures from the running app (Sept 2026). Farmers get a phone-first flow; buyer
 ## Key features
 
 ### 🎯 Smart Sell Decision Engine
-- **6-step wizard**: Crop → Quantity → Quality → Urgency → Storage → Location → Results
-- **Multi-factor scoring** (8 weighted factors): Net realisation (30%), price advantage (15%), transport cost (10%), buyer demand (10%), quality match (10%), payment reliability (10%), timing (10%), distance (5%)
+- **6-step wizard**: Crop → Quantity → Quality → Urgency → Storage → Results
+- **8 weighted factors**: net realisation (30%), price advantage (15%), transport cost (10%), buyer demand (10%), quality match (10%), payment reliability (10%), timing (10%), distance (5%)
 - **Best option + 6 alternatives + 3 What-If scenarios** (sell now vs. store vs. different market)
-- **Net realisation**: gross price − transport − storage − handling − spoilage − charges
-- **Confidence scores** and plain-language reasons/risks for each option
+- **Net realisation** = gross price − transport − storage − handling − spoilage − charges
+- Confidence scores and plain-language reasons/risks for every option
 
 ### 📊 Real Market Intelligence
-- **Official AGMARKNET data** from data.gov.in with source badges (live / cached / imported / synthetic)
+- **Official AGMARKNET data** from data.gov.in with source badges (live / imported / synthetic)
 - **7-day price forecast** (XGBoost with automatic baseline fallback when history is thin)
-- **Price trends** (up/down/stable) with percentage change
 - **Leaflet map** of Maharashtra mandis for visual market selection
-- **863 real market price records** in the seeded database (770 imported AGMARKNET history + 93 live)
+- **1,469 real price records** (74 mandis, 4 commodities, Jun–Sep 2026) survive restarts via the local ledger — see below
 
 ### 🤝 Full Marketplace Flow
 - **Lots**: create, edit, withdraw crop lots with price, quality, urgency, storage options
@@ -143,7 +146,7 @@ Captures from the running app (Sept 2026). Farmers get a phone-first flow; buyer
 - **Always labelled** "AI-assisted estimate" — never "certified grade"
 
 ### 🌐 Multilingual & Accessible
-- **3 languages**: English, Hindi (हिंदी), Marathi (मराठी) — switchable live
+- **3 languages**: English, Hindi (हिंदी), Marathi (मराठी) — ~150 UI strings each, switchable live
 - **Mobile-first design**: farmer app centred at 420px on desktop too
 - **48px minimum touch targets** (WCAG compliant)
 - **Colourblind-safe**: status always includes icon + label
@@ -155,6 +158,24 @@ Captures from the running app (Sept 2026). Farmers get a phone-first flow; buyer
 - **bcrypt password hashing**
 - **Rate limiting** (disabled in demo mode)
 - **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
+
+---
+
+## Real market data & the local ledger
+
+Market data in ShetBhav is **real government data with honest labels**. The one thing it must never do is silently fake freshness — every price card states where the number came from and how old it is.
+
+**The durability problem.** The backend runs on Render's free tier, where the database is ephemeral: a restart or database recycle wipes every stored price record. Re-fetching from data.gov.in costs API quota and only returns the most recent pages, so history would shrink over time.
+
+**The fix — a local, append-only ledger.** Every real record fetched from the AGMARKNET API (or imported from the bundled CSV) is appended to a committed JSONL file, `shetbhav/backend/data/local_market_ledger.jsonl`. On every startup the ledger is replayed into the database:
+
+- **1,469 real AGMARKNET records** currently in the ledger — 74 Maharashtra mandis, Onion/Tomato/Soybean, 1 Jun – 3 Sep 2026
+- After a database wipe, the platform **refills itself from the file** on the next boot — no API calls, no lost history
+- Appends are **idempotent** (keyed by crop + mandi + arrival date), so re-fetches never duplicate
+- Synthetic demo rows are **never** stored in the ledger; restored rows carry the same `historical_dataset` label as imported data
+- Sync totals are visible to admins at `GET /sync/status`
+
+Over time the ledger only grows: each daily sync permanently banks the day's real mandi prices.
 
 ---
 
@@ -173,26 +194,28 @@ Captures from the running app (Sept 2026). Farmers get a phone-first flow; buyer
 │                   Backend                      │
 │  FastAPI · Python 3.11 · Pydantic              │
 │  105 API methods (94 paths) · JWT auth · RBAC  │
-│  8 service modules · ML pipeline               │
+│  9 service modules · ML pipeline               │
 └───────────────────┬────────────────────────────┘
                     │
 ┌───────────────────▼────────────────────────────┐
 │                 Database                       │
 │  SQLite (dev) · PostgreSQL (Render prod)       │
 │  45 tables · SQLAlchemy ORM                    │
+│  + local ledger file (survives DB resets)      │
 └────────────────────────────────────────────────┘
 ```
 
-### Backend service modules (8)
+### Backend service modules (9)
 
 1. **Smart Sell** (`services/smart_sell.py`) — 8-factor scoring engine comparing mandi, buyer, storage, and FPO options
-2. **Market Data** (`services/market_data.py`) — multi-mode adapter: live → cached → dataset → demo
-3. **data.gov.in client** (`services/data_gov.py`) — AGMARKNET API integration with validation/deduplication
-4. **Forecasting** (`ml/forecasting.py`) — XGBoost price prediction with chronological validation
-5. **Logistics** (`services/logistics.py`) — Haversine distance, transport/storage cost estimation
-6. **FPO aggregation** (`services/fpo_aggregation.py`) — lot combination for bulk demands
-7. **Quality grading** (`services/quality_grading.py` + `ml/crop_vision.py`) — rule-based CV analysis
-8. **Auth** (`services/auth.py`) — JWT, bcrypt, role verification
+2. **Market Data** (`services/market_data.py`) — multi-mode adapter: live → real DB rows → cached → demo, real sources always preferred over synthetic
+3. **Market ledger** (`services/market_ledger.py`) — append-only file that banks every real price record and replays it into the DB on startup
+4. **data.gov.in client** (`services/data_gov.py`) — AGMARKNET API integration with validation/deduplication
+5. **Forecasting** (`ml/forecasting.py`) — XGBoost price prediction with chronological validation
+6. **Logistics** (`services/logistics.py`) — Haversine distance, transport/storage cost estimation
+7. **FPO aggregation** (`services/fpo_aggregation.py`) — lot combination for bulk demands and payment splitting
+8. **Quality grading** (`services/quality_grading.py` + `ml/crop_vision.py`) — rule-based CV analysis
+9. **Auth** (`services/auth.py`) — JWT, bcrypt, role verification
 
 ### Frontend layers
 
@@ -246,17 +269,17 @@ sequenceDiagram
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **Next.js** | 16.3.4 | App Router, React 19 framework |
+| **React** | 19.2.8 | UI runtime |
 | **TypeScript** | ^5 | Type safety |
 | **Tailwind CSS** | ^4 | Utility-first styling (CSS-first config via `@theme`) |
-| **shadcn/ui** | ^4.21.0 | UI primitives (Base UI, not Radix) |
+| **shadcn/ui** | ^4.21.0 | UI primitives (built on Base UI, not Radix) |
 | **@base-ui/react** | ^1.8.0 | Base UI primitives for shadcn |
 | **Zustand** | ^5.0.15 | State management (auth, i18n) |
 | **Axios** | ^1.20.0 | HTTP client with auth interceptors |
 | **Leaflet** | ^1.9.4 | Map rendering (markets, buyers) |
 | **react-leaflet** | ^5.0.0 | React wrapper for Leaflet |
-| **recharts** | ^3 | Admin analytics charts |
+| **recharts** | ^3.10.1 | Admin analytics charts |
 | **embla-carousel-react** | ^8.6.0 | Carousel (price cards) |
-| **class-variance-authority** | ^0.7.1 | Component variants |
 | **lucide-react** | ^1.41.0 | Icons |
 | **Playwright** | ^1.62.1 (dev) | E2E testing |
 
@@ -309,7 +332,7 @@ npm run dev
 
 Open **http://localhost:3000** → **/login** → use any demo account above.
 
-On first boot the backend **creates the schema, seeds the four demo accounts, and fills crops/markets/demo records automatically** (every startup also idempotently backfills any missing reference data — crops, markets, coordinates). No database setup needed for the demo. To import the real AGMARKNET history and train forecast models on it, set `IMPORT_HISTORICAL_CSV=true` and `TRAIN_ON_STARTUP=true` on a fresh database (see [ML.md](shetbhav/ML.md)).
+On first boot the backend **creates the schema, restores the local market ledger (1,469 real records), seeds the four demo accounts, and fills crops/markets automatically** — every startup also idempotently backfills missing reference data. No database setup needed. To re-import the bundled AGMARKNET CSV and retrain forecast models on it, set `IMPORT_HISTORICAL_CSV=true` and `TRAIN_ON_STARTUP=true` on a fresh database (see [ML.md](shetbhav/ML.md)).
 
 ---
 
@@ -330,6 +353,7 @@ Copy [`shetbhav/backend/.env.example`](shetbhav/backend/.env.example) to `.env`:
 | `MARKET_DATA_MODE` | `dataset` | Data source: live/cached/dataset/demo |
 | `MARKET_DATA_CACHE_HOURS` | `24` | Cache freshness window |
 | `REQUEST_TIMEOUT_SECONDS` | `15` | Upstream API request timeout |
+| `MARKET_DATA_LEDGER_PATH` | `backend/data/local_market_ledger.jsonl` | Local ledger file (see [Real market data](#real-market-data--the-local-ledger)) |
 | `IMPORT_HISTORICAL_CSV` | `false` | Bootstrap real AGMARKNET history on fresh DB |
 | `TRAIN_ON_STARTUP` | `false` | Train/evaluate XGBoost models at startup |
 | `AGMARKNET_API_KEY` | falls back to `DATA_GOV_API_KEY` | Alias kept for compatibility |
@@ -361,7 +385,7 @@ market-intelligence-for-farmer/
 └── shetbhav/
     ├── ARCHITECTURE.md            System design, data flow, DB schema
     ├── API.md                     REST API reference
-    ├── DATA_SOURCES.md            AGMARKNET integration & data labelling
+    ├── DATA_SOURCES.md            AGMARKNET integration, local ledger & data labelling
     ├── DESIGN.md                  Design system & accessibility
     ├── DEMO.md                    Guided demo walkthrough
     ├── LIMITATIONS.md             Honest scope assessment
@@ -373,11 +397,11 @@ market-intelligence-for-farmer/
     │   ├── app/
     │   │   ├── main.py            FastAPI app (105 methods / 94 paths, startup seeding)
     │   │   └── scripts/
-    │   │       └── import_market_data.py  CSV import tool
+    │   │       └── import_market_data.py  CSV import tool (also mirrors to the ledger)
     │   ├── config/
     │   │   ├── database.py        DB engine + session
     │   │   └── settings.py        Environment config
-    │   ├── services/              8 service modules (see Architecture)
+    │   ├── services/              9 service modules (see Architecture)
     │   ├── ml/                    ML pipeline
     │   │   ├── forecasting.py     XGBoost prediction + baselines
     │   │   ├── crop_vision.py     Rule-based CV analysis
@@ -389,8 +413,9 @@ market-intelligence-for-farmer/
     │   ├── models/
     │   │   ├── database.py        45 SQLAlchemy tables + enums
     │   │   └── schemas.py         Pydantic request/response schemas
-    │   ├── tests/                 14 test files · 246 tests
+    │   ├── tests/                 14 test files · 259 tests
     │   ├── data/
+    │   │   ├── local_market_ledger.jsonl      1,469 real AGMARKNET records (tracked in git)
     │   │   ├── maharashtra_market_prices.csv  Sample AGMARKNET data
     │   │   └── models/            Trained .joblib models (generated)
     │   └── scripts/
@@ -420,7 +445,7 @@ market-intelligence-for-farmer/
         │   │   ├── LangHydrator.tsx    Language hydration
         │   │   └── MapView.tsx         Leaflet/OSM map
         │   └── lib/
-        │       ├── api.ts         Axios client with auth interceptor
+        │       ├── api.ts         Axios client with auth interceptor + cold-start handling
         │       ├── store.ts       Zustand auth store
         │       ├── i18n.ts        Zustand i18n (EN/HI/MR translations)
         │       ├── cropEmoji.ts   Crop → emoji mapping
@@ -438,7 +463,7 @@ market-intelligence-for-farmer/
 
 ### Verified state (September 2026)
 
-**Backend tests (pytest):** 246/246 PASS ✅
+**Backend tests (pytest):** 259/259 PASS ✅
 ```bash
 cd shetbhav/backend
 python -m pytest tests/ -q
@@ -462,7 +487,7 @@ cd shetbhav/backend
 python scripts/e2e_demo.py        # Runs against a live backend
 ```
 
-### Backend test matrix (246 tests across 14 files)
+### Backend test matrix (259 tests across 14 files)
 
 | File | Tests | Covers |
 |------|-------|--------|
@@ -474,12 +499,13 @@ python scripts/e2e_demo.py        # Runs against a live backend
 | `test_quality_grading.py` | 24 | AI grading, image analysis, verification types |
 | `test_fpo_flow.py` | 13 | Join/leave/approve/remove, aggregation, payout |
 | `test_booking.py` | 10 | Direct book flow, order creation, payment simulation |
-| `test_demand_direct_response.py` | 8 | Demand fulfilment, auto-created lots |
 | `test_offers_notifications.py` | 13 | Negotiation, counter-offers, notifications |
-| `test_payment_deadline.py` | 5 | Payment windows, expiry, lot release |
-| `test_lot_edit_delete.py` | 8 | Lot CRUD, edit restrictions, withdrawal |
 | `test_profiles_and_admin.py` | 13 | Profiles + admin endpoints |
-| **Total** | **246** | **All passing** |
+| `test_market_ledger.py` | 13 | Ledger append/dedupe, DB restore, real-source gating |
+| `test_demand_direct_response.py` | 8 | Demand fulfilment, auto-created lots |
+| `test_lot_edit_delete.py` | 8 | Lot CRUD, edit restrictions, withdrawal |
+| `test_payment_deadline.py` | 5 | Payment windows, expiry, lot release |
+| **Total** | **259** | **All passing** |
 
 ### E2E specs (Playwright)
 
@@ -492,10 +518,10 @@ python scripts/e2e_demo.py        # Runs against a live backend
 
 ### CI/CD
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
-1. Backend pytest suite (246 tests)
-2. Frontend typecheck + build (lint runs non-blocking; see note in the workflow)
-3. Playwright E2E suite (15 tests, both servers)
+GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on every push/PR to `main`:
+1. **Backend tests** — full pytest suite (259 tests)
+2. **Frontend build** — typecheck + production build (lint runs non-blocking; ~180 pre-existing findings)
+3. **Playwright E2E** — 15 tests with both servers running
 
 ---
 
@@ -509,7 +535,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
 | **Health Check** | Render | `https://shetbhav-backend.onrender.com/health` |
 
 - **Vercel**: deploys on every push to `main`. The project's **Root Directory must be set to `shetbhav/frontend`** (Project Settings → General) — if it points at the repo root, deploys fail.
-- **Render**: `render.yaml` Blueprint provisions the web service + PostgreSQL database and deploys on commit.
+- **Render**: `render.yaml` Blueprint provisions the web service + PostgreSQL database and deploys on commit. Free-tier instances sleep between requests — the first call after a break takes ~50 s; the login screen detects this and tells the user to retry.
+- **Database resilience**: after any database reset, the local market ledger restores all banked real price records on the next backend boot.
 - **UptimeRobot**: pings `/health` every 5 minutes to keep the free Render instance awake.
 
 ---
@@ -522,7 +549,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
 | [API.md](shetbhav/API.md) | REST API reference |
 | [ML.md](shetbhav/ML.md) | Forecasting pipeline, model evaluation, quality grading |
 | [DESIGN.md](shetbhav/DESIGN.md) | Design system, color palette, typography, components, accessibility |
-| [DATA_SOURCES.md](shetbhav/DATA_SOURCES.md) | AGMARKNET integration, data modes, source labels |
+| [DATA_SOURCES.md](shetbhav/DATA_SOURCES.md) | AGMARKNET integration, local ledger, data modes, source labels |
 | [SECURITY.md](shetbhav/SECURITY.md) | Secrets management, auth, threat model, hardening checklist |
 | [TESTING.md](shetbhav/TESTING.md) | Test matrix, results, E2E demo flow |
 | [DEMO.md](shetbhav/DEMO.md) | Guided walkthrough, demo accounts, talking points |
@@ -542,13 +569,14 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
 ### ✅ Real (production-grade)
 
 | Feature | Status | Details |
-|---------|--------|--------|
-| **Mandi prices** | ✅ Real | data.gov.in AGMARKNET API with full source labels (live/cached/imported) |
+|---------|--------|---------|
+| **Mandi prices** | ✅ Real | data.gov.in AGMARKNET API with full source labels (live/imported) |
+| **Local data ledger** | ✅ Real | 1,469 banked real records that survive database resets |
 | **Smart Sell recommendations** | ✅ Real | Multi-factor scoring on real inputs (prices, transport, demand, quality) |
 | **Price forecasting** | ✅ Real | XGBoost vs baseline with chronological validation, auto-fallback when data is thin |
 | **Marketplace flow** | ✅ Real | Full lot→offer→counter→accept→order lifecycle with negotiation history preserved |
 | **FPO aggregation** | ✅ Real | Member lots combined for bulk demands, payment distribution by quantity share |
-| **Quality grading** | ✅ Prototype | Rule-based computer vision, labelled "AI-assisted estimate" not "certified" |
+| **Quality grading** | ⚠️ Prototype | Rule-based computer vision, labelled "AI-assisted estimate" not "certified" |
 | **Auth & security** | ✅ Real | JWT + bcrypt, role-based access control on every endpoint |
 | **Notifications** | ✅ Real | In-app notification system for all transaction events |
 
@@ -565,14 +593,14 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
 
 | Source | Records | Label |
 |--------|---------|-------|
-| data.gov.in AGMARKNET (live) | 93 | "Government market data" |
-| AGMARKNET historical CSV (imported) | 770 | "Imported AGMARKNET data" |
+| data.gov.in AGMARKNET (live fetches) | Grows with each daily sync | "Government market data" |
+| Local ledger / imported CSV (1 Jun – 3 Sep 2026) | 1,469 · 74 mandis | "Imported AGMARKNET data" |
 | Synthetic fallback | Varies | "Synthetic demo data" |
 
 ### 🔮 ML models
 
 | Model | Status | Details |
-|-------|--------|--------|
+|-------|--------|---------|
 | **XGBoost (Tomato)** | ⚠️ Baseline fallback | Trained but doesn't beat naive persistence yet (thin data) |
 | **XGBoost (Onion)** | ⚠️ Baseline fallback | Trained but doesn't beat naive persistence yet |
 | **XGBoost (Soybean)** | ❌ No data | No Soybean arrivals in AGMARKNET subset |

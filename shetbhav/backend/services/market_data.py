@@ -1,28 +1,29 @@
 """
-Market Data Service — Multi-mode adapter for market price data.
+Market Data Service — multi-mode adapter for market price data.
 
-Modes:
-  dataset  — official imported AGMARKNET CSV data (default for dev/demo)
-  live     — fetch data.gov.in API (requires API key)
-  cached   — use database records only
-  demo     — synthetic records as final fallback
+Modes (MARKET_DATA_MODE env var):
+  dataset  — official imported AGMARKNET data already in the database (default)
+  live     — fetch data.gov.in API first (requires API key)
+  cached   — database records only
+  demo     — synthetic records only
 
-Set MARKET_DATA_MODE env var to switch modes.
-Never label historical dataset data as real-time.
+Source labels are part of the product: a farmer must always be able to see
+whether a price is official government data, imported history, or a synthetic
+demo value. Resolution therefore prefers REAL rows (live / historical_dataset)
+over synthetic ones, even when a synthetic demo row happens to be newer.
 """
-import os
 import random
 import math
 from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from models.database import Market, MarketPrice, Crop, DataSourceType
 
+from config.settings import MARKET_DATA_MODE, AGMARKNET_API_KEY
+from models.database import Market, MarketPrice, Crop
 
-# ── Mode Configuration ──────────────────────────────────────────────
-MARKET_DATA_MODE = os.getenv("MARKET_DATA_MODE", "dataset").lower()
-AGMARKNET_API_KEY = os.getenv("AGMARKNET_API_KEY", "")
+# Sources that carry real-world value (everything else is synthetic demo data).
+REAL_SOURCE_TYPES = ("live", "historical_dataset")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -32,8 +33,7 @@ AGMARKNET_API_KEY = os.getenv("AGMARKNET_API_KEY", "")
 class DatasetProvider:
     """
     Uses official imported AGMARKNET data from the database.
-    Source type: historical_dataset
-    Labels: clearly marked as imported historical data with data_as_of date.
+    Source type: historical_dataset — clearly marked as imported history.
     """
 
     def get_current_price(self, db: Session, crop_id: int, market_id: Optional[int] = None) -> Optional[dict]:
@@ -89,34 +89,6 @@ class DatasetProvider:
             }
             for r in records
         ]
-
-    def get_all_market_prices(self, db: Session, crop_id: int) -> dict:
-        """Get latest prices across all markets for a crop."""
-        markets = {}
-        records = (
-            db.query(MarketPrice)
-            .filter(
-                MarketPrice.crop_id == crop_id,
-                MarketPrice.source_type == "historical_dataset",
-            )
-            .order_by(desc(MarketPrice.arrival_date))
-            .all()
-        )
-        for r in records:
-            mid = r.market_id
-            if mid not in markets:
-                markets[mid] = {
-                    "market_name": r.market_name or "",
-                    "market_id": mid,
-                    "min_price": r.min_price,
-                    "max_price": r.max_price,
-                    "modal_price": r.modal_price,
-                    "arrivals_qty": r.arrival_quantity or r.arrivals_qty,
-                    "date": (r.arrival_date or r.date).strftime("%Y-%m-%d"),
-                    "variety": r.variety or "",
-                    "grade": r.grade or "",
-                }
-        return markets
 
 
 class SyntheticProvider:
@@ -184,16 +156,14 @@ class MarketDataService:
     """
     Multi-mode market data service.
 
-    Resolution order:
-    1. dataset  → imported AGMARKNET CSV data
-    2. live     → data.gov.in API (if API key available)
-    3. cached   → database records
-    4. demo     → synthetic fallback
+    Resolution order for a "current" price:
+      1. live fetch from data.gov.in (mode=live + API key configured)
+      2. newest REAL database row (live / historical_dataset — incl. rows
+         restored from the local market-data ledger)
+      3. newest database row of any kind (labelled honestly)
+      4. synthetic fallback (labelled "Synthetic demo data")
 
-    Each response includes clear source labels:
-    - "Imported AGMARKNET data (as of YYYY-MM-DD)"
-    - "Government market data (live)"
-    - "Synthetic demo data (not real market data)"
+    Every response includes a plain-language data_source_label.
     """
 
     def __init__(self):
@@ -209,30 +179,29 @@ class MarketDataService:
             return {"error": "Crop not found"}
 
         crop_name = crop.name.lower()
-        mode = MARKET_DATA_MODE
 
-        # ── Mode: dataset ──
-        if mode == "dataset":
-            data = self.dataset.get_current_price(db, crop_id, market_id)
-            if data:
-                return self._build_response(crop_name, data, "historical_dataset",
-                    f"Imported AGMARKNET data (as of {data['date']})")
-
-        # ── Mode: live ──
-        if mode == "live" and AGMARKNET_API_KEY:
+        # ── 1. Live fetch (only in live mode with an API key) ──
+        if MARKET_DATA_MODE == "live" and AGMARKNET_API_KEY:
             live_data = self._try_live_fetch(crop_name, market_id, db)
             if live_data:
                 return self._build_response(crop_name, live_data, "live",
                     "Government market data (AGMARKNET live)")
 
-        # ── Mode: cached — check any database record ──
-        if mode in ("dataset", "live", "cached"):
-            cached = self._get_cached_price(db, crop_id, market_id)
-            if cached:
-                source_label = self._cached_label(cached)
-                return self._build_response(crop_name, cached, cached["source_type"], source_label)
+        # ── 2. Newest REAL row in the database ──
+        real = self._best_db_price(db, crop_id, market_id, only_real=True)
+        if real:
+            return self._build_response(crop_name, real["data"], real["source_type"],
+                                        self._label(real["source_type"], real["date"]))
 
-        # ── Mode: demo — synthetic fallback ──
+        # ── 3. In dataset/cached modes fall back to the newest row of any
+        #      kind (never silently: the label states what it is) ──
+        if MARKET_DATA_MODE != "demo":
+            any_row = self._best_db_price(db, crop_id, market_id, only_real=False)
+            if any_row:
+                return self._build_response(crop_name, any_row["data"], any_row["source_type"],
+                                            self._label(any_row["source_type"], any_row["date"]))
+
+        # ── 4. Synthetic fallback ──
         data = self.synthetic.get_current_price(crop_name)
         return self._build_response(crop_name, data, "synthetic",
             "Synthetic demo data (not live market data)")
@@ -246,23 +215,27 @@ class MarketDataService:
             return []
 
         crop_name = crop.name.lower()
-        mode = MARKET_DATA_MODE
 
-        # Try dataset first
-        if mode in ("dataset", "live", "cached"):
+        # Imported dataset rows first (real, labelled)
+        if MARKET_DATA_MODE != "demo":
             historical = self.dataset.get_historical(db, crop_id, market_id, days)
             if historical:
                 return historical
 
-        # Try cached (any source)
-        cached = (
+        # Any real (non-synthetic) rows as a second choice
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        real_rows = (
             db.query(MarketPrice)
-            .filter(MarketPrice.crop_id == crop_id, MarketPrice.market_id == market_id)
-            .order_by(MarketPrice.date.desc())
-            .limit(days)
+            .filter(
+                MarketPrice.crop_id == crop_id,
+                MarketPrice.market_id == market_id,
+                MarketPrice.source_type != "synthetic",
+                MarketPrice.date >= cutoff,
+            )
+            .order_by(MarketPrice.date.asc())
             .all()
         )
-        if cached:
+        if real_rows:
             return [
                 {
                     "min_price": p.min_price,
@@ -271,47 +244,64 @@ class MarketDataService:
                     "arrivals_qty": p.arrivals_qty,
                     "date": p.date.strftime("%Y-%m-%d"),
                 }
-                for p in reversed(cached)
+                for p in real_rows
             ]
 
-        # Synthetic fallback
+        # Synthetic fallback (demo mode or a market with no data at all)
         return self.synthetic.get_historical(crop_name, days)
 
-    def get_market_overview(self, db: Session, crop_id: int) -> dict:
-        """Get market overview with prices and forecast."""
-        crop = db.query(Crop).filter(Crop.id == crop_id).first()
-        if not crop:
-            return {"error": "Crop not found"}
+    # ── internals ────────────────────────────────────────────────────
 
-        prices = self.get_current_prices(db, crop_id)
+    def _best_db_price(
+        self, db: Session, crop_id: int, market_id: Optional[int], only_real: bool
+    ) -> Optional[dict]:
+        """Newest row for the crop, preferring real sources over synthetic.
 
-        # Get forecast
-        from ml.forecasting import predict_price
-        modal = prices.get("prices", {}).get("modal_price", 2400)
-        forecast = predict_price(crop.name.lower(), modal)
+        Looks at the 50 most recent rows by date and picks the newest one whose
+        source type matches the request (real sources first, any source when
+        only_real=False). This stops fresh synthetic demo rows from shadowing
+        slightly older — but real — AGMARKNET data.
+        """
+        query = db.query(MarketPrice).filter(MarketPrice.crop_id == crop_id)
+        if market_id:
+            query = query.filter(MarketPrice.market_id == market_id)
+        rows = query.order_by(desc(MarketPrice.date)).limit(50).all()
+        if not rows:
+            return None
 
+        allowed = REAL_SOURCE_TYPES if only_real else None
+        for r in rows:
+            st = (r.source_type or "synthetic").lower()
+            if allowed and st in allowed:
+                return self._row_to_price(r)
+        if only_real:
+            return None
+        return self._row_to_price(rows[0])
+
+    def _row_to_price(self, r: MarketPrice) -> dict:
         return {
-            "crop": {
-                "id": crop.id,
-                "name": crop.name,
-                "name_hi": crop.name_hi,
-            },
-            "current_price": modal,
-            "min_price": prices.get("prices", {}).get("min_price", 0),
-            "max_price": prices.get("prices", {}).get("max_price", 0),
-            "price_trend": "stable",
-            "trend_pct": 0,
-            "forecast": forecast,
-            "data_source": prices.get("source", "synthetic"),
-            "data_source_label": prices.get("data_source_label", ""),
-            "last_updated": prices.get("last_updated", datetime.utcnow().isoformat()),
+            "min_price": r.min_price,
+            "max_price": r.max_price,
+            "modal_price": r.modal_price,
+            "arrivals_qty": r.arrival_quantity or r.arrivals_qty,
+            "date": (r.arrival_date or r.date).strftime("%Y-%m-%d") if (r.arrival_date or r.date) else "",
+            "market_name": r.market_name or "",
+            "source_type": (r.source_type or "synthetic").lower(),
         }
+
+    def _label(self, source_type: str, date: str) -> str:
+        if source_type == "historical_dataset":
+            return f"Imported AGMARKNET data (as of {date})"
+        if source_type == "live":
+            return f"Government market data (as of {date})"
+        if source_type == "synthetic":
+            return "Synthetic demo data (not live market data)"
+        return f"Cached market data ({date})"
 
     def _try_live_fetch(self, crop_name: str, market_id: Optional[int], db: Session) -> Optional[dict]:
         """Attempt to fetch from data.gov.in live API."""
         try:
             import httpx
-            market = db.query(Market).filter(Market.id == market_id).first() if market_id else None
             url = "https://data.gov.in/backend/dmspublic/v1/resources/download"
             with httpx.Client(timeout=10) as client:
                 resp = client.get(url, params={
@@ -333,36 +323,6 @@ class MarketDataService:
         except Exception:
             pass
         return None
-
-    def _get_cached_price(self, db: Session, crop_id: int, market_id: Optional[int]) -> Optional[dict]:
-        """Get latest price from any database source."""
-        query = db.query(MarketPrice).filter(MarketPrice.crop_id == crop_id)
-        if market_id:
-            query = query.filter(MarketPrice.market_id == market_id)
-        latest = query.order_by(desc(MarketPrice.date)).first()
-        if not latest:
-            return None
-        return {
-            "min_price": latest.min_price,
-            "max_price": latest.max_price,
-            "modal_price": latest.modal_price,
-            "arrivals_qty": latest.arrivals_qty,
-            "date": latest.date.strftime("%Y-%m-%d") if latest.date else "",
-            "market_name": latest.market_name or "",
-            "source_type": latest.source_type or "cached",
-        }
-
-    def _cached_label(self, cached: dict) -> str:
-        """Generate source label for cached data."""
-        st = cached.get("source_type", "cached")
-        date = cached.get("date", "")
-        if st == "historical_dataset":
-            return f"Imported AGMARKNET data (as of {date})"
-        elif st == "live":
-            return f"Government market data (cached, {date})"
-        elif st == "synthetic":
-            return "Synthetic demo data (not live market data)"
-        return f"Cached market data ({date})"
 
     def _build_response(self, crop_name: str, data: dict, source_type: str, label: str) -> dict:
         """Build standardized price response."""

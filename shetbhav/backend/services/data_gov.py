@@ -237,10 +237,15 @@ def _store_records(
     api_records: List[Dict],
     crop_name: str,
     market_id: Optional[int] = None,
+    persist_to_ledger: bool = True,
 ) -> Tuple[int, int, int, int]:
     """
     Normalize and store API records in market_prices table.
     Returns (inserted, updated, skipped, rejected) counts.
+
+    When persist_to_ledger is true (the default) every fetched record is also
+    appended to the local market-data ledger file, so a later database reset
+    can replay the full real history without re-fetching from the API.
     """
     crop = db.query(Crop).filter(Crop.name.ilike(crop_name)).first()
     if not crop:
@@ -352,6 +357,15 @@ def _store_records(
     except Exception:
         db.rollback()
         inserted = updated = 0
+
+    # Durable copy: the ledger is append-only and idempotent, so it is safe
+    # to call on every fetch. Never let a ledger problem fail the sync.
+    if persist_to_ledger:
+        try:
+            from services.market_ledger import append_records
+            append_records(api_records)
+        except Exception:
+            pass
 
     return inserted, updated, skipped, rejected
 

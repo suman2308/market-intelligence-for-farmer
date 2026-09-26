@@ -314,7 +314,7 @@ export default function BuyerDashboard() {
                   onClick={() => router.push(`/lots/${lot.id}`)}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lot.crop_name} — {lot.quantity_kg}kg</p>
-                    <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {lot.quality_grade || "Any"} · {lot.address}</p>
+                    <p className="text-xs" style={{ margin: "2px 0 0" }}>{[lot.quality_grade && `Grade ${lot.quality_grade}`, lot.address].filter(Boolean).join(" · ") || "Details on lot page"}</p>
                     {lot.fpo_id ? (
                       <p className="text-xs" style={{ margin: "2px 0 0", color: "var(--info)" }}>🏢 {lot.fpo_name || "FPO"}</p>
                     ) : lot.farmer_name && (
@@ -747,7 +747,7 @@ export default function BuyerDashboard() {
             </div>
             <Card style={{ marginBottom: 12, background: "var(--green-50)" }}>
               <p style={{ fontWeight: 600, margin: 0 }}>{offerModal.crop_name} — {offerModal.quantity_kg}kg</p>
-              <p className="text-xs" style={{ margin: "2px 0 0" }}>Grade {offerModal.quality_grade} · {offerModal.address}</p>
+              <p className="text-xs" style={{ margin: "2px 0 0" }}>{[offerModal.quality_grade && `Grade ${offerModal.quality_grade}`, offerModal.address].filter(Boolean).join(" · ")}</p>
             </Card>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
