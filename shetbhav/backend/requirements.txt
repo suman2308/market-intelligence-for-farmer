@@ -1,18 +1,25 @@
+# ── Pinned dependency set ────────────────────────────────────────────
+# These are the exact versions the 262-test backend suite passes on
+# (Python 3.11). Do not loosen pins without running the full suite:
+# unpinned floats previously shipped SQLAlchemy 2.1 (whose default
+# PostgreSQL driver is psycopg3) to Render and crashed every startup
+# with "ModuleNotFoundError: No module named 'psycopg'".
 fastapi==0.141.1
-Pillow>=10.0
-uvicorn[standard]
-sqlalchemy>=2.0
-psycopg2-binary>=2.9
-pydantic>=2.0
-email-validator>=2.0
-python-jose[cryptography]
-bcrypt>=4.0
-python-multipart
-httpx
-xgboost
-scikit-learn
-pandas
-numpy
-joblib
-python-dotenv
-pytest>=8.0
+starlette==1.6.0
+uvicorn[standard]==0.52.4
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.13
+pydantic==2.13.5
+email-validator==2.3.0
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
+python-multipart==0.0.32
+httpx==0.28.1
+xgboost==3.2.0
+scikit-learn==1.9.0
+pandas==3.0.5
+numpy==2.4.6
+joblib==1.6.0
+python-dotenv==1.2.3
+Pillow==12.3.0
+pytest==9.1.1
