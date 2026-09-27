@@ -17,7 +17,7 @@ import math
 from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 from config.settings import MARKET_DATA_MODE, AGMARKNET_API_KEY
 from models.database import Market, MarketPrice, Crop
@@ -190,7 +190,7 @@ class MarketDataService:
         # ── 2. Newest REAL row in the database ──
         real = self._best_db_price(db, crop_id, market_id, only_real=True)
         if real:
-            return self._build_response(crop_name, real["data"], real["source_type"],
+            return self._build_response(crop_name, real, real["source_type"],
                                         self._label(real["source_type"], real["date"]))
 
         # ── 3. In dataset/cached modes fall back to the newest row of any
@@ -198,7 +198,7 @@ class MarketDataService:
         if MARKET_DATA_MODE != "demo":
             any_row = self._best_db_price(db, crop_id, market_id, only_real=False)
             if any_row:
-                return self._build_response(crop_name, any_row["data"], any_row["source_type"],
+                return self._build_response(crop_name, any_row, any_row["source_type"],
                                             self._label(any_row["source_type"], any_row["date"]))
 
         # ── 4. Synthetic fallback ──
@@ -257,26 +257,25 @@ class MarketDataService:
     ) -> Optional[dict]:
         """Newest row for the crop, preferring real sources over synthetic.
 
-        Looks at the 50 most recent rows by date and picks the newest one whose
-        source type matches the request (real sources first, any source when
-        only_real=False). This stops fresh synthetic demo rows from shadowing
-        slightly older — but real — AGMARKNET data.
+        With only_real=True the source filter is applied in SQL so a real row
+        can always win, however far behind fresh synthetic demo rows it sits
+        (a newest-N window would let a burst of demo rows hide it entirely).
+        With only_real=False the newest row of any kind is returned.
+        Returns the flat row dict from _row_to_price, or None.
         """
         query = db.query(MarketPrice).filter(MarketPrice.crop_id == crop_id)
         if market_id:
             query = query.filter(MarketPrice.market_id == market_id)
-        rows = query.order_by(desc(MarketPrice.date)).limit(50).all()
-        if not rows:
-            return None
 
-        allowed = REAL_SOURCE_TYPES if only_real else None
-        for r in rows:
-            st = (r.source_type or "synthetic").lower()
-            if allowed and st in allowed:
-                return self._row_to_price(r)
         if only_real:
-            return None
-        return self._row_to_price(rows[0])
+            row = (
+                query.filter(func.lower(MarketPrice.source_type).in_(REAL_SOURCE_TYPES))
+                .order_by(desc(MarketPrice.date))
+                .first()
+            )
+        else:
+            row = query.order_by(desc(MarketPrice.date)).first()
+        return self._row_to_price(row) if row else None
 
     def _row_to_price(self, r: MarketPrice) -> dict:
         return {

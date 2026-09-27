@@ -1,7 +1,7 @@
 # ShetBhav Testing Report
 
 **Date:** September 26, 2026
-**Status:** ✅ 259/259 BACKEND TESTS PASS + 15/15 PLAYWRIGHT E2E PASS + 22/22 MANUAL E2E DEMO PASS
+**Status:** ✅ 262/262 BACKEND TESTS PASS + 15/15 PLAYWRIGHT E2E PASS + 22/22 MANUAL E2E DEMO PASS
 
 ---
 
@@ -15,7 +15,7 @@
 | Forecasting | test_forecasting.py | 47 | 47 | 0 |
 | data.gov.in | test_data_gov.py | 15 | 15 | 0 |
 | Quality Grading | test_quality_grading.py | 24 | 24 | 0 |
-| Market data ledger | test_market_ledger.py | 13 | 13 | 0 |
+| Market data ledger | test_market_ledger.py | 16 | 16 | 0 |
 | Booking | test_booking.py | 10 | 10 | 0 |
 | Direct demand response | test_demand_direct_response.py | 8 | 8 | 0 |
 | FPO flow (join/leave/aggregation/payout) | test_fpo_flow.py | 13 | 13 | 0 |
@@ -23,7 +23,7 @@
 | Offers & notifications | test_offers_notifications.py | 13 | 13 | 0 |
 | Payment deadline | test_payment_deadline.py | 5 | 5 | 0 |
 | Profiles & admin | test_profiles_and_admin.py | 13 | 13 | 0 |
-| **Total pytest** | | **259** | **259** | **0** |
+| **Total pytest** | | **262** | **262** | **0** |
 
 ### Playwright E2E (frontend, browser-driven)
 
@@ -106,7 +106,7 @@ Route                          Type
 ## Running Tests
 
 ```bash
-# Full backend suite (259 tests)
+# Full backend suite (262 tests)
 cd shetbhav/backend
 python -m pytest tests/ -v
 

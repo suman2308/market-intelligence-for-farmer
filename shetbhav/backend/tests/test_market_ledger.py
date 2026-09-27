@@ -8,6 +8,7 @@ into the database. These tests exercise append/dedupe/restore/labeling.
 import os
 import sys
 from datetime import datetime
+from uuid import uuid4
 
 import pytest
 
@@ -159,3 +160,122 @@ class TestStats:
         assert "Onion" in stats["crops"]
         assert stats["date_range"]["from"] == "2026-09-20"
         assert stats["date_range"]["to"] == "2026-09-25"
+
+
+class TestPriceResolutionAfterRestore:
+    """Regression tests for the CI E2E failure on 2026-09-27.
+
+    A fresh boot restores 1,469 ledger rows, then demo seeding adds newer
+    synthetic rows for the same crops. get_current_prices() must resolve to
+    a real (historical_dataset/live) row — never crash — and /smart-sell
+    must return 200 on a fresh-boot database.
+    """
+
+    def _seed_real_then_synthetic(self, db):
+        """One real ledger row (30 days old) + one synthetic demo row (today)."""
+        from datetime import timedelta
+        crop = db.query(Crop).filter(Crop.name == "Onion").first()
+        market = db.query(Market).first()
+        today = datetime.utcnow().date()
+        db.add(MarketPrice(
+            market_id=market.id, crop_id=crop.id,
+            state="Maharashtra", district="Nashik",
+            market_name=market.name, commodity="Onion", variety="Local",
+            grade="Grade A", arrival_date=today - timedelta(days=30),
+            min_price=1000, max_price=2000, modal_price=1500,
+            price_unit="Rs/quintal", source_name="AGMARKNET (local ledger)",
+            source_type="historical_dataset", is_demo=False,
+            date=today - timedelta(days=30), fetched_at=datetime.utcnow(),
+            data_as_of=today - timedelta(days=30),
+        ))
+        db.add(MarketPrice(
+            market_id=market.id, crop_id=crop.id,
+            market_name=market.name, commodity="Onion",
+            arrival_date=today, min_price=900, max_price=1800, modal_price=1200,
+            price_unit="Rs/quintal", source_name="Demo seed",
+            source_type="synthetic", is_demo=True,
+            date=today, fetched_at=datetime.utcnow(), data_as_of=today,
+        ))
+        db.commit()
+
+    def test_real_row_wins_over_newer_synthetic(self, ledger_env):
+        db = SessionLocal()
+        try:
+            self._seed_real_then_synthetic(db)
+            crop = db.query(Crop).filter(Crop.name == "Onion").first()
+            from services.market_data import MarketDataService
+            result = MarketDataService().get_current_prices(db, crop_id=crop.id)
+            assert "error" not in result
+            assert result["source"] == "historical_dataset"
+            assert result["prices"]["modal_price"] == 1500
+            assert "Imported AGMARKNET" in result["data_source_label"]
+        finally:
+            db.close()
+
+    def test_real_row_found_even_when_deep_behind_synthetic(self, ledger_env):
+        """60 newer synthetic rows must not hide the real row (no newest-N window)."""
+        db = SessionLocal()
+        try:
+            from datetime import timedelta
+            crop = db.query(Crop).filter(Crop.name == "Onion").first()
+            market = db.query(Market).first()
+            today = datetime.utcnow().date()
+            db.add(MarketPrice(
+                market_id=market.id, crop_id=crop.id,
+                market_name=market.name, commodity="Onion",
+                arrival_date=today - timedelta(days=10), min_price=1000,
+                max_price=2000, modal_price=1500, price_unit="Rs/quintal",
+                source_name="AGMARKNET (local ledger)",
+                source_type="historical_dataset", is_demo=False,
+                date=today - timedelta(days=10), fetched_at=datetime.utcnow(),
+                data_as_of=today - timedelta(days=10),
+            ))
+            for i in range(60):
+                d = today - timedelta(days=i)
+                db.add(MarketPrice(
+                    market_id=market.id, crop_id=crop.id,
+                    market_name=market.name, commodity="Onion",
+                    arrival_date=d, min_price=900, max_price=1800,
+                    modal_price=1200, price_unit="Rs/quintal",
+                    source_name="Demo seed", source_type="synthetic", is_demo=True,
+                    date=d, fetched_at=datetime.utcnow(), data_as_of=d,
+                ))
+            db.commit()
+            from services.market_data import MarketDataService
+            result = MarketDataService().get_current_prices(db, crop_id=crop.id)
+            assert result["source"] == "historical_dataset"
+            assert result["prices"]["modal_price"] == 1500
+        finally:
+            db.close()
+
+    def test_smart_sell_endpoint_works_after_restore(self, ledger_env):
+        """The exact CI scenario: fresh DB + restored data + demo rows → POST /smart-sell is 200."""
+        db = SessionLocal()
+        try:
+            self._seed_real_then_synthetic(db)
+            crop_id = db.query(Crop).filter(Crop.name == "Onion").first().id
+        finally:
+            db.close()
+
+        from conftest import client
+        suffix = uuid4().hex[:8]
+        client.post("/auth/register", json={
+            "username": f"ledger_farmer_{suffix}",
+            "email": f"ledger_farmer_{suffix}@example.com",
+            "password": "test123456", "full_name": "Ledger Farmer", "role": "farmer",
+        })
+        resp = client.post("/auth/login", json={
+            "username": f"ledger_farmer_{suffix}", "password": "test123456",
+        })
+        assert resp.status_code == 200, resp.text
+        token = resp.json()["access_token"]
+
+        resp = client.post("/smart-sell", headers={"Authorization": f"Bearer {token}"}, json={
+            "crop_id": crop_id, "quantity_kg": 2000, "quality_grade": "A",
+            "location_lat": 20.0057, "location_lng": 73.7229,
+            "harvest_date": None, "storage_available": True, "urgency": "soon",
+        })
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["best_option"] is not None
+        assert body["best_option"]["net_realization_per_q"] > 0

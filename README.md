@@ -8,7 +8,7 @@ ShetBhav is a market-intelligence platform that helps Indian farmers decide **wh
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-259%20backend%20·%2015%20E2E-brightgreen)](#testing--ci)
+[![Tests](https://img.shields.io/badge/tests-262%20backend%20·%2015%20E2E-brightgreen)](#testing--ci)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
 ---
@@ -413,7 +413,7 @@ market-intelligence-for-farmer/
     │   ├── models/
     │   │   ├── database.py        45 SQLAlchemy tables + enums
     │   │   └── schemas.py         Pydantic request/response schemas
-    │   ├── tests/                 14 test files · 259 tests
+    │   ├── tests/                 14 test files · 262 tests
     │   ├── data/
     │   │   ├── local_market_ledger.jsonl      1,469 real AGMARKNET records (tracked in git)
     │   │   ├── maharashtra_market_prices.csv  Sample AGMARKNET data
@@ -463,7 +463,7 @@ market-intelligence-for-farmer/
 
 ### Verified state (September 2026)
 
-**Backend tests (pytest):** 259/259 PASS ✅
+**Backend tests (pytest):** 262/262 PASS ✅
 ```bash
 cd shetbhav/backend
 python -m pytest tests/ -q
@@ -487,7 +487,7 @@ cd shetbhav/backend
 python scripts/e2e_demo.py        # Runs against a live backend
 ```
 
-### Backend test matrix (259 tests across 14 files)
+### Backend test matrix (262 tests across 14 files)
 
 | File | Tests | Covers |
 |------|-------|--------|
@@ -501,11 +501,11 @@ python scripts/e2e_demo.py        # Runs against a live backend
 | `test_booking.py` | 10 | Direct book flow, order creation, payment simulation |
 | `test_offers_notifications.py` | 13 | Negotiation, counter-offers, notifications |
 | `test_profiles_and_admin.py` | 13 | Profiles + admin endpoints |
-| `test_market_ledger.py` | 13 | Ledger append/dedupe, DB restore, real-source gating |
+| `test_market_ledger.py` | 16 | Ledger append/dedupe, DB restore, real-source gating, price-resolution regressions |
 | `test_demand_direct_response.py` | 8 | Demand fulfilment, auto-created lots |
 | `test_lot_edit_delete.py` | 8 | Lot CRUD, edit restrictions, withdrawal |
 | `test_payment_deadline.py` | 5 | Payment windows, expiry, lot release |
-| **Total** | **259** | **All passing** |
+| **Total** | **262** | **All passing** |
 
 ### E2E specs (Playwright)
 
@@ -519,7 +519,7 @@ python scripts/e2e_demo.py        # Runs against a live backend
 ### CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on every push/PR to `main`:
-1. **Backend tests** — full pytest suite (259 tests)
+1. **Backend tests** — full pytest suite (262 tests)
 2. **Frontend build** — typecheck + production build (lint runs non-blocking; ~180 pre-existing findings)
 3. **Playwright E2E** — 15 tests with both servers running
 

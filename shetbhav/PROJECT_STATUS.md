@@ -12,7 +12,7 @@
 | Frontend Routes | 24 (incl. dynamic `[id]`/`[userId]` routes) |
 | Backend API Endpoints | 105 methods (94 paths) |
 | Database Tables | 45 |
-| pytest Tests | 259/259 PASS (14 files) |
+| pytest Tests | 262/262 PASS (14 files) |
 | Playwright E2E Tests | 15/15 PASS (4 spec files — both servers must be running) |
 | E2E Demo Steps | 22/22 PASS (manual run with backend) |
 | Frontend Build | 24 routes, 0 errors |
@@ -126,7 +126,7 @@ cd shetbhav/frontend
 npm install
 npm run dev
 
-# Tests (259 tests)
+# Tests (262 tests)
 cd shetbhav/backend
 python -m pytest tests/ -v
 

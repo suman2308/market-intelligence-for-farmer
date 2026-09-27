@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// 127.0.0.1, not localhost: Chromium tries ::1 first for "localhost" and on
+// some Windows setups that attempt stalls instead of fast-failing, hanging
+// API calls (observed as E2E login POSTs that never reach uvicorn, which
+// binds 127.0.0.1 locally). Deployments set NEXT_PUBLIC_API_URL explicitly.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 import axios from "axios";
 
